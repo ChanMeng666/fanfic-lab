@@ -6,6 +6,9 @@ import {
 import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
 import { NextRequest } from "next/server";
 
+// Vercel serverless function configuration
+export const maxDuration = 60;
+
 // Initialize the OpenAI adapter for fallback/suggestions
 const serviceAdapter = new OpenAIAdapter({
   model: "gpt-4o",
