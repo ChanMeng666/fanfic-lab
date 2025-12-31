@@ -10,7 +10,11 @@
       "Bash(npm install:*)",
       "Bash(npx prisma init)",
       "Bash(npm run build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: FanFic Lab project setup\n\n- Next.js 15 with TypeScript and TailwindCSS 4\n- shadcn/ui components \\(button, card, input, textarea, dialog, etc.\\)\n- CopilotKit integration with LangGraph.js\n- Prisma ORM setup for Neon PostgreSQL\n- Initial project structure with agent, components, and lib folders\n- Homepage with Inspiration Hub and feature showcase\n- CopilotKit provider and API route\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh repo create:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
     ]
   }
 }
