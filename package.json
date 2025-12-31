@@ -6,7 +6,8 @@
     "dev": "next dev",
     "dev:agent": "npx @langchain/langgraph-cli dev --host localhost --port 8123 --config src/agent/langgraph.json",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:agent\"",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint"
   },
