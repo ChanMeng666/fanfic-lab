@@ -48,17 +48,27 @@ export default function Home() {
               href="/wizard"
               className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300"
             >
-              Create
+              Wizard
             </Link>
-            <Button variant="outline" size="sm">
-              Sign In
-            </Button>
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            <Link
+              href="/editor"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300"
             >
-              Get Started
-            </Button>
+              Editor
+            </Link>
+            <Link href="/handler/sign-in">
+              <Button variant="outline" size="sm">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/wizard">
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                Get Started
+              </Button>
+            </Link>
           </nav>
         </div>
       </header>
