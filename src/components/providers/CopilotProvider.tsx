@@ -11,6 +11,7 @@ export function CopilotProvider({ children }: CopilotProviderProps) {
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"
+      agent="fanfic_agent"
       showDevConsole={process.env.NODE_ENV === "development"}
     >
       {children}
