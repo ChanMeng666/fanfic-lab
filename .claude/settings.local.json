@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__copilotkit-mcp__search-docs",
+      "WebSearch",
+      "mcp__copilotkit-mcp__search-code",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(npx shadcn@latest init -y --defaults)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma init)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+"use client";
+
+import { CopilotKit } from "@copilotkit/react-core";
+import "@copilotkit/react-ui/styles.css";
+
+interface CopilotProviderProps {
+  children: React.ReactNode;
+}
+
+export function CopilotProvider({ children }: CopilotProviderProps) {
+  return (
+    <CopilotKit
+      runtimeUrl="/api/copilotkit"
+      showDevConsole={process.env.NODE_ENV === "development"}
+    >
+      {children}
+    </CopilotKit>
+  );
+}
