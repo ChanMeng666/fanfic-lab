@@ -6,13 +6,15 @@
 import { StateGraph, START, END, MemorySaver } from "@langchain/langgraph";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ChatOpenAI } from "@langchain/openai";
-import { SystemMessage, AIMessage } from "@langchain/core/messages";
+import { SystemMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import {
   convertActionsToDynamicStructuredTools,
   copilotkitEmitState,
 } from "@copilotkit/sdk-js/langgraph";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 import { FanficAgentStateAnnotation, FanficAgentState } from "./state";
+import { allBackendTools } from "./tools";
 
 /**
  * Build the system prompt based on current state
@@ -93,11 +95,17 @@ async function chatNode(
     state.copilotkit?.actions ?? []
   );
 
+  // Combine frontend and backend tools
+  const allTools = [...frontendTools, ...allBackendTools];
+
   // Bind tools to the model
-  const modelWithTools = model.bindTools(frontendTools);
+  const modelWithTools = model.bindTools(allTools);
 
   // Build context-aware system prompt
   const systemPrompt = buildSystemPrompt(state);
+
+  // Emit state to frontend for progress updates
+  await copilotkitEmitState(config, state);
 
   // Invoke the model
   const response = await modelWithTools.invoke(
@@ -108,27 +116,51 @@ async function chatNode(
   return { messages: [response] };
 }
 
+// Backend tool names for routing
+const backendToolNames = new Set(allBackendTools.map((t) => t.name));
+
 /**
  * Routing function to determine next node
  */
 function shouldContinue(state: FanficAgentState): string {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
 
-  // If there are tool calls, we need to handle them
+  // If there are tool calls, check if they're backend tools
   if (lastMessage.tool_calls?.length) {
-    // For now, all tools are frontend tools handled by CopilotKit
-    // In Phase 2+, we'll add backend tools and route to tool_node
+    // Check if any tool calls are for backend tools
+    const hasBackendToolCall = lastMessage.tool_calls.some((tc) =>
+      backendToolNames.has(tc.name)
+    );
+
+    if (hasBackendToolCall) {
+      return "tool_node";
+    }
+
+    // Frontend tools are handled by CopilotKit
     return END;
   }
 
   return END;
 }
 
+/**
+ * Route after tool execution
+ */
+function afterToolExecution(state: FanficAgentState): string {
+  // Continue the conversation after tool execution
+  return "chat_node";
+}
+
+// Create tool node for backend tool execution
+const toolNode = new ToolNode(allBackendTools);
+
 // Build the graph
 const workflow = new StateGraph(FanficAgentStateAnnotation)
   .addNode("chat_node", chatNode)
+  .addNode("tool_node", toolNode)
   .addEdge(START, "chat_node")
-  .addConditionalEdges("chat_node", shouldContinue);
+  .addConditionalEdges("chat_node", shouldContinue)
+  .addConditionalEdges("tool_node", afterToolExecution);
 
 // Create memory saver for state persistence
 const memory = new MemorySaver();

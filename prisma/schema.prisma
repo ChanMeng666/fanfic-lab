@@ -1,14 +1,302 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// FanFic Lab - Prisma Schema
+// AI-powered fanfiction writing platform
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id          String   @id @default(cuid())
+  stackAuthId String   @unique // Stack Auth user ID
+  email       String   @unique
+  username    String   @unique
+  displayName String?
+  avatarUrl   String?
+  bio         String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  stories     Story[]
+  characters  Character[]
+  drafts      Draft[]
+  likes       Like[]
+  comments    Comment[]
+  follows     Follow[]      @relation("follower")
+  followers   Follow[]      @relation("following")
+  preferences UserPreferences?
+
+  @@index([stackAuthId])
+  @@index([email])
+  @@index([username])
+}
+
+model UserPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  favoriteFandoms String[] // Array of fandom names
+  favoriteShips   String[] // Array of ship tags
+  preferredTags   String[] // Array of content tags
+  aiPersonality   String   @default("helpful") // AI writing style preference
+  darkMode        Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// STORIES & CONTENT
+// ============================================
+
+model Story {
+  id            String      @id @default(cuid())
+  title         String
+  summary       String?     @db.Text
+  fandom        String
+  ships         String[]    // e.g., ["Drarry", "Harmony"]
+  tags          String[]    // e.g., ["Fluff", "Angst", "Crack fic"]
+  rating        Rating      @default(GENERAL)
+  status        StoryStatus @default(DRAFT)
+  wordCount     Int         @default(0)
+  coverImageUrl String?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  chapters   Chapter[]
+  characters StoryCharacter[]
+  likes      Like[]
+  comments   Comment[]
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([fandom])
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum Rating {
+  GENERAL
+  TEEN
+  MATURE
+  EXPLICIT
+}
+
+enum StoryStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Chapter {
+  id            String @id @default(cuid())
+  title         String?
+  content       String @db.Text
+  chapterNumber Int
+  wordCount     Int    @default(0)
+  authorNotes   String? @db.Text
+
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storyId, chapterNumber])
+  @@index([storyId])
+}
+
+model Draft {
+  id          String  @id @default(cuid())
+  title       String?
+  content     String  @db.Text
+  contentBlob String? // Vercel Blob URL for large drafts
+  fandom      String?
+  ships       String[]
+  tags        String[]
+
+  // AI context preserved for continuation
+  aiContext Json? // Stores character traits, plot points, etc.
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([updatedAt])
+}
+
+// ============================================
+// CHARACTERS
+// ============================================
+
+model Character {
+  id                String   @id @default(cuid())
+  name              String
+  fandom            String
+  canonDescription  String?  @db.Text
+  personalityTraits String[] // e.g., ["brave", "sarcastic", "loyal"]
+  speechPatterns    String?  @db.Text // How they talk
+  relationships     Json?    // Key relationships with other characters
+  portraitUrl       String?  // Cloudinary URL
+  isOriginal        Boolean  @default(false) // OC vs canon character
+
+  creatorId String?
+  creator   User?   @relation(fields: [creatorId], references: [id])
+
+  stories StoryCharacter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fandom])
+  @@index([creatorId])
+  @@index([name, fandom])
+}
+
+model StoryCharacter {
+  id           String        @id @default(cuid())
+  storyId      String
+  story        Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  characterId  String
+  character    Character     @relation(fields: [characterId], references: [id])
+  role         CharacterRole @default(MAIN)
+  customTraits String[]      // Story-specific character modifications
+
+  @@unique([storyId, characterId])
+  @@index([storyId])
+  @@index([characterId])
+}
+
+enum CharacterRole {
+  MAIN
+  SUPPORTING
+  MINOR
+  MENTIONED
+}
+
+// ============================================
+// IMAGES
+// ============================================
+
+model Image {
+  id          String    @id @default(cuid())
+  url         String    // Cloudinary URL
+  publicId    String    // Cloudinary public ID
+  type        ImageType
+  prompt      String?   @db.Text // AI generation prompt used
+
+  // References (one will be set based on type)
+  storyId     String?
+  characterId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([storyId])
+  @@index([characterId])
+  @@index([type])
+}
+
+enum ImageType {
+  COVER
+  CHARACTER_PORTRAIT
+  SCENE_ILLUSTRATION
+  BACKGROUND
+}
+
+// ============================================
+// SOCIAL FEATURES
+// ============================================
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId])
+  @@index([storyId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  content   String    @db.Text
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String
+  story     Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  parentId  String?   // For nested replies
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([storyId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// ============================================
+// FANDOM METADATA (for discovery)
+// ============================================
+
+model Fandom {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  category    String   // e.g., "Anime & Manga", "Movies, TV & RPF"
+  description String?  @db.Text
+  imageUrl    String?
+  storyCount  Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([storyCount])
+}
+
+model Tag {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  displayName String
+  category    String? // e.g., "genre", "trope", "warning"
+  description String?
+  usageCount  Int     @default(0)
+
+  @@index([category])
+  @@index([usageCount])
 }
