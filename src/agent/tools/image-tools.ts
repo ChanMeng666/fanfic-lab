@@ -6,7 +6,104 @@
 
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import type { GeneratedImage, StoryCharacter } from "@/lib/types/agent-state";
+import type { GeneratedImage } from "@/lib/types/agent-state";
+
+// Gemini API configuration
+const GEMINI_API_KEY = process.env.GOOGLE_API_KEY;
+const GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002";
+
+interface GeminiImageResponse {
+  predictions?: Array<{
+    bytesBase64Encoded: string;
+    mimeType: string;
+  }>;
+  error?: {
+    message: string;
+    code: number;
+  };
+}
+
+/**
+ * Generate an image using Google Gemini Imagen API
+ */
+async function generateImageWithGemini(prompt: string): Promise<string | null> {
+  if (!GEMINI_API_KEY) {
+    console.warn("GOOGLE_API_KEY not configured - image generation disabled");
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:predict?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: "1:1",
+            safetyFilterLevel: "block_some",
+            personGeneration: "allow_adult",
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Gemini API error:", error);
+      return null;
+    }
+
+    const data: GeminiImageResponse = await response.json();
+
+    if (data.error) {
+      console.error("Gemini API error:", data.error.message);
+      return null;
+    }
+
+    if (data.predictions?.[0]?.bytesBase64Encoded) {
+      return `data:${data.predictions[0].mimeType || "image/png"};base64,${data.predictions[0].bytesBase64Encoded}`;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Failed to generate image with Gemini:", error);
+    return null;
+  }
+}
+
+/**
+ * Upload image to Cloudinary (if configured)
+ */
+async function uploadToCloudinary(
+  base64Image: string,
+  folder: string
+): Promise<{ url: string; publicId: string } | null> {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    console.warn("Cloudinary not configured - returning base64 image");
+    return null;
+  }
+
+  try {
+    // Dynamic import to avoid issues when cloudinary isn't installed
+    const { uploadImage } = await import("@/lib/cloudinary");
+    const result = await uploadImage(base64Image, {
+      type: folder as "portrait" | "cover" | "illustration",
+    });
+    return { url: result.url, publicId: result.publicId };
+  } catch (error) {
+    console.error("Failed to upload to Cloudinary:", error);
+    return null;
+  }
+}
 
 /**
  * Generate Character Portrait Tool
@@ -17,21 +114,47 @@ export const generateCharacterPortraitTool = tool(
     // Build descriptive prompt for image generation
     const prompt = buildCharacterPrompt(character, artStyle, mood);
 
-    // TODO: Implement actual image generation with Gemini Imagen + Cloudinary
-    // For now, return a placeholder indicating the prompt that would be used
+    // Generate image with Gemini
+    const base64Image = await generateImageWithGemini(prompt);
+
+    let imageUrl = "";
+    let publicId = "";
+
+    if (base64Image) {
+      // Try to upload to Cloudinary
+      const cloudinaryResult = await uploadToCloudinary(base64Image, "portrait");
+      if (cloudinaryResult) {
+        imageUrl = cloudinaryResult.url;
+        publicId = cloudinaryResult.publicId;
+      } else {
+        // Fallback to base64 URL (not recommended for production)
+        imageUrl = base64Image;
+      }
+    }
+
     const generatedImage: GeneratedImage = {
       id: `img_${Date.now()}`,
       type: "character_portrait",
-      url: "", // Will be filled by actual generation
+      url: imageUrl,
       prompt,
     };
 
+    if (!base64Image) {
+      return JSON.stringify({
+        status: "pending_approval",
+        message: "Image generation requires API configuration. Please review the prompt and approve to continue.",
+        prompt,
+        image: generatedImage,
+        requiresApproval: true,
+      });
+    }
+
     return JSON.stringify({
-      status: "prompt_ready",
-      message:
-        "Image generation will be implemented with Gemini Imagen integration",
+      status: "success",
+      message: `Portrait generated for ${character.name}`,
       prompt,
       image: generatedImage,
+      publicId,
     });
   },
   {
@@ -89,20 +212,45 @@ export const generateSceneIllustrationTool = tool(
       atmosphere
     );
 
-    // TODO: Implement actual image generation
+    // Generate image with Gemini
+    const base64Image = await generateImageWithGemini(prompt);
+
+    let imageUrl = "";
+    let publicId = "";
+
+    if (base64Image) {
+      const cloudinaryResult = await uploadToCloudinary(base64Image, "illustration");
+      if (cloudinaryResult) {
+        imageUrl = cloudinaryResult.url;
+        publicId = cloudinaryResult.publicId;
+      } else {
+        imageUrl = base64Image;
+      }
+    }
+
     const generatedImage: GeneratedImage = {
       id: `img_${Date.now()}`,
       type: "scene_illustration",
-      url: "",
+      url: imageUrl,
       prompt,
     };
 
+    if (!base64Image) {
+      return JSON.stringify({
+        status: "pending_approval",
+        message: "Image generation requires API configuration. Please review the prompt.",
+        prompt,
+        image: generatedImage,
+        requiresApproval: true,
+      });
+    }
+
     return JSON.stringify({
-      status: "prompt_ready",
-      message:
-        "Image generation will be implemented with Gemini Imagen integration",
+      status: "success",
+      message: "Scene illustration generated successfully",
       prompt,
       image: generatedImage,
+      publicId,
     });
   },
   {
@@ -152,19 +300,45 @@ export const generateStoryCoverTool = tool(
       artStyle
     );
 
+    // Generate image with Gemini
+    const base64Image = await generateImageWithGemini(prompt);
+
+    let imageUrl = "";
+    let publicId = "";
+
+    if (base64Image) {
+      const cloudinaryResult = await uploadToCloudinary(base64Image, "cover");
+      if (cloudinaryResult) {
+        imageUrl = cloudinaryResult.url;
+        publicId = cloudinaryResult.publicId;
+      } else {
+        imageUrl = base64Image;
+      }
+    }
+
     const generatedImage: GeneratedImage = {
       id: `img_${Date.now()}`,
       type: "cover",
-      url: "",
+      url: imageUrl,
       prompt,
     };
 
+    if (!base64Image) {
+      return JSON.stringify({
+        status: "pending_approval",
+        message: "Image generation requires API configuration. Please review the prompt.",
+        prompt,
+        image: generatedImage,
+        requiresApproval: true,
+      });
+    }
+
     return JSON.stringify({
-      status: "prompt_ready",
-      message:
-        "Image generation will be implemented with Gemini Imagen integration",
+      status: "success",
+      message: `Cover generated for "${title}"`,
       prompt,
       image: generatedImage,
+      publicId,
     });
   },
   {
