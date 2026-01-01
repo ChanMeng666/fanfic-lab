@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronUp, Check, X, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface TagFilterProps {
   selectedTags: string[];
@@ -21,14 +23,43 @@ interface TagFilterProps {
 }
 
 const POPULAR_TAGS = [
-  // Relationship
-  { category: "Relationship", tags: ["Fluff", "Angst", "Hurt/Comfort", "Slow Burn", "Enemies to Lovers", "Friends to Lovers"] },
-  // Setting
-  { category: "Setting", tags: ["Canon Compliant", "AU - Modern", "AU - Coffee Shop", "AU - College", "AU - Soulmate", "Canon Divergence"] },
-  // Tone
-  { category: "Tone", tags: ["Crack", "Humor", "Drama", "Dark", "Sweet", "Bittersweet"] },
-  // Content
-  { category: "Content", tags: ["First Kiss", "Mutual Pining", "Established Relationship", "Getting Together", "Fake Dating", "One Shot"] },
+  {
+    category: "Relationship",
+    tags: [
+      "Fluff",
+      "Angst",
+      "Hurt/Comfort",
+      "Slow Burn",
+      "Enemies to Lovers",
+      "Friends to Lovers",
+    ],
+  },
+  {
+    category: "Setting",
+    tags: [
+      "Canon Compliant",
+      "AU - Modern",
+      "AU - Coffee Shop",
+      "AU - College",
+      "AU - Soulmate",
+      "Canon Divergence",
+    ],
+  },
+  {
+    category: "Tone",
+    tags: ["Crack", "Humor", "Drama", "Dark", "Sweet", "Bittersweet"],
+  },
+  {
+    category: "Content",
+    tags: [
+      "First Kiss",
+      "Mutual Pining",
+      "Established Relationship",
+      "Getting Together",
+      "Fake Dating",
+      "One Shot",
+    ],
+  },
 ];
 
 const RATINGS = ["GENERAL", "TEEN", "MATURE", "EXPLICIT"];
@@ -73,26 +104,30 @@ export function TagFilter({
     onStatusChange?.(undefined);
   };
 
-  const hasFilters =
-    selectedTags.length > 0 || selectedRating || selectedStatus;
+  const hasFilters = selectedTags.length > 0 || selectedRating || selectedStatus;
+  const filterCount =
+    selectedTags.length + (selectedRating ? 1 : 0) + (selectedStatus ? 1 : 0);
 
   return (
     <div className="space-y-4">
       {/* Search */}
-      <Input
-        placeholder="Search tags..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="text-sm"
-      />
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          placeholder="Search tags..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 text-sm"
+        />
+      </div>
 
       {/* Clear All */}
       {hasFilters && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500">
-            {selectedTags.length + (selectedRating ? 1 : 0) + (selectedStatus ? 1 : 0)} filters
+          <span className="text-sm text-muted-foreground">
+            {filterCount} {filterCount === 1 ? "filter" : "filters"}
           </span>
-          <Button variant="ghost" size="sm" onClick={clearAll}>
+          <Button variant="ghost" size="sm" onClick={clearAll} className="h-7 px-2">
             Clear All
           </Button>
         </div>
@@ -101,13 +136,13 @@ export function TagFilter({
       {/* Rating Filter */}
       {onRatingChange && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Rating</h4>
+          <h4 className="text-sm font-medium text-foreground">Rating</h4>
           <div className="flex flex-wrap gap-1.5">
             {RATINGS.map((rating) => (
               <Badge
                 key={rating}
                 variant={selectedRating === rating ? "default" : "outline"}
-                className="cursor-pointer text-xs"
+                className="cursor-pointer text-xs transition-colors"
                 onClick={() =>
                   onRatingChange(selectedRating === rating ? undefined : rating)
                 }
@@ -122,13 +157,13 @@ export function TagFilter({
       {/* Status Filter */}
       {onStatusChange && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Status</h4>
+          <h4 className="text-sm font-medium text-foreground">Status</h4>
           <div className="flex flex-wrap gap-1.5">
             {STATUSES.map((status) => (
               <Badge
                 key={status}
                 variant={selectedStatus === status ? "default" : "outline"}
-                className="cursor-pointer text-xs"
+                className="cursor-pointer text-xs transition-colors"
                 onClick={() =>
                   onStatusChange(selectedStatus === status ? undefined : status)
                 }
@@ -142,7 +177,7 @@ export function TagFilter({
 
       {/* Tag Categories */}
       <ScrollArea className="h-[300px]">
-        <div className="space-y-2">
+        <div className="space-y-1">
           {POPULAR_TAGS.map(({ category, tags }) => {
             const filteredTags = tags.filter((tag) =>
               tag.toLowerCase().includes(searchQuery.toLowerCase())
@@ -159,29 +194,35 @@ export function TagFilter({
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-between p-2 h-auto text-sm"
+                    className="w-full justify-between px-2 py-2 h-auto text-sm hover:bg-secondary"
                   >
-                    <span className="font-medium">{category}</span>
-                    <span className="text-gray-400">
-                      {expandedCategories.has(category) ? "−" : "+"}
-                    </span>
+                    <span className="font-medium text-foreground">{category}</span>
+                    {expandedCategories.has(category) ? (
+                      <ChevronUp className="size-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    )}
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="flex flex-wrap gap-1.5 p-2 pt-0">
-                    {filteredTags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant={
-                          selectedTags.includes(tag) ? "default" : "outline"
-                        }
-                        className="cursor-pointer text-xs"
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {selectedTags.includes(tag) && "✓ "}
-                        {tag}
-                      </Badge>
-                    ))}
+                  <div className="flex flex-wrap gap-1.5 px-2 pb-2">
+                    {filteredTags.map((tag) => {
+                      const isSelected = selectedTags.includes(tag);
+                      return (
+                        <Badge
+                          key={tag}
+                          variant={isSelected ? "default" : "outline"}
+                          className={cn(
+                            "cursor-pointer text-xs transition-colors gap-1",
+                            isSelected && "pr-1.5"
+                          )}
+                          onClick={() => toggleTag(tag)}
+                        >
+                          {isSelected && <Check className="size-3" />}
+                          {tag}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -192,17 +233,18 @@ export function TagFilter({
 
       {/* Selected Tags */}
       {selectedTags.length > 0 && (
-        <div className="pt-2 border-t">
-          <h4 className="text-sm font-medium mb-2">Active Filters</h4>
+        <div className="pt-3 border-t border-border">
+          <h4 className="text-sm font-medium text-foreground mb-2">Active Filters</h4>
           <div className="flex flex-wrap gap-1.5">
             {selectedTags.map((tag) => (
               <Badge
                 key={tag}
                 variant="default"
-                className="cursor-pointer bg-purple-600"
+                className="cursor-pointer gap-1 pr-1.5"
                 onClick={() => toggleTag(tag)}
               >
-                {tag} ✕
+                {tag}
+                <X className="size-3" />
               </Badge>
             ))}
           </div>

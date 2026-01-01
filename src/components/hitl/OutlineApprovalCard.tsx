@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ClipboardList, Check, Pencil, RefreshCw, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,14 +37,17 @@ export function OutlineApprovalCard({
   const sections = outline.split(/\n(?=Chapter |Act |Scene |Part )/gi);
 
   return (
-    <Card className="border-2 border-green-200 bg-green-50/50">
+    <Card className="border-accent/30 bg-ai-surface ai-glow">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
-          <span className="flex items-center gap-2">
-            <span>📋</span>
-            Story Outline
+          <span className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+              <ClipboardList className="size-4" />
+            </div>
+            <span className="font-display">Story Outline</span>
           </span>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs gap-1">
+            <Sparkles className="size-3" />
             AI Generated - Review before accepting
           </Badge>
         </CardTitle>
@@ -57,7 +61,8 @@ export function OutlineApprovalCard({
               className="min-h-[300px] font-mono text-sm"
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveEdit}>
+              <Button size="sm" onClick={handleSaveEdit} className="gap-1.5">
+                <Check className="size-3.5" />
                 Save Changes
               </Button>
               <Button size="sm" variant="outline" onClick={handleCancelEdit}>
@@ -79,15 +84,15 @@ export function OutlineApprovalCard({
                     <div
                       key={idx}
                       className={`${
-                        isChapter ? "border-l-2 border-green-400 pl-3" : ""
+                        isChapter ? "border-l-2 border-primary pl-3" : ""
                       }`}
                     >
                       {isChapter && (
-                        <h3 className="font-semibold text-green-700 mb-1">
+                        <h3 className="font-semibold text-primary mb-1">
                           {title}
                         </h3>
                       )}
-                      <p className="text-gray-700 whitespace-pre-wrap text-sm">
+                      <p className="text-foreground whitespace-pre-wrap text-sm">
                         {isChapter ? content : section}
                       </p>
                     </div>
@@ -96,26 +101,30 @@ export function OutlineApprovalCard({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-3 border-t">
+            <div className="flex items-center gap-2 pt-3 border-t border-border">
               <Button
                 size="sm"
                 onClick={onApprove}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                className="gap-1.5"
               >
+                <Check className="size-3.5" />
                 Accept Outline
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setIsEditing(true)}
+                className="gap-1.5"
               >
+                <Pencil className="size-3.5" />
                 Edit First
               </Button>
-              <Button size="sm" variant="ghost" onClick={onReject}>
+              <Button size="sm" variant="ghost" onClick={onReject} className="gap-1.5">
+                <RefreshCw className="size-3.5" />
                 Regenerate
               </Button>
               <div className="flex-1" />
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {sections.length} sections
               </span>
             </div>

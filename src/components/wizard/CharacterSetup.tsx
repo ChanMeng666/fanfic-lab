@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Users, Plus, X, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { StoryCharacter } from "@/lib/types/agent-state";
 
 interface CharacterSetupProps {
@@ -73,10 +75,12 @@ export function CharacterSetup({
   );
 
   return (
-    <Card className="border-2 border-blue-200 bg-blue-50/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <span>🎭</span>
+    <Card className="border-primary/30 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2.5 text-lg font-display">
+          <div className="flex items-center justify-center size-8 rounded-lg bg-primary/15 text-primary">
+            <Users className="size-4" />
+          </div>
           Setup Characters
           <Badge variant="secondary" className="ml-2">
             {fandom}
@@ -84,14 +88,14 @@ export function CharacterSetup({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Add the main characters for your story. You can add canon characters or create original ones.
         </p>
 
         {/* Suggested Characters */}
         {remainingSuggestions.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Suggested characters:
             </label>
             <div className="flex flex-wrap gap-2">
@@ -101,9 +105,10 @@ export function CharacterSetup({
                   variant="outline"
                   size="sm"
                   onClick={() => addCharacterFromSuggestion(name)}
-                  className="hover:bg-blue-100"
+                  className="hover:bg-primary/10 hover:border-primary/30 gap-1"
                 >
-                  + {name}
+                  <Plus className="size-3.5" />
+                  {name}
                 </Button>
               ))}
             </div>
@@ -113,7 +118,7 @@ export function CharacterSetup({
         {/* Added Characters */}
         {characters.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Your characters ({characters.length}):
             </label>
             <ScrollArea className="h-[150px]">
@@ -121,17 +126,17 @@ export function CharacterSetup({
                 {characters.map((char) => (
                   <div
                     key={char.id}
-                    className="flex items-center justify-between p-2 bg-white rounded-lg border"
+                    className="flex items-center justify-between p-2 bg-surface rounded-lg border border-border"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{char.name}</span>
+                      <span className="font-medium text-foreground">{char.name}</span>
                       {char.isOriginal && (
                         <Badge variant="secondary" className="text-xs">
                           OC
                         </Badge>
                       )}
                       {char.personality.length > 0 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           ({char.personality.slice(0, 2).join(", ")}
                           {char.personality.length > 2 && "..."})
                         </span>
@@ -141,8 +146,9 @@ export function CharacterSetup({
                       variant="ghost"
                       size="sm"
                       onClick={() => removeCharacter(char.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
                     >
+                      <X className="size-3.5" />
                       Remove
                     </Button>
                   </div>
@@ -154,19 +160,20 @@ export function CharacterSetup({
 
         {/* Add Custom Character Form */}
         {showAddForm ? (
-          <div className="space-y-3 p-3 bg-white rounded-lg border">
+          <div className="space-y-3 p-3 bg-surface rounded-lg border border-border">
             <div>
-              <label className="text-sm font-medium">Character Name</label>
+              <label className="text-sm font-medium text-foreground">Character Name</label>
               <Input
                 value={newCharacter.name}
                 onChange={(e) =>
                   setNewCharacter((prev) => ({ ...prev, name: e.target.value }))
                 }
                 placeholder="Enter character name"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">
+              <label className="text-sm font-medium text-foreground">
                 Personality Traits (comma-separated)
               </label>
               <Input
@@ -175,10 +182,11 @@ export function CharacterSetup({
                   setNewCharacter((prev) => ({ ...prev, personality: e.target.value }))
                 }
                 placeholder="brave, sarcastic, loyal"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Speech Pattern (optional)</label>
+              <label className="text-sm font-medium text-foreground">Speech Pattern (optional)</label>
               <Textarea
                 value={newCharacter.speechPattern}
                 onChange={(e) =>
@@ -186,23 +194,24 @@ export function CharacterSetup({
                 }
                 placeholder="How does this character talk?"
                 rows={2}
+                className="mt-1"
               />
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="isOC"
                 checked={newCharacter.isOriginal}
-                onChange={(e) =>
-                  setNewCharacter((prev) => ({ ...prev, isOriginal: e.target.checked }))
+                onCheckedChange={(checked) =>
+                  setNewCharacter((prev) => ({ ...prev, isOriginal: checked === true }))
                 }
               />
-              <label htmlFor="isOC" className="text-sm">
+              <label htmlFor="isOC" className="text-sm text-foreground">
                 Original Character (OC)
               </label>
             </div>
             <div className="flex gap-2">
-              <Button onClick={addCustomCharacter} disabled={!newCharacter.name.trim()}>
+              <Button onClick={addCustomCharacter} disabled={!newCharacter.name.trim()} className="gap-1.5">
+                <UserPlus className="size-4" />
                 Add Character
               </Button>
               <Button variant="outline" onClick={() => setShowAddForm(false)}>
@@ -214,17 +223,18 @@ export function CharacterSetup({
           <Button
             variant="outline"
             onClick={() => setShowAddForm(true)}
-            className="w-full"
+            className="w-full gap-1.5"
           >
-            + Add Custom Character
+            <Plus className="size-4" />
+            Add Custom Character
           </Button>
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2 border-t">
+        <div className="flex gap-2 pt-2 border-t border-border">
           <Button
             onClick={handleComplete}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+            className="flex-1"
             disabled={characters.length === 0}
           >
             Continue with {characters.length} character{characters.length !== 1 ? "s" : ""}

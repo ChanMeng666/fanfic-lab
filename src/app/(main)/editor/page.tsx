@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { Feather, Sparkles, Save, Send } from "lucide-react";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,6 @@ const DEFAULT_STORY_CONTEXT: StoryContext = {
 };
 
 export default function NewEditorPage() {
-  const router = useRouter();
   const [storyContext, setStoryContext] = useState<StoryContext>(DEFAULT_STORY_CONTEXT);
   const [storyTitle, setStoryTitle] = useState("");
   const [content, setContent] = useState("");
@@ -95,13 +94,15 @@ export default function NewEditorPage() {
 
   if (showSetup) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-950">
+      <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+        <header className="border-b border-border bg-surface/80 backdrop-blur-sm">
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl">✨</span>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <div className="flex items-center justify-center size-9 rounded-lg bg-primary/10">
+                <Feather className="size-5 text-primary" />
+              </div>
+              <span className="text-xl font-display font-bold text-foreground">
                 FanFic Lab
               </span>
             </Link>
@@ -111,14 +112,18 @@ export default function NewEditorPage() {
         <main className="container mx-auto px-4 py-12 max-w-2xl">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <span>✨</span>
+              <CardTitle className="flex items-center gap-2.5 text-2xl font-display">
+                <div className="flex items-center justify-center size-10 rounded-xl bg-accent/15 text-accent">
+                  <Sparkles className="size-5" />
+                </div>
                 Start a New Story
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <label className="block text-sm font-medium mb-2">Story Title</label>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Story Title
+                </label>
                 <Input
                   value={storyTitle}
                   onChange={(e) => setStoryTitle(e.target.value)}
@@ -128,7 +133,9 @@ export default function NewEditorPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Fandom</label>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Fandom
+                </label>
                 <Input
                   value={fandomInput}
                   onChange={(e) => setFandomInput(e.target.value)}
@@ -137,7 +144,7 @@ export default function NewEditorPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Ships (comma-separated)
                 </label>
                 <Input
@@ -148,7 +155,7 @@ export default function NewEditorPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Tags (comma-separated)
                 </label>
                 <Input
@@ -159,7 +166,9 @@ export default function NewEditorPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Tone</label>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Tone
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {["fluff", "angst", "humor", "dark", "romantic", "neutral"].map(
                     (tone) => (
@@ -179,7 +188,7 @@ export default function NewEditorPage() {
               <div className="pt-4 flex gap-3">
                 <Button
                   onClick={handleStartWriting}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  className="flex-1"
                   disabled={!fandomInput}
                 >
                   Start Writing
@@ -196,27 +205,29 @@ export default function NewEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-white dark:bg-gray-900 sticky top-0 z-50">
+      <header className="border-b border-border bg-surface sticky top-0 z-50">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-xl">✨</span>
-              <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10">
+                <Feather className="size-4 text-primary" />
+              </div>
+              <span className="font-display font-bold text-foreground">
                 FanFic Lab
               </span>
             </Link>
-            <span className="text-gray-300">|</span>
+            <span className="text-border">|</span>
             <Input
               value={storyTitle}
               onChange={(e) => setStoryTitle(e.target.value)}
               placeholder="Untitled Story"
-              className="border-none bg-transparent font-medium w-64 focus-visible:ring-0"
+              className="border-none bg-transparent font-medium w-64 focus-visible:ring-0 text-foreground"
             />
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Badge variant="secondary">{storyContext.fandom}</Badge>
               {storyContext.ships.map((ship) => (
                 <Badge key={ship} variant="outline" className="text-xs">
@@ -226,27 +237,26 @@ export default function NewEditorPage() {
             </div>
             <div className="flex items-center gap-2">
               {isSaving && (
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                  <div className="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full" />
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <div className="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full" />
                   Saving...
                 </span>
               )}
               {!isSaving && lastSaved && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   Saved {lastSaved.toLocaleTimeString()}
                 </span>
               )}
               {hasUnsavedChanges && !isSaving && (
-                <span className="text-xs text-orange-500">Unsaved</span>
+                <span className="text-xs text-warning">Unsaved</span>
               )}
             </div>
-            <Button size="sm" variant="outline" onClick={saveNow} disabled={isSaving}>
+            <Button size="sm" variant="outline" onClick={saveNow} disabled={isSaving} className="gap-1.5">
+              <Save className="size-4" />
               {isSaving ? "Saving..." : "Save Draft"}
             </Button>
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-purple-600 to-pink-600"
-            >
+            <Button size="sm" className="gap-1.5">
+              <Send className="size-4" />
               Publish
             </Button>
           </div>
@@ -256,7 +266,7 @@ export default function NewEditorPage() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-56px)]">
         {/* Sidebar - Characters */}
-        <aside className="w-72 border-r bg-white dark:bg-gray-900 p-4 overflow-hidden">
+        <aside className="w-72 border-r border-border bg-surface p-4 overflow-hidden">
           <CharacterSidebar
             characters={storyContext.characters}
             onAddCharacter={handleAddCharacter}

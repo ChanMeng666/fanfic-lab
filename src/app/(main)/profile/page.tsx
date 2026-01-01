@@ -4,6 +4,19 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@stackframe/stack";
+import {
+  Feather,
+  PenLine,
+  Settings,
+  BookOpen,
+  Heart,
+  MessageSquare,
+  Users,
+  FileText,
+  Trash2,
+  Edit,
+  BarChart3,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +39,7 @@ import { getProfile, updateProfile, getUserStats } from "@/lib/actions/user";
 import { getMyStories, deleteStory } from "@/lib/actions/story";
 import { getMyDrafts, deleteDraft } from "@/lib/actions/user";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface UserProfile {
   id: string;
@@ -186,20 +200,20 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-950">
-        <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-32 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
           </div>
         </header>
         <main className="container mx-auto px-4 py-8">
           <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
             <div className="space-y-6">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-64 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
             </div>
-            <Skeleton className="h-[600px]" />
+            <Skeleton className="h-[600px] rounded-xl" />
           </div>
         </main>
       </div>
@@ -208,10 +222,16 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
+              <Users className="size-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-display font-bold text-foreground mb-2">
+              Sign in required
+            </h2>
+            <p className="text-muted-foreground mb-6">
               Please sign in to view your profile
             </p>
             <Link href="/handler/sign-in">
@@ -224,25 +244,28 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-950">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">✨</span>
-            <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
+              <Feather className="size-4" />
+            </div>
+            <span className="text-xl font-display font-semibold text-foreground">
               FanFic Lab
             </span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/editor">
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600">
-                New Story
+          <div className="flex items-center gap-3">
+            <Link href="/wizard">
+              <Button className="gap-2">
+                <PenLine className="size-4" />
+                <span className="hidden sm:inline">New Story</span>
               </Button>
             </Link>
             <Link href="/handler/account-settings">
-              <Button variant="outline" size="sm">
-                Settings
+              <Button variant="outline" size="icon">
+                <Settings className="size-4" />
               </Button>
             </Link>
           </div>
@@ -257,37 +280,40 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
-                  <Avatar className="h-24 w-24 mb-4">
+                  <Avatar className="h-24 w-24 mb-4 ring-4 ring-secondary">
                     <AvatarImage src={profile.avatarUrl || undefined} />
-                    <AvatarFallback className="text-2xl bg-gradient-to-r from-purple-400 to-pink-400 text-white">
+                    <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                       {profile.displayName?.[0] || profile.username[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <h1 className="text-xl font-bold">
+                  <h1 className="text-xl font-display font-bold text-foreground">
                     {profile.displayName || profile.username}
                   </h1>
-                  <p className="text-sm text-gray-500">@{profile.username}</p>
+                  <p className="text-sm text-muted-foreground">@{profile.username}</p>
                   {profile.bio && (
-                    <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                    <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                       {profile.bio}
                     </p>
                   )}
                   <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="mt-4">
+                      <Button variant="outline" size="sm" className="mt-4 gap-1.5">
+                        <Edit className="size-3.5" />
                         Edit Profile
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Edit Profile</DialogTitle>
+                        <DialogTitle className="font-display">Edit Profile</DialogTitle>
                         <DialogDescription>
                           Update your display name and bio
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
-                        <div>
-                          <label className="text-sm font-medium">Display Name</label>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">
+                            Display Name
+                          </label>
                           <Input
                             value={editForm.displayName}
                             onChange={(e) =>
@@ -296,8 +322,8 @@ export default function ProfilePage() {
                             placeholder="Your display name"
                           />
                         </div>
-                        <div>
-                          <label className="text-sm font-medium">Bio</label>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Bio</label>
                           <Textarea
                             value={editForm.bio}
                             onChange={(e) =>
@@ -324,18 +350,24 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Social stats */}
-                <div className="mt-6 pt-6 border-t grid grid-cols-3 gap-4 text-center">
+                <div className="mt-6 pt-6 border-t border-border grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <div className="text-xl font-bold">{profile._count.stories}</div>
-                    <div className="text-xs text-gray-500">Stories</div>
+                    <div className="text-xl font-bold text-foreground">
+                      {profile._count.stories}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Stories</div>
                   </div>
                   <div>
-                    <div className="text-xl font-bold">{profile._count.followers}</div>
-                    <div className="text-xs text-gray-500">Followers</div>
+                    <div className="text-xl font-bold text-foreground">
+                      {profile._count.followers}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Followers</div>
                   </div>
                   <div>
-                    <div className="text-xl font-bold">{profile._count.follows}</div>
-                    <div className="text-xs text-gray-500">Following</div>
+                    <div className="text-xl font-bold text-foreground">
+                      {profile._count.follows}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Following</div>
                   </div>
                 </div>
               </CardContent>
@@ -344,73 +376,96 @@ export default function ProfilePage() {
             {/* Stats Card */}
             {stats && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Writing Stats</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2.5 text-base">
+                    <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+                      <BarChart3 className="size-4" />
+                    </div>
+                    Writing Stats
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Total Words</span>
-                    <span className="font-medium">
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Total Words</span>
+                    <span className="font-medium text-foreground">
                       {stats.totalWords.toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Published Stories</span>
-                    <span className="font-medium">{stats.publishedStories}</span>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Published Stories</span>
+                    <span className="font-medium text-foreground">{stats.publishedStories}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Total Likes</span>
-                    <span className="font-medium">{stats.totalLikes}</span>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Total Likes</span>
+                    <span className="font-medium text-foreground">{stats.totalLikes}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Total Comments</span>
-                    <span className="font-medium">{stats.totalComments}</span>
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">Total Comments</span>
+                    <span className="font-medium text-foreground">{stats.totalComments}</span>
                   </div>
                 </CardContent>
               </Card>
             )}
 
             {/* Favorite Fandoms */}
-            {profile.preferences?.favoriteFandoms && profile.preferences.favoriteFandoms.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Favorite Fandoms</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.preferences.favoriteFandoms.map((fandom) => (
-                      <Badge key={fandom} variant="secondary">
-                        {fandom}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {profile.preferences?.favoriteFandoms &&
+              profile.preferences.favoriteFandoms.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2.5 text-base">
+                      <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+                        <Heart className="size-4" />
+                      </div>
+                      Favorite Fandoms
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.preferences.favoriteFandoms.map((fandom) => (
+                        <Badge key={fandom} variant="secondary">
+                          {fandom}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
           </div>
 
           {/* Main Content */}
           <div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-3 max-w-md">
-                <TabsTrigger value="stories">
-                  My Stories ({stories.length})
+                <TabsTrigger value="stories" className="gap-1.5">
+                  <BookOpen className="size-4" />
+                  Stories ({stories.length})
                 </TabsTrigger>
-                <TabsTrigger value="drafts">
+                <TabsTrigger value="drafts" className="gap-1.5">
+                  <FileText className="size-4" />
                   Drafts ({drafts.length})
                 </TabsTrigger>
-                <TabsTrigger value="liked">Liked</TabsTrigger>
+                <TabsTrigger value="liked" className="gap-1.5">
+                  <Heart className="size-4" />
+                  Liked
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="stories" className="mt-6">
                 {stories.length === 0 ? (
                   <Card>
                     <CardContent className="py-12 text-center">
-                      <p className="text-gray-500 mb-4">
+                      <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
+                        <BookOpen className="size-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        No stories yet
+                      </h3>
+                      <p className="text-muted-foreground mb-6">
                         You haven't created any stories yet.
                       </p>
-                      <Link href="/editor">
-                        <Button className="bg-gradient-to-r from-purple-600 to-pink-600">
+                      <Link href="/wizard">
+                        <Button className="gap-2">
+                          <PenLine className="size-4" />
                           Start Writing
                         </Button>
                       </Link>
@@ -419,17 +474,17 @@ export default function ProfilePage() {
                 ) : (
                   <div className="space-y-4">
                     {stories.map((story) => (
-                      <Card key={story.id} className="overflow-hidden">
+                      <Card key={story.id} variant="story">
                         <div className="flex">
                           <div className="flex-1 p-4">
                             <div className="flex items-start justify-between">
                               <div>
                                 <Link href={`/editor/${story.id}`}>
-                                  <h3 className="font-bold hover:text-purple-600 transition-colors">
+                                  <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
                                     {story.title}
                                   </h3>
                                 </Link>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-2 mt-1.5">
                                   <Badge variant="outline" className="text-xs">
                                     {story.fandom}
                                   </Badge>
@@ -441,36 +496,47 @@ export default function ProfilePage() {
                                     }
                                     className="text-xs"
                                   >
-                                    {story.status}
+                                    {story.status === "PUBLISHED" ? "Published" : story.status}
                                   </Badge>
                                 </div>
                               </div>
                               <div className="flex gap-2">
                                 <Link href={`/editor/${story.id}`}>
-                                  <Button variant="outline" size="sm">
+                                  <Button variant="outline" size="sm" className="gap-1.5">
+                                    <Edit className="size-3.5" />
                                     Edit
                                   </Button>
                                 </Link>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-red-500 hover:text-red-600"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
                                   onClick={() => handleDeleteStory(story.id)}
                                 >
+                                  <Trash2 className="size-3.5" />
                                   Delete
                                 </Button>
                               </div>
                             </div>
                             {story.summary && (
-                              <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                              <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                                 {story.summary}
                               </p>
                             )}
-                            <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                              <span>{story._count.chapters} chapters</span>
+                            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <FileText className="size-3.5" />
+                                {story._count.chapters} chapters
+                              </span>
                               <span>{story.wordCount.toLocaleString()} words</span>
-                              <span>{story._count.likes} likes</span>
-                              <span>{story._count.comments} comments</span>
+                              <span className="flex items-center gap-1">
+                                <Heart className="size-3.5" />
+                                {story._count.likes}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MessageSquare className="size-3.5" />
+                                {story._count.comments}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -484,7 +550,13 @@ export default function ProfilePage() {
                 {drafts.length === 0 ? (
                   <Card>
                     <CardContent className="py-12 text-center">
-                      <p className="text-gray-500">No drafts saved</p>
+                      <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
+                        <FileText className="size-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        No drafts
+                      </h3>
+                      <p className="text-muted-foreground">No drafts saved</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -493,32 +565,32 @@ export default function ProfilePage() {
                       <Card key={draft.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="font-medium">
+                            <h3 className="font-medium text-foreground">
                               {draft.title || "Untitled Draft"}
                             </h3>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-1.5">
                               {draft.fandom && (
                                 <Badge variant="outline" className="text-xs">
                                   {draft.fandom}
                                 </Badge>
                               )}
-                              <span className="text-xs text-gray-500">
-                                Updated{" "}
-                                {new Date(draft.updatedAt).toLocaleDateString()}
+                              <span className="text-xs text-muted-foreground">
+                                Updated {new Date(draft.updatedAt).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                              <Edit className="size-3.5" />
                               Continue
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-500"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => handleDeleteDraft(draft.id)}
                             >
-                              Delete
+                              <Trash2 className="size-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -531,7 +603,13 @@ export default function ProfilePage() {
               <TabsContent value="liked" className="mt-6">
                 <Card>
                   <CardContent className="py-12 text-center">
-                    <p className="text-gray-500">
+                    <div className="flex items-center justify-center size-16 rounded-2xl bg-accent/10 mx-auto mb-4">
+                      <Heart className="size-8 text-accent" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Liked stories
+                    </h3>
+                    <p className="text-muted-foreground">
                       Liked stories will appear here
                     </p>
                   </CardContent>

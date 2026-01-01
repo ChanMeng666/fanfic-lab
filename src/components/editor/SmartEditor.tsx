@@ -89,9 +89,9 @@ export function SmartEditor({
     render: ({ status, args }) => {
       if (status === "inProgress") {
         return (
-          <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg">
-            <div className="animate-spin h-4 w-4 border-2 border-purple-600 border-t-transparent rounded-full" />
-            <span className="text-sm text-purple-700">Writing continuation...</span>
+          <div className="flex items-center gap-2 p-3 bg-ai-surface border border-accent/30 rounded-xl ai-glow">
+            <div className="animate-spin h-4 w-4 border-2 border-accent border-t-transparent rounded-full" />
+            <span className="text-sm text-accent-foreground">Writing continuation...</span>
           </div>
         );
       }
@@ -120,9 +120,9 @@ export function SmartEditor({
     render: ({ status }) => {
       if (status === "inProgress") {
         return (
-          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-            <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
-            <span className="text-sm text-blue-700">Expanding text...</span>
+          <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/30 rounded-xl">
+            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+            <span className="text-sm text-primary">Expanding text...</span>
           </div>
         );
       }
@@ -151,9 +151,9 @@ export function SmartEditor({
     render: ({ status }) => {
       if (status === "inProgress") {
         return (
-          <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-            <div className="animate-spin h-4 w-4 border-2 border-green-600 border-t-transparent rounded-full" />
-            <span className="text-sm text-green-700">Polishing prose...</span>
+          <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-xl">
+            <div className="animate-spin h-4 w-4 border-2 border-success border-t-transparent rounded-full" />
+            <span className="text-sm text-success">Polishing prose...</span>
           </div>
         );
       }
@@ -193,9 +193,9 @@ export function SmartEditor({
       if (status === "inProgress") {
         setIsCheckingOOC(true);
         return (
-          <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-lg">
-            <div className="animate-spin h-4 w-4 border-2 border-orange-600 border-t-transparent rounded-full" />
-            <span className="text-sm text-orange-700">Checking for OOC moments...</span>
+          <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-xl">
+            <div className="animate-spin h-4 w-4 border-2 border-warning border-t-transparent rounded-full" />
+            <span className="text-sm text-warning">Checking for OOC moments...</span>
           </div>
         );
       }
@@ -295,9 +295,9 @@ Write in the same style as the existing content.
       )}
 
       {/* Main Editor */}
-      <Card className="flex-1 p-4">
+      <Card className="flex-1 p-4 border-border">
         <CopilotTextarea
-          className="w-full h-full min-h-[500px] resize-none border-none focus:outline-none focus:ring-0 text-lg leading-relaxed font-serif"
+          className="w-full h-full min-h-[500px] resize-none border-none focus:outline-none focus:ring-0 text-lg leading-relaxed font-prose bg-transparent text-foreground placeholder:text-muted-foreground"
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           onSelect={handleSelect}
@@ -310,7 +310,7 @@ Write in the same style as the existing content.
       </Card>
 
       {/* Word Count */}
-      <div className="mt-2 text-right text-sm text-gray-500">
+      <div className="mt-2 text-right text-sm text-muted-foreground">
         {content.split(/\s+/).filter(Boolean).length} words
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface FandomTabsProps {
   selectedFandom: string | null;
@@ -36,11 +37,6 @@ export function FandomTabs({
           variant={selectedFandom === null ? "default" : "outline"}
           size="sm"
           onClick={() => onFandomChange(null)}
-          className={
-            selectedFandom === null
-              ? "bg-gradient-to-r from-purple-600 to-pink-600"
-              : ""
-          }
         >
           All Fandoms
         </Button>
@@ -50,11 +46,6 @@ export function FandomTabs({
             variant={selectedFandom === fandom ? "default" : "outline"}
             size="sm"
             onClick={() => onFandomChange(fandom)}
-            className={
-              selectedFandom === fandom
-                ? "bg-gradient-to-r from-purple-600 to-pink-600"
-                : ""
-            }
           >
             {fandom}
           </Button>

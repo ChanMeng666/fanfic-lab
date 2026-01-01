@@ -20,7 +20,14 @@
       "Bash(cat:*)",
       "Bash(npx prisma generate:*)",
       "Bash(npx prisma migrate:*)",
-      "WebFetch(domain:docs.stack-auth.com)"
+      "WebFetch(domain:docs.stack-auth.com)",
+      "Bash(npx tsc:*)",
+      "Bash(vercel env add:*)",
+      "Bash(vercel env:*)",
+      "Bash(cd:*)",
+      "Bash(tree:*)",
+      "Bash(ls -la \"D:\\\\github_repository\\\\fanfic-lab\\\\src\\\\components\"\" | grep -i \"copilot|chat|ai \")",
+      "Skill(example-skills:frontend-design)"
     ]
   }
 }

@@ -1,6 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Library,
+  Search,
+  Zap,
+  Shield,
+  Ghost,
+  Star,
+  Glasses,
+  Sword,
+  Music,
+  Gamepad2,
+  Volleyball,
+  Sparkles,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +26,18 @@ interface FandomSelectorProps {
 }
 
 const POPULAR_FANDOMS = [
-  { name: "Harry Potter", category: "Books", icon: "⚡" },
-  { name: "Marvel Cinematic Universe", category: "Movies", icon: "🦸" },
-  { name: "BTS", category: "K-Pop", icon: "💜" },
-  { name: "Supernatural", category: "TV", icon: "👻" },
-  { name: "Star Wars", category: "Movies", icon: "⭐" },
-  { name: "Sherlock", category: "TV", icon: "🔍" },
-  { name: "My Hero Academia", category: "Anime", icon: "🦸‍♂️" },
-  { name: "Attack on Titan", category: "Anime", icon: "⚔️" },
-  { name: "Stray Kids", category: "K-Pop", icon: "🐺" },
-  { name: "The Witcher", category: "Games/TV", icon: "🐺" },
-  { name: "Genshin Impact", category: "Games", icon: "🌟" },
-  { name: "Haikyuu!!", category: "Anime", icon: "🏐" },
+  { name: "Harry Potter", category: "Books", icon: Zap },
+  { name: "Marvel Cinematic Universe", category: "Movies", icon: Shield },
+  { name: "BTS", category: "K-Pop", icon: Music },
+  { name: "Supernatural", category: "TV", icon: Ghost },
+  { name: "Star Wars", category: "Movies", icon: Star },
+  { name: "Sherlock", category: "TV", icon: Glasses },
+  { name: "My Hero Academia", category: "Anime", icon: Shield },
+  { name: "Attack on Titan", category: "Anime", icon: Sword },
+  { name: "Stray Kids", category: "K-Pop", icon: Music },
+  { name: "The Witcher", category: "Games/TV", icon: Sword },
+  { name: "Genshin Impact", category: "Games", icon: Gamepad2 },
+  { name: "Haikyuu!!", category: "Anime", icon: Volleyball },
 ];
 
 const CATEGORIES = ["All", "Books", "Movies", "TV", "Anime", "K-Pop", "Games"];
@@ -47,21 +61,26 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
   };
 
   return (
-    <Card className="border-2 border-purple-200 bg-purple-50/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <span>📚</span>
+    <Card className="border-primary/30 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2.5 text-lg font-display">
+          <div className="flex items-center justify-center size-8 rounded-lg bg-primary/15 text-primary">
+            <Library className="size-4" />
+          </div>
           Choose Your Fandom
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search */}
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search fandoms..."
-          className="bg-white"
-        />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search fandoms..."
+            className="pl-9 bg-surface"
+          />
+        </div>
 
         {/* Category Filter */}
         <div className="flex flex-wrap gap-2">
@@ -69,7 +88,7 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
             <Badge
               key={cat}
               variant={selectedCategory === cat ? "default" : "outline"}
-              className="cursor-pointer"
+              className="cursor-pointer transition-colors"
               onClick={() => setSelectedCategory(cat)}
             >
               {cat}
@@ -80,26 +99,29 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
         {/* Fandom Grid */}
         <ScrollArea className="h-[200px]">
           <div className="grid grid-cols-2 gap-2">
-            {filteredFandoms.map((fandom) => (
-              <Button
-                key={fandom.name}
-                variant="outline"
-                className="h-auto py-3 justify-start gap-2 hover:bg-purple-100 hover:border-purple-300"
-                onClick={() => onSelect(fandom.name)}
-              >
-                <span className="text-lg">{fandom.icon}</span>
-                <div className="text-left">
-                  <div className="font-medium text-sm">{fandom.name}</div>
-                  <div className="text-xs text-gray-500">{fandom.category}</div>
-                </div>
-              </Button>
-            ))}
+            {filteredFandoms.map((fandom) => {
+              const Icon = fandom.icon;
+              return (
+                <Button
+                  key={fandom.name}
+                  variant="outline"
+                  className="h-auto py-3 justify-start gap-2 hover:bg-primary/10 hover:border-primary/30"
+                  onClick={() => onSelect(fandom.name)}
+                >
+                  <Icon className="size-5 text-primary" />
+                  <div className="text-left">
+                    <div className="font-medium text-sm text-foreground">{fandom.name}</div>
+                    <div className="text-xs text-muted-foreground">{fandom.category}</div>
+                  </div>
+                </Button>
+              );
+            })}
           </div>
         </ScrollArea>
 
         {/* Custom Fandom */}
-        <div className="pt-2 border-t">
-          <label className="text-sm font-medium text-gray-600 mb-2 block">
+        <div className="pt-2 border-t border-border">
+          <label className="text-sm font-medium text-muted-foreground mb-2 block">
             Or enter a custom fandom:
           </label>
           <div className="flex gap-2">
@@ -107,14 +129,15 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
               value={customFandom}
               onChange={(e) => setCustomFandom(e.target.value)}
               placeholder="e.g., Percy Jackson, One Direction..."
-              className="bg-white"
+              className="bg-surface"
               onKeyDown={(e) => e.key === "Enter" && handleCustomSubmit()}
             />
             <Button
               onClick={handleCustomSubmit}
               disabled={!customFandom.trim()}
-              className="bg-gradient-to-r from-purple-600 to-pink-600"
+              className="gap-1.5"
             >
+              <Sparkles className="size-4" />
               Select
             </Button>
           </div>

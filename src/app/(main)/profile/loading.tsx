@@ -3,11 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function ProfileLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-950">
-      <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-8 w-24" />
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-6 w-24" />
+          </div>
+          <Skeleton className="h-8 w-24 rounded-lg" />
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">
@@ -20,16 +23,27 @@ export default function ProfileLoading() {
                   <Skeleton className="h-6 w-32 mb-2" />
                   <Skeleton className="h-4 w-24" />
                 </div>
-                <div className="mt-6 pt-6 border-t grid grid-cols-3 gap-4">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+                <div className="mt-6 pt-6 border-t border-border grid grid-cols-3 gap-4">
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                  <Skeleton className="h-12 w-full rounded-lg" />
                 </div>
               </CardContent>
             </Card>
-            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full rounded-xl" />
           </div>
-          <Skeleton className="h-[600px]" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-9 w-28 rounded-lg" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
+            </div>
+          </div>
         </div>
       </main>
     </div>

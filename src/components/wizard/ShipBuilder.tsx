@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Heart, Check, X, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,10 +50,12 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
   };
 
   return (
-    <Card className="border-2 border-pink-200 bg-pink-50/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <span>💕</span>
+    <Card className="border-accent/30 bg-accent/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2.5 text-lg font-display">
+          <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+            <Heart className="size-4" />
+          </div>
           Define Ships & Pairings
           <Badge variant="secondary" className="ml-2">
             {fandom}
@@ -60,14 +63,14 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Ships are romantic pairings between characters. Select popular ships or add your own.
         </p>
 
         {/* Suggested Ships */}
         {suggestedShips.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Popular ships in {fandom}:
             </label>
             <div className="flex flex-wrap gap-2">
@@ -75,14 +78,14 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
                 <Badge
                   key={ship}
                   variant={selectedShips.includes(ship) ? "default" : "outline"}
-                  className={`cursor-pointer py-1.5 px-3 ${
+                  className={`cursor-pointer py-1.5 px-3 transition-colors gap-1 ${
                     selectedShips.includes(ship)
-                      ? "bg-pink-500 hover:bg-pink-600"
-                      : "hover:bg-pink-100"
+                      ? ""
+                      : "hover:bg-accent/10 hover:border-accent/30"
                   }`}
                   onClick={() => toggleShip(ship)}
                 >
-                  {selectedShips.includes(ship) && "✓ "}
+                  {selectedShips.includes(ship) && <Check className="size-3" />}
                   {ship}
                 </Badge>
               ))}
@@ -92,7 +95,7 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
 
         {/* Custom Ship Input */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
+          <label className="text-sm font-medium text-foreground mb-2 block">
             Add custom ship:
           </label>
           <div className="flex gap-2">
@@ -100,14 +103,16 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
               value={customShip}
               onChange={(e) => setCustomShip(e.target.value)}
               placeholder="e.g., Character A / Character B"
-              className="bg-white"
+              className="bg-surface"
               onKeyDown={(e) => e.key === "Enter" && addCustomShip()}
             />
             <Button
               onClick={addCustomShip}
               disabled={!customShip.trim()}
               variant="outline"
+              className="gap-1.5"
             >
+              <Plus className="size-4" />
               Add
             </Button>
           </div>
@@ -116,7 +121,7 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
         {/* Selected Ships */}
         {selectedShips.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Selected ships ({selectedShips.length}):
             </label>
             <div className="flex flex-wrap gap-2">
@@ -124,10 +129,11 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
                 <Badge
                   key={ship}
                   variant="default"
-                  className="bg-pink-500 hover:bg-pink-600 cursor-pointer"
+                  className="cursor-pointer gap-1"
                   onClick={() => toggleShip(ship)}
                 >
-                  {ship} ✕
+                  {ship}
+                  <X className="size-3" />
                 </Badge>
               ))}
             </div>
@@ -135,10 +141,10 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2 border-t">
+        <div className="flex gap-2 pt-2 border-t border-border">
           <Button
             onClick={handleContinue}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+            className="flex-1"
           >
             {selectedShips.length > 0
               ? `Continue with ${selectedShips.length} ship${selectedShips.length > 1 ? "s" : ""}`

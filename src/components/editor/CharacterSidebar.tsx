@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Users, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -59,25 +61,28 @@ export function CharacterSidebar({
 
   return (
     <Card className="h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-lg">
-          <span className="flex items-center gap-2">
-            <span>🎭</span>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between text-base">
+          <span className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+              <Users className="size-4" />
+            </div>
             Characters
           </span>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                + Add
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Plus className="size-4" />
+                Add
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Character</DialogTitle>
+                <DialogTitle className="font-display">Add Character</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
-                <div>
-                  <label className="text-sm font-medium">Name</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Name</label>
                   <Input
                     value={newCharacter.name}
                     onChange={(e) =>
@@ -86,8 +91,8 @@ export function CharacterSidebar({
                     placeholder="Character name"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Fandom</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Fandom</label>
                   <Input
                     value={newCharacter.fandom}
                     onChange={(e) =>
@@ -96,8 +101,8 @@ export function CharacterSidebar({
                     placeholder="e.g., Harry Potter, Marvel"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
                     Personality Traits (comma-separated)
                   </label>
                   <Input
@@ -106,8 +111,8 @@ export function CharacterSidebar({
                     placeholder="brave, sarcastic, loyal"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Speech Pattern</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Speech Pattern</label>
                   <Textarea
                     value={newCharacter.speechPattern || ""}
                     onChange={(e) =>
@@ -121,18 +126,17 @@ export function CharacterSidebar({
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     id="isOriginal"
                     checked={newCharacter.isOriginal}
-                    onChange={(e) =>
+                    onCheckedChange={(checked) =>
                       setNewCharacter({
                         ...newCharacter,
-                        isOriginal: e.target.checked,
+                        isOriginal: checked === true,
                       })
                     }
                   />
-                  <label htmlFor="isOriginal" className="text-sm">
+                  <label htmlFor="isOriginal" className="text-sm text-foreground">
                     Original Character (OC)
                   </label>
                 </div>
@@ -147,10 +151,14 @@ export function CharacterSidebar({
       <CardContent>
         <ScrollArea className="h-[400px] pr-4">
           {characters.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <span className="text-4xl block mb-2">🎭</span>
-              <p className="text-sm">No characters yet</p>
-              <p className="text-xs">Add characters to help the AI maintain consistency</p>
+            <div className="text-center py-8">
+              <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
+                <Users className="size-8 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">No characters yet</p>
+              <p className="text-xs text-muted-foreground">
+                Add characters to help the AI maintain consistency
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -161,13 +169,13 @@ export function CharacterSidebar({
                       {character.portraitUrl ? (
                         <AvatarImage src={character.portraitUrl} alt={character.name} />
                       ) : null}
-                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-400 text-white text-xs">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                         {character.name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm truncate">
+                        <span className="font-medium text-sm text-foreground truncate">
                           {character.name}
                         </span>
                         {character.isOriginal && (
@@ -176,10 +184,10 @@ export function CharacterSidebar({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {character.fandom}
                       </p>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-1 mt-1.5">
                         {character.personality.slice(0, 3).map((trait) => (
                           <Badge
                             key={trait}
@@ -190,7 +198,7 @@ export function CharacterSidebar({
                           </Badge>
                         ))}
                         {character.personality.length > 3 && (
-                          <Badge variant="outline" className="text-xs py-0">
+                          <Badge variant="outline" className="text-xs py-0 text-muted-foreground">
                             +{character.personality.length - 3}
                           </Badge>
                         )}

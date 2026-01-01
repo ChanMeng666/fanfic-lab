@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ImageIcon, Palette, Book, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,14 +28,14 @@ interface ImageGalleryProps {
   onInsert?: (image: StoryImage) => void;
 }
 
+const typeConfig = {
+  portrait: { icon: User, label: "Character Portrait" },
+  illustration: { icon: ImageIcon, label: "Scene Illustration" },
+  cover: { icon: Book, label: "Story Cover" },
+};
+
 export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<StoryImage | null>(null);
-
-  const typeIcons = {
-    portrait: "🎨",
-    illustration: "🖼️",
-    cover: "📚",
-  };
 
   const portraits = images.filter((img) => img.type === "portrait");
   const illustrations = images.filter((img) => img.type === "illustration");
@@ -42,7 +43,7 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
 
   const ImageCard = ({ image }: { image: StoryImage }) => (
     <div
-      className="relative group cursor-pointer rounded-lg overflow-hidden border bg-white hover:shadow-md transition-shadow"
+      className="relative group cursor-pointer rounded-lg overflow-hidden border border-border bg-surface hover:shadow-md transition-shadow"
       onClick={() => setSelectedImage(image)}
     >
       <img
@@ -50,11 +51,11 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
         alt={image.prompt}
         className="w-full h-24 object-cover"
       />
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <span className="text-white text-xs">View</span>
+      <div className="absolute inset-0 bg-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <span className="text-background text-xs font-medium">View</span>
       </div>
       {image.characterName && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 truncate">
+        <div className="absolute bottom-0 left-0 right-0 bg-foreground/60 text-background text-xs px-2 py-1 truncate">
           {image.characterName}
         </div>
       )}
@@ -63,15 +64,15 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
 
   const renderImageSection = (
     title: string,
-    icon: string,
+    Icon: React.ComponentType<{ className?: string }>,
     sectionImages: StoryImage[]
   ) => {
     if (sectionImages.length === 0) return null;
 
     return (
       <div className="space-y-2">
-        <h4 className="text-sm font-medium flex items-center gap-1">
-          <span>{icon}</span>
+        <h4 className="text-sm font-medium flex items-center gap-1.5 text-foreground">
+          <Icon className="size-4 text-muted-foreground" />
           {title}
           <Badge variant="secondary" className="text-xs ml-1">
             {sectionImages.length}
@@ -89,10 +90,12 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
   return (
     <>
       <Card className="h-full">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-lg">
-            <span className="flex items-center gap-2">
-              <span>🖼️</span>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-base">
+            <span className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+                <ImageIcon className="size-4" />
+              </div>
               Images
             </span>
             <Badge variant="secondary">{images.length}</Badge>
@@ -101,23 +104,21 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
         <CardContent>
           <ScrollArea className="h-[300px] pr-4">
             {images.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <span className="text-4xl block mb-2">🎨</span>
-                <p className="text-sm">No images yet</p>
-                <p className="text-xs">
+              <div className="text-center py-8">
+                <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
+                  <Palette className="size-8 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">No images yet</p>
+                <p className="text-xs text-muted-foreground">
                   Use the chat to generate character portraits or scene
                   illustrations
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {renderImageSection("Portraits", typeIcons.portrait, portraits)}
-                {renderImageSection(
-                  "Illustrations",
-                  typeIcons.illustration,
-                  illustrations
-                )}
-                {renderImageSection("Covers", typeIcons.cover, covers)}
+                {renderImageSection("Portraits", User, portraits)}
+                {renderImageSection("Illustrations", ImageIcon, illustrations)}
+                {renderImageSection("Covers", Book, covers)}
               </div>
             )}
           </ScrollArea>
@@ -131,14 +132,16 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span>{selectedImage && typeIcons[selectedImage.type]}</span>
-              {selectedImage?.characterName ||
-                (selectedImage?.type === "portrait"
-                  ? "Character Portrait"
-                  : selectedImage?.type === "illustration"
-                  ? "Scene Illustration"
-                  : "Story Cover")}
+            <DialogTitle className="flex items-center gap-2 font-display">
+              {selectedImage && (
+                <>
+                  {(() => {
+                    const Icon = typeConfig[selectedImage.type].icon;
+                    return <Icon className="size-5 text-primary" />;
+                  })()}
+                  {selectedImage.characterName || typeConfig[selectedImage.type].label}
+                </>
+              )}
             </DialogTitle>
           </DialogHeader>
           {selectedImage && (
@@ -150,11 +153,11 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
                   className="max-w-full max-h-[400px] rounded-lg object-contain"
                 />
               </div>
-              <div className="bg-gray-50 rounded p-3">
-                <span className="text-xs font-medium text-gray-500">
+              <div className="bg-surface rounded-lg p-3 border border-border">
+                <span className="text-xs font-medium text-muted-foreground">
                   Prompt:
                 </span>
-                <p className="text-sm text-gray-700 italic mt-1">
+                <p className="text-sm text-foreground italic mt-1">
                   "{selectedImage.prompt}"
                 </p>
               </div>
