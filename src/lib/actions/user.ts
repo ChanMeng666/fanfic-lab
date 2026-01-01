@@ -52,6 +52,44 @@ async function getCurrentUser() {
 }
 
 // ============================================
+// USER SYNC ACTION
+// ============================================
+
+/**
+ * Syncs the Stack Auth user to the Prisma database.
+ * Called by the Header component when a user is authenticated.
+ * This ensures the database user is created immediately after login.
+ * Safe to call multiple times (idempotent).
+ */
+export async function syncUser() {
+  const stackUser = await stackServerApp.getUser();
+  if (!stackUser) {
+    return null; // Not authenticated, return null (don't throw)
+  }
+
+  let dbUser = await prisma.user.findUnique({
+    where: { stackAuthId: stackUser.id },
+  });
+
+  if (!dbUser) {
+    dbUser = await prisma.user.create({
+      data: {
+        stackAuthId: stackUser.id,
+        email: stackUser.primaryEmail || `${stackUser.id}@fanficlab.local`,
+        username:
+          stackUser.displayName?.toLowerCase().replace(/\s+/g, "_") ||
+          `user_${stackUser.id.slice(0, 8)}`,
+        displayName: stackUser.displayName,
+        avatarUrl: stackUser.profileImageUrl,
+        preferences: { create: {} },
+      },
+    });
+  }
+
+  return dbUser;
+}
+
+// ============================================
 // PROFILE ACTIONS
 // ============================================
 

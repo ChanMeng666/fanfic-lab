@@ -5,9 +5,11 @@ import {
   Lora,
   JetBrains_Mono,
 } from "next/font/google";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { CopilotProvider } from "@/components/providers/CopilotProvider";
 import { StackProvider } from "@/components/providers/StackProvider";
+import { ConditionalHeader } from "@/components/layout";
 import "./globals.css";
 
 // Display font - Literary, elegant headers
@@ -76,6 +78,9 @@ export default function RootLayout({
         className={`${cormorant.variable} ${sourceSans.variable} ${lora.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <StackProvider>
+          <Suspense fallback={null}>
+            <ConditionalHeader />
+          </Suspense>
           <CopilotProvider>
             {children}
             <Toaster />

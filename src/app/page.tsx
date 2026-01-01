@@ -42,53 +42,6 @@ const POPULAR_TAGS = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-              <Feather className="size-4" />
-            </div>
-            <span className="text-xl font-display font-semibold text-foreground">
-              FanFic Lab
-            </span>
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link
-              href="/feed"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Explore
-            </Link>
-            <Link
-              href="/wizard"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Wizard
-            </Link>
-            <Link
-              href="/editor"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Editor
-            </Link>
-            <div className="flex items-center gap-3 ml-2">
-              <Link href="/handler/sign-in">
-                <Button variant="ghost" size="sm">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/wizard">
-                <Button size="sm">
-                  Get Started
-                  <ArrowRight className="size-4 ml-1.5" />
-                </Button>
-              </Link>
-            </div>
-          </nav>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         {/* Background gradient */}

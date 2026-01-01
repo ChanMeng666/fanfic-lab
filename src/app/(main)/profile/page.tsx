@@ -5,9 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@stackframe/stack";
 import {
-  Feather,
-  PenLine,
-  Settings,
   BookOpen,
   Heart,
   MessageSquare,
@@ -16,6 +13,7 @@ import {
   Trash2,
   Edit,
   BarChart3,
+  PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,12 +199,6 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
-          <div className="container mx-auto flex h-16 items-center justify-between px-4">
-            <Skeleton className="h-8 w-32 rounded-lg" />
-            <Skeleton className="h-8 w-24 rounded-lg" />
-          </div>
-        </header>
         <main className="container mx-auto px-4 py-8">
           <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
             <div className="space-y-6">
@@ -245,33 +237,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-              <Feather className="size-4" />
-            </div>
-            <span className="text-xl font-display font-semibold text-foreground">
-              FanFic Lab
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/wizard">
-              <Button className="gap-2">
-                <PenLine className="size-4" />
-                <span className="hidden sm:inline">New Story</span>
-              </Button>
-            </Link>
-            <Link href="/handler/account-settings">
-              <Button variant="outline" size="icon">
-                <Settings className="size-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
           {/* Profile Sidebar */}

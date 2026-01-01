@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import {
-  Feather,
   Sparkles,
   BookOpen,
   Heart,
@@ -198,24 +196,6 @@ export default function WizardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-              <Feather className="size-4" />
-            </div>
-            <span className="text-xl font-display font-semibold text-foreground">
-              FanFic Lab
-            </span>
-          </Link>
-          <Badge variant="secondary" className="gap-1.5">
-            <Sparkles className="size-3.5 text-accent" />
-            Creative Wizard
-          </Badge>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Progress Sidebar */}
