@@ -1,79 +1,27 @@
 /**
  * Image Tools for FanFic Lab Agent
  * AI image generation for character portraits and scene illustrations
- * Uses Google Gemini Imagen via Cloudinary
+ *
+ * NOTE: Image generation is temporarily disabled.
+ * Will be re-enabled when a free/affordable image generation API is available.
  */
 
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import type { GeneratedImage } from "@/lib/types/agent-state";
 
-// Gemini API configuration
-const GEMINI_API_KEY = process.env.GOOGLE_API_KEY;
-const GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002";
-
-interface GeminiImageResponse {
-  predictions?: Array<{
-    bytesBase64Encoded: string;
-    mimeType: string;
-  }>;
-  error?: {
-    message: string;
-    code: number;
-  };
-}
+// Feature flag: Image generation is temporarily disabled
+const IMAGE_GENERATION_ENABLED = false;
 
 /**
- * Generate an image using Google Gemini Imagen API
+ * Placeholder function - image generation temporarily disabled
  */
-async function generateImageWithGemini(prompt: string): Promise<string | null> {
-  if (!GEMINI_API_KEY) {
-    console.warn("GOOGLE_API_KEY not configured - image generation disabled");
+async function generateImage(_prompt: string, _aspectRatio: "1:1" | "16:9" | "9:16" = "1:1"): Promise<string | null> {
+  if (!IMAGE_GENERATION_ENABLED) {
+    console.info("Image generation is temporarily disabled");
     return null;
   }
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:predict?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: {
-            sampleCount: 1,
-            aspectRatio: "1:1",
-            safetyFilterLevel: "block_some",
-            personGeneration: "allow_adult",
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("Gemini API error:", error);
-      return null;
-    }
-
-    const data: GeminiImageResponse = await response.json();
-
-    if (data.error) {
-      console.error("Gemini API error:", data.error.message);
-      return null;
-    }
-
-    if (data.predictions?.[0]?.bytesBase64Encoded) {
-      return `data:${data.predictions[0].mimeType || "image/png"};base64,${data.predictions[0].bytesBase64Encoded}`;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Failed to generate image with Gemini:", error);
-    return null;
-  }
+  return null;
 }
 
 /**
@@ -114,40 +62,43 @@ export const generateCharacterPortraitTool = tool(
     // Build descriptive prompt for image generation
     const prompt = buildCharacterPrompt(character, artStyle, mood);
 
-    // Generate image with Gemini
-    const base64Image = await generateImageWithGemini(prompt);
+    // Check if image generation is enabled
+    if (!IMAGE_GENERATION_ENABLED) {
+      const generatedImage: GeneratedImage = {
+        id: `img_${Date.now()}`,
+        type: "character_portrait",
+        url: "",
+        prompt,
+      };
 
-    let imageUrl = "";
+      return JSON.stringify({
+        status: "disabled",
+        message: "Image generation is temporarily disabled. The prompt has been saved for future use when the feature is re-enabled.",
+        prompt,
+        image: generatedImage,
+      });
+    }
+
+    // Generate image (currently disabled)
+    const generatedUrl = await generateImage(prompt, "1:1");
+
+    let finalImageUrl = generatedUrl || "";
     let publicId = "";
 
-    if (base64Image) {
-      // Try to upload to Cloudinary
-      const cloudinaryResult = await uploadToCloudinary(base64Image, "portrait");
+    if (generatedUrl) {
+      const cloudinaryResult = await uploadToCloudinary(generatedUrl, "portrait");
       if (cloudinaryResult) {
-        imageUrl = cloudinaryResult.url;
+        finalImageUrl = cloudinaryResult.url;
         publicId = cloudinaryResult.publicId;
-      } else {
-        // Fallback to base64 URL (not recommended for production)
-        imageUrl = base64Image;
       }
     }
 
     const generatedImage: GeneratedImage = {
       id: `img_${Date.now()}`,
       type: "character_portrait",
-      url: imageUrl,
+      url: finalImageUrl,
       prompt,
     };
-
-    if (!base64Image) {
-      return JSON.stringify({
-        status: "pending_approval",
-        message: "Image generation requires API configuration. Please review the prompt and approve to continue.",
-        prompt,
-        image: generatedImage,
-        requiresApproval: true,
-      });
-    }
 
     return JSON.stringify({
       status: "success",
@@ -212,38 +163,43 @@ export const generateSceneIllustrationTool = tool(
       atmosphere
     );
 
-    // Generate image with Gemini
-    const base64Image = await generateImageWithGemini(prompt);
+    // Check if image generation is enabled
+    if (!IMAGE_GENERATION_ENABLED) {
+      const generatedImage: GeneratedImage = {
+        id: `img_${Date.now()}`,
+        type: "scene_illustration",
+        url: "",
+        prompt,
+      };
 
-    let imageUrl = "";
+      return JSON.stringify({
+        status: "disabled",
+        message: "Image generation is temporarily disabled. The prompt has been saved for future use when the feature is re-enabled.",
+        prompt,
+        image: generatedImage,
+      });
+    }
+
+    // Generate image (currently disabled)
+    const generatedUrl = await generateImage(prompt, "16:9");
+
+    let finalImageUrl = generatedUrl || "";
     let publicId = "";
 
-    if (base64Image) {
-      const cloudinaryResult = await uploadToCloudinary(base64Image, "illustration");
+    if (generatedUrl) {
+      const cloudinaryResult = await uploadToCloudinary(generatedUrl, "illustration");
       if (cloudinaryResult) {
-        imageUrl = cloudinaryResult.url;
+        finalImageUrl = cloudinaryResult.url;
         publicId = cloudinaryResult.publicId;
-      } else {
-        imageUrl = base64Image;
       }
     }
 
     const generatedImage: GeneratedImage = {
       id: `img_${Date.now()}`,
       type: "scene_illustration",
-      url: imageUrl,
+      url: finalImageUrl,
       prompt,
     };
-
-    if (!base64Image) {
-      return JSON.stringify({
-        status: "pending_approval",
-        message: "Image generation requires API configuration. Please review the prompt.",
-        prompt,
-        image: generatedImage,
-        requiresApproval: true,
-      });
-    }
 
     return JSON.stringify({
       status: "success",
@@ -300,38 +256,43 @@ export const generateStoryCoverTool = tool(
       artStyle
     );
 
-    // Generate image with Gemini
-    const base64Image = await generateImageWithGemini(prompt);
+    // Check if image generation is enabled
+    if (!IMAGE_GENERATION_ENABLED) {
+      const generatedImage: GeneratedImage = {
+        id: `img_${Date.now()}`,
+        type: "cover",
+        url: "",
+        prompt,
+      };
 
-    let imageUrl = "";
+      return JSON.stringify({
+        status: "disabled",
+        message: "Image generation is temporarily disabled. The prompt has been saved for future use when the feature is re-enabled.",
+        prompt,
+        image: generatedImage,
+      });
+    }
+
+    // Generate image (currently disabled)
+    const generatedUrl = await generateImage(prompt, "9:16");
+
+    let finalImageUrl = generatedUrl || "";
     let publicId = "";
 
-    if (base64Image) {
-      const cloudinaryResult = await uploadToCloudinary(base64Image, "cover");
+    if (generatedUrl) {
+      const cloudinaryResult = await uploadToCloudinary(generatedUrl, "cover");
       if (cloudinaryResult) {
-        imageUrl = cloudinaryResult.url;
+        finalImageUrl = cloudinaryResult.url;
         publicId = cloudinaryResult.publicId;
-      } else {
-        imageUrl = base64Image;
       }
     }
 
     const generatedImage: GeneratedImage = {
       id: `img_${Date.now()}`,
       type: "cover",
-      url: imageUrl,
+      url: finalImageUrl,
       prompt,
     };
-
-    if (!base64Image) {
-      return JSON.stringify({
-        status: "pending_approval",
-        message: "Image generation requires API configuration. Please review the prompt.",
-        prompt,
-        image: generatedImage,
-        requiresApproval: true,
-      });
-    }
 
     return JSON.stringify({
       status: "success",

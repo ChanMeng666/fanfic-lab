@@ -68,16 +68,20 @@ STACK_SECRET_SERVER_KEY=your_stack_secret_key
 NEXT_PUBLIC_STACK_PROJECT_ID=your_project_id
 NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=your_publishable_key
 
-# OpenAI (Required for AI features)
+# OpenAI (Required for AI writing features)
 OPENAI_API_KEY=sk-...
 
-# Google Gemini (Optional - for image generation)
-GOOGLE_API_KEY=your_google_api_key
+# Together AI (Required for image generation - FREE!)
+# Get your key at: https://www.together.ai/
+TOGETHER_API_KEY=your_together_api_key
 
-# Cloudinary (Optional - for image storage)
+# Cloudinary (Optional - for permanent image storage)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+
+# LangSmith (Optional - for AI observability)
+LANGSMITH_API_KEY=lsv2_...
 ```
 
 ### Environment Variable Tests
@@ -430,7 +434,7 @@ Test these routes redirect to sign-in when unauthenticated:
 
 ## 11. Image Generation Tests
 
-**Prerequisite:** Google API key configured (optional)
+**Prerequisite:** Together AI API key configured (free at https://www.together.ai/)
 
 ### Character Portrait
 1. [ ] Add a character
