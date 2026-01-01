@@ -3,40 +3,80 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================
+   FanFic Lab Design System
+   Brand: "Literary Atelier" - Teal + Amber
+   ============================================ */
+
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+
+  /* Primary - Deep Teal */
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+
+  /* Accent - Warm Amber (AI) */
+  --color-accent: var(--accent);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* Secondary - Soft Sage */
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  /* Semantic */
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  /* UI */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Cards & Popovers */
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* AI-specific */
+  --color-ai-surface: var(--ai-surface);
+  --color-ai-glow: var(--ai-glow);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Typography */
+  --font-sans: var(--font-source-sans);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-display: var(--font-cormorant);
+  --font-prose: var(--font-lora);
+
+  /* Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -46,80 +86,449 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* ============================================
+   Light Mode - Warm Cream Paper
+   ============================================ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* Backgrounds - Warm cream paper feel */
+  --background: oklch(0.985 0.005 85);
+  --background-subtle: oklch(0.975 0.008 85);
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(0.995 0.003 85);
+
+  /* Text - Warm charcoal, not pure black */
+  --foreground: oklch(0.25 0.02 50);
+  --foreground-muted: oklch(0.45 0.015 50);
+  --foreground-subtle: oklch(0.6 0.01 50);
+
+  /* Primary - Deep Teal */
+  --primary: oklch(0.45 0.12 175);
+  --primary-hover: oklch(0.40 0.13 175);
+  --primary-foreground: oklch(0.99 0 0);
+
+  /* Accent - Warm Amber (AI interactions) */
+  --accent: oklch(0.75 0.15 75);
+  --accent-subtle: oklch(0.92 0.05 75);
+  --accent-foreground: oklch(0.30 0.08 60);
+
+  /* Secondary - Soft Sage */
+  --secondary: oklch(0.92 0.03 145);
+  --secondary-foreground: oklch(0.35 0.05 145);
+
+  /* Muted */
+  --muted: oklch(0.96 0.01 85);
+  --muted-foreground: oklch(0.50 0.015 50);
+
+  /* Semantic */
+  --success: oklch(0.55 0.15 145);
+  --warning: oklch(0.75 0.15 75);
+  --destructive: oklch(0.55 0.18 25);
+  --info: oklch(0.55 0.12 230);
+
+  /* Borders - Warm subtle */
+  --border: oklch(0.90 0.01 85);
+  --border-strong: oklch(0.80 0.02 85);
+  --input: oklch(0.92 0.01 85);
+  --ring: oklch(0.45 0.12 175);
+
+  /* Cards & Popovers */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.25 0.02 50);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.25 0.02 50);
+
+  /* AI-specific */
+  --ai-surface: oklch(0.97 0.03 75);
+  --ai-glow: oklch(0.80 0.12 75 / 0.3);
+
+  /* Sidebar - AI Partner Panel */
+  --sidebar: oklch(0.98 0.005 85);
+  --sidebar-foreground: oklch(0.25 0.02 50);
+  --sidebar-primary: oklch(0.45 0.12 175);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.75 0.15 75);
+  --sidebar-accent-foreground: oklch(0.30 0.08 60);
+  --sidebar-border: oklch(0.90 0.01 85);
+  --sidebar-ring: oklch(0.45 0.12 175);
+
+  /* Charts - Harmonious with brand */
+  --chart-1: oklch(0.45 0.12 175);
+  --chart-2: oklch(0.75 0.15 75);
+  --chart-3: oklch(0.55 0.15 145);
+  --chart-4: oklch(0.55 0.12 230);
+  --chart-5: oklch(0.55 0.18 25);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, oklch(0.45 0.12 175) 0%, oklch(0.40 0.10 190) 100%);
+  --gradient-ai: linear-gradient(135deg, oklch(0.80 0.12 75) 0%, oklch(0.75 0.15 60) 100%);
+  --gradient-bg: linear-gradient(180deg, oklch(0.985 0.005 85) 0%, oklch(0.975 0.01 80) 100%);
 }
 
+/* ============================================
+   Dark Mode - Warm Charcoal
+   ============================================ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Backgrounds - Warm dark, not pure black */
+  --background: oklch(0.18 0.015 50);
+  --background-subtle: oklch(0.15 0.015 50);
+  --surface: oklch(0.22 0.015 50);
+  --surface-raised: oklch(0.25 0.015 50);
+
+  /* Text - Warm cream */
+  --foreground: oklch(0.95 0.01 85);
+  --foreground-muted: oklch(0.70 0.01 85);
+  --foreground-subtle: oklch(0.50 0.01 85);
+
+  /* Primary - Brighter teal for dark mode */
+  --primary: oklch(0.60 0.12 175);
+  --primary-hover: oklch(0.65 0.13 175);
+  --primary-foreground: oklch(0.15 0.015 50);
+
+  /* Accent - Consistent amber */
+  --accent: oklch(0.75 0.15 75);
+  --accent-subtle: oklch(0.30 0.08 75);
+  --accent-foreground: oklch(0.95 0.01 85);
+
+  /* Secondary */
+  --secondary: oklch(0.28 0.02 145);
+  --secondary-foreground: oklch(0.85 0.02 145);
+
+  /* Muted */
+  --muted: oklch(0.28 0.015 50);
+  --muted-foreground: oklch(0.65 0.01 85);
+
+  /* Semantic */
+  --success: oklch(0.60 0.15 145);
+  --warning: oklch(0.75 0.15 75);
+  --destructive: oklch(0.60 0.18 25);
+  --info: oklch(0.60 0.12 230);
+
+  /* Borders */
+  --border: oklch(0.30 0.015 50);
+  --border-strong: oklch(0.40 0.02 50);
+  --input: oklch(0.28 0.015 50);
+  --ring: oklch(0.60 0.12 175);
+
+  /* Cards & Popovers */
+  --card: oklch(0.22 0.015 50);
+  --card-foreground: oklch(0.95 0.01 85);
+  --popover: oklch(0.22 0.015 50);
+  --popover-foreground: oklch(0.95 0.01 85);
+
+  /* AI-specific */
+  --ai-surface: oklch(0.25 0.04 75);
+  --ai-glow: oklch(0.75 0.15 75 / 0.25);
+
+  /* Sidebar */
+  --sidebar: oklch(0.20 0.015 50);
+  --sidebar-foreground: oklch(0.95 0.01 85);
+  --sidebar-primary: oklch(0.60 0.12 175);
+  --sidebar-primary-foreground: oklch(0.15 0.015 50);
+  --sidebar-accent: oklch(0.75 0.15 75);
+  --sidebar-accent-foreground: oklch(0.95 0.01 85);
+  --sidebar-border: oklch(0.30 0.015 50);
+  --sidebar-ring: oklch(0.60 0.12 175);
+
+  /* Charts */
+  --chart-1: oklch(0.60 0.12 175);
+  --chart-2: oklch(0.75 0.15 75);
+  --chart-3: oklch(0.60 0.15 145);
+  --chart-4: oklch(0.60 0.12 230);
+  --chart-5: oklch(0.60 0.18 25);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, oklch(0.50 0.12 175) 0%, oklch(0.45 0.10 190) 100%);
+  --gradient-ai: linear-gradient(135deg, oklch(0.75 0.12 75) 0%, oklch(0.70 0.15 60) 100%);
+  --gradient-bg: linear-gradient(180deg, oklch(0.18 0.015 50) 0%, oklch(0.16 0.02 60) 100%);
 }
 
+/* ============================================
+   Typography Scale
+   ============================================ */
+:root {
+  /* Fluid typography */
+  --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.8rem);
+  --text-sm: clamp(0.85rem, 0.8rem + 0.25vw, 0.9rem);
+  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.0625rem);
+  --text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.2rem);
+  --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.25rem + 1.25vw, 2rem);
+  --text-3xl: clamp(1.875rem, 1.5rem + 1.875vw, 2.75rem);
+  --text-4xl: clamp(2.25rem, 1.75rem + 2.5vw, 3.5rem);
+  --text-5xl: clamp(3rem, 2rem + 5vw, 5rem);
+
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  --leading-loose: 2;
+
+  /* Letter spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+}
+
+/* ============================================
+   Base Layer
+   ============================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Typography utilities */
+  .font-display {
+    font-family: var(--font-cormorant), Georgia, serif;
+  }
+
+  .font-prose {
+    font-family: var(--font-lora), Georgia, serif;
+  }
+
+  /* Focus states */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@layer utilities {
+  /* Page enter animation */
+  @keyframes fadeSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* AI content reveal */
+  @keyframes aiReveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+      box-shadow: 0 0 0 0 var(--ai-glow);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      box-shadow: 0 0 20px var(--ai-glow);
+    }
+  }
+
+  /* AI thinking shimmer */
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* AI pulse glow */
+  @keyframes aiPulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--ai-glow); }
+    50% { box-shadow: 0 0 0 8px transparent; }
+  }
+
+  /* Approval pending pulse */
+  @keyframes approvalPulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 var(--ai-glow), 0 4px 12px var(--ai-glow);
+    }
+    50% {
+      box-shadow: 0 0 0 6px transparent, 0 8px 24px var(--ai-glow);
+    }
+  }
+
+  /* Typing indicator dots */
+  @keyframes typingDot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* Animation classes */
+  .animate-fade-slide-in {
+    animation: fadeSlideIn 0.4s ease-out forwards;
+  }
+
+  .animate-ai-reveal {
+    animation: aiReveal 0.3s ease-out forwards;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  .animate-ai-pulse {
+    animation: aiPulse 1.5s ease-in-out infinite;
+  }
+
+  .animate-approval-pulse {
+    animation: approvalPulse 2s ease-in-out infinite;
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    @apply transition-all duration-200;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px oklch(0 0 0 / 0.1);
+  }
+
+  /* AI thinking state */
+  .ai-thinking {
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-thinking::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* ============================================
+   Component Utilities
+   ============================================ */
+@layer utilities {
+  /* AI-specific styles */
+  .ai-surface {
+    background: var(--ai-surface);
+  }
+
+  .ai-glow {
+    box-shadow: 0 0 0 1px var(--ai-glow), 0 4px 12px var(--ai-glow);
+  }
+
+  .ai-glow-strong {
+    box-shadow: 0 0 0 1px var(--accent), 0 4px 20px var(--ai-glow);
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-ai {
+    background: var(--gradient-ai);
+  }
+
+  .bg-gradient-page {
+    background: var(--gradient-bg);
+  }
+
+  /* Text gradients */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Story card accent border */
+  .story-card-accent::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+  .story-card-accent:hover::before {
+    opacity: 1;
+  }
+
+  /* Prose reading styles */
+  .prose-reading {
+    font-family: var(--font-lora), Georgia, serif;
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+  }
+}
+
+/* ============================================
+   CopilotKit Theme Overrides
+   ============================================ */
+@layer components {
+  /* CopilotKit CSS variable overrides */
+  .copilotKitRoot,
+  [data-copilotkit] {
+    --copilot-kit-primary-color: oklch(0.45 0.12 175);
+    --copilot-kit-contrast-color: oklch(0.99 0 0);
+    --copilot-kit-background-color: var(--surface);
+    --copilot-kit-secondary-color: var(--ai-surface);
+    --copilot-kit-secondary-contrast-color: var(--foreground);
+    --copilot-kit-separator-color: var(--border);
+    --copilot-kit-muted-color: var(--muted-foreground);
+  }
+
+  .dark .copilotKitRoot,
+  .dark [data-copilotkit] {
+    --copilot-kit-primary-color: oklch(0.60 0.12 175);
+    --copilot-kit-contrast-color: oklch(0.15 0.015 50);
+  }
+
+  /* Assistant message styling */
+  .copilotKitAssistantMessage {
+    background: var(--ai-surface) !important;
+    border-left: 3px solid var(--accent) !important;
+    border-radius: 0 12px 12px 0 !important;
+  }
+
+  /* User message styling */
+  .copilotKitUserMessage {
+    background: var(--secondary) !important;
+    border-radius: 12px 0 0 12px !important;
+  }
+
+  /* Chat input styling */
+  .copilotKitInput {
+    border-color: var(--border) !important;
+    background: var(--surface) !important;
+  }
+
+  .copilotKitInput:focus-within {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px oklch(0.45 0.12 175 / 0.15) !important;
+  }
+
+  /* Header styling */
+  .copilotKitHeader {
+    background: var(--ai-surface) !important;
+    border-bottom-color: var(--border) !important;
   }
 }

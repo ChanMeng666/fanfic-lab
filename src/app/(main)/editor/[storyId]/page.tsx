@@ -3,7 +3,16 @@
 import { useState, useCallback, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CopilotSidebar } from "@copilotkit/react-ui";
+import {
+  ArrowLeft,
+  Feather,
+  Save,
+  Upload,
+  ChevronDown,
+  Clock,
+  AlertCircle,
+  Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +25,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SmartEditor, CharacterSidebar } from "@/components/editor";
+import { SplitPaneEditor } from "@/components/editor/SplitPaneEditor";
+import { AIPartnerPanel } from "@/components/editor/AIPartnerPanel";
 import { useStory, useAutosave } from "@/lib/hooks";
 import { updateStory, updateChapter, publishStory } from "@/lib/actions/story";
 import type { StoryContext, StoryCharacter } from "@/lib/types/agent-state";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface EditStoryPageProps {
   params: Promise<{ storyId: string }>;
@@ -151,12 +169,18 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
     }
   };
 
+  // Calculate word count
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <header className="border-b bg-white dark:bg-gray-900 sticky top-0 z-50">
-          <div className="container mx-auto flex h-14 items-center justify-between px-4">
-            <Skeleton className="h-8 w-48" />
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-surface sticky top-0 z-50">
+          <div className="flex h-14 items-center justify-between px-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-8 w-8 rounded-lg" />
+              <Skeleton className="h-5 w-48" />
+            </div>
             <div className="flex items-center gap-3">
               <Skeleton className="h-8 w-24" />
               <Skeleton className="h-8 w-24" />
@@ -164,15 +188,12 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
           </div>
         </header>
         <div className="flex h-[calc(100vh-56px)]">
-          <aside className="w-72 border-r bg-white dark:bg-gray-900 p-4">
-            <Skeleton className="h-8 w-full mb-4" />
-            <Skeleton className="h-24 w-full" />
-          </aside>
-          <main className="flex-1 p-6">
-            <div className="max-w-3xl mx-auto">
-              <Skeleton className="h-[600px] w-full" />
-            </div>
-          </main>
+          <div className="flex-1 p-6">
+            <Skeleton className="h-[600px] w-full max-w-3xl mx-auto rounded-xl" />
+          </div>
+          <div className="w-[400px] border-l border-border p-4">
+            <Skeleton className="h-full w-full rounded-xl" />
+          </div>
         </div>
       </div>
     );
@@ -180,13 +201,17 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
 
   if (error || !story || !storyContext) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="flex items-center justify-center size-16 rounded-2xl bg-destructive/10 text-destructive mx-auto mb-4">
+            <AlertCircle className="size-8" />
+          </div>
+          <h1 className="text-2xl font-display font-bold text-foreground mb-2">
             Story Not Found
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {error || "The story you're looking for doesn't exist or you don't have access."}
+          <p className="text-muted-foreground mb-6">
+            {error ||
+              "The story you're looking for doesn't exist or you don't have access."}
           </p>
           <Link href="/profile">
             <Button>Go to My Stories</Button>
@@ -196,132 +221,185 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
     );
   }
 
+  const currentChapter = story.chapters.find((c) => c.id === currentChapterId);
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="border-b bg-white dark:bg-gray-900 sticky top-0 z-50">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-xl">✨</span>
-              <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                FanFic Lab
-              </span>
+      <header className="border-b border-border bg-surface sticky top-0 z-50">
+        <div className="flex h-14 items-center justify-between px-4">
+          {/* Left side: Logo, Back, Title */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2 mr-2">
+              <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground">
+                <Feather className="size-4" />
+              </div>
             </Link>
-            <span className="text-gray-300">|</span>
+
+            <Link
+              href="/profile"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="size-4" />
+              <span className="hidden sm:inline">My Stories</span>
+            </Link>
+
+            <span className="text-border">|</span>
+
             <Input
               value={storyTitle}
               onChange={(e) => setStoryTitle(e.target.value)}
               onBlur={handleTitleSave}
               placeholder="Untitled Story"
-              className="border-none bg-transparent font-medium w-64 focus-visible:ring-0"
+              className="border-none bg-transparent font-medium text-foreground w-64 focus-visible:ring-0 px-2"
               disabled={isSavingTitle}
             />
-            {isSavingTitle && (
-              <span className="text-xs text-gray-500">Saving title...</span>
+          </div>
+
+          {/* Center: Story metadata & Chapter selector */}
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="hidden md:flex">
+              {storyContext.fandom}
+            </Badge>
+
+            {story.chapters.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5">
+                    Ch. {currentChapter?.chapterNumber || 1}
+                    {currentChapter?.title && (
+                      <span className="text-muted-foreground max-w-[100px] truncate">
+                        : {currentChapter.title}
+                      </span>
+                    )}
+                    <ChevronDown className="size-3.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  {story.chapters.map((chapter) => (
+                    <DropdownMenuItem
+                      key={chapter.id}
+                      onClick={() => handleChapterChange(chapter.id)}
+                      className={cn(
+                        currentChapterId === chapter.id && "bg-secondary"
+                      )}
+                    >
+                      <span className="font-medium">Ch. {chapter.chapterNumber}</span>
+                      {chapter.title && (
+                        <span className="text-muted-foreground ml-2 truncate max-w-[150px]">
+                          {chapter.title}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {/* Story metadata */}
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Badge variant="secondary">{storyContext.fandom}</Badge>
-              {storyContext.ships.slice(0, 2).map((ship) => (
-                <Badge key={ship} variant="outline" className="text-xs">
-                  {ship}
-                </Badge>
-              ))}
-              <Badge
-                variant={story.status === "PUBLISHED" ? "default" : "secondary"}
-                className="text-xs"
-              >
-                {story.status}
-              </Badge>
-            </div>
 
-            {/* Save status */}
-            <div className="flex items-center gap-2">
-              {isSaving && (
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                  <div className="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full" />
+          {/* Right side: Save status, Actions */}
+          <div className="flex items-center gap-3">
+            {/* Save status indicator */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {isSaving ? (
+                <span className="flex items-center gap-1.5">
+                  <div className="animate-spin size-3 border-2 border-primary border-t-transparent rounded-full" />
                   Saving...
                 </span>
-              )}
-              {!isSaving && lastSaved && (
-                <span className="text-xs text-gray-500">
-                  Saved {lastSaved.toLocaleTimeString()}
+              ) : hasUnsavedChanges ? (
+                <span className="flex items-center gap-1 text-warning">
+                  <AlertCircle className="size-3" />
+                  Unsaved
                 </span>
-              )}
-              {hasUnsavedChanges && !isSaving && (
-                <span className="text-xs text-orange-500">Unsaved</span>
-              )}
+              ) : lastSaved ? (
+                <span className="flex items-center gap-1.5 text-success">
+                  <Check className="size-3" />
+                  Saved
+                </span>
+              ) : null}
             </div>
 
-            {/* Actions */}
-            <Button size="sm" variant="outline" onClick={saveNow} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save"}
+            {/* Status badge */}
+            <Badge
+              variant={story.status === "PUBLISHED" ? "default" : "secondary"}
+              className="hidden sm:flex"
+            >
+              {story.status === "PUBLISHED" ? "Published" : "Draft"}
+            </Badge>
+
+            {/* Action buttons */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={saveNow}
+              disabled={isSaving || !hasUnsavedChanges}
+              className="gap-1.5"
+            >
+              <Save className="size-4" />
+              <span className="hidden sm:inline">Save</span>
             </Button>
+
             {story.status === "DRAFT" && (
               <Button
                 size="sm"
-                className="bg-gradient-to-r from-purple-600 to-pink-600"
                 onClick={() => setShowPublishDialog(true)}
+                className="gap-1.5"
               >
-                Publish
+                <Upload className="size-4" />
+                <span className="hidden sm:inline">Publish</span>
               </Button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Chapter tabs (if multiple chapters) */}
-      {story.chapters.length > 1 && (
-        <div className="border-b bg-white/50 dark:bg-gray-900/50 px-4">
-          <div className="container mx-auto flex gap-1 overflow-x-auto py-2">
-            {story.chapters.map((chapter) => (
-              <Button
-                key={chapter.id}
-                variant={currentChapterId === chapter.id ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleChapterChange(chapter.id)}
-                className="shrink-0"
-              >
-                Ch. {chapter.chapterNumber}
-                {chapter.title && `: ${chapter.title.slice(0, 20)}...`}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Main Content - Split Pane */}
+      <div className="flex-1 overflow-hidden">
+        <SplitPaneEditor
+          leftPane={
+            <div className="h-full flex flex-col">
+              {/* Character Sidebar Toggle (optional, could be a floating panel) */}
+              <div className="flex-1 overflow-auto">
+                <div className="max-w-3xl mx-auto py-8 px-6">
+                  <SmartEditor
+                    storyContext={storyContext}
+                    initialContent={content}
+                    onContentChange={handleContentChange}
+                  />
+                </div>
+              </div>
 
-      {/* Main Content */}
-      <div className="flex h-[calc(100vh-56px)]">
-        {/* Sidebar - Characters */}
-        <aside className="w-72 border-r bg-white dark:bg-gray-900 p-4 overflow-hidden">
-          <CharacterSidebar
-            characters={storyContext.characters}
-            onAddCharacter={handleAddCharacter}
-          />
-        </aside>
-
-        {/* Editor */}
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-3xl mx-auto">
-            <SmartEditor
-              storyContext={storyContext}
-              initialContent={content}
-              onContentChange={handleContentChange}
+              {/* Bottom status bar */}
+              <div className="flex items-center justify-between px-6 py-2 border-t border-border bg-surface/50 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span>{wordCount.toLocaleString()} words</span>
+                  <span>
+                    {content.length.toLocaleString()} characters
+                  </span>
+                </div>
+                {lastSaved && (
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="size-3" />
+                    <span>Last saved {lastSaved.toLocaleTimeString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          }
+          rightPane={
+            <AIPartnerPanel
+              storyContext={{
+                fandom: storyContext.fandom,
+                ships: storyContext.ships,
+                tone: storyContext.tone,
+                characters: storyContext.characters,
+              }}
+              wordCount={wordCount}
             />
-          </div>
-        </main>
-
-        {/* CopilotKit Sidebar */}
-        <CopilotSidebar
-          defaultOpen={false}
-          labels={{
-            title: "Writing Assistant",
-            initial: "How can I help with your story?",
-          }}
-          className="w-80"
+          }
+          defaultLeftWidth={60}
+          minLeftWidth={45}
+          maxLeftWidth={75}
         />
       </div>
 
@@ -329,30 +407,36 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
       <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Publish Story</DialogTitle>
+            <DialogTitle className="font-display">Publish Story</DialogTitle>
             <DialogDescription>
-              Are you ready to share your story with the world? Once published, your
-              story will be visible in the Fandom Feed.
+              Are you ready to share your story with the world? Once published,
+              your story will be visible in the Fandom Feed.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Title:</span>
-                <span className="font-medium">{storyTitle}</span>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Title</span>
+                <span className="font-medium text-foreground">{storyTitle}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Fandom:</span>
-                <span className="font-medium">{storyContext.fandom}</span>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Fandom</span>
+                <span className="font-medium text-foreground">
+                  {storyContext.fandom}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Chapters:</span>
-                <span className="font-medium">{story.chapters.length}</span>
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Chapters</span>
+                <span className="font-medium text-foreground">
+                  {story.chapters.length}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Word Count:</span>
-                <span className="font-medium">
-                  {story.chapters.reduce((sum, ch) => sum + ch.wordCount, 0).toLocaleString()}
+              <div className="flex justify-between py-2">
+                <span className="text-muted-foreground">Total Words</span>
+                <span className="font-medium text-foreground">
+                  {story.chapters
+                    .reduce((sum, ch) => sum + ch.wordCount, 0)
+                    .toLocaleString()}
                 </span>
               </div>
             </div>
@@ -361,11 +445,7 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
             <Button variant="outline" onClick={() => setShowPublishDialog(false)}>
               Not Yet
             </Button>
-            <Button
-              onClick={handlePublish}
-              disabled={isPublishing}
-              className="bg-gradient-to-r from-purple-600 to-pink-600"
-            >
+            <Button onClick={handlePublish} disabled={isPublishing}>
               {isPublishing ? "Publishing..." : "Publish Now"}
             </Button>
           </DialogFooter>

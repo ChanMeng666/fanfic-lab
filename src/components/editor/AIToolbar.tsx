@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
+import { Wand2, FileText, Sparkles, Theater, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import type { StoryContext } from "@/lib/types/agent-state";
 
 interface AIToolbarProps {
@@ -18,13 +20,15 @@ interface AIToolbarProps {
   storyContext: StoryContext;
 }
 
+type ActionType = "continue" | "expand" | "polish" | "ooc" | null;
+
 export function AIToolbar({
   selectedText,
   isProcessing,
   storyContext,
 }: AIToolbarProps) {
   const { appendMessage } = useCopilotChat();
-  const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [activeAction, setActiveAction] = useState<ActionType>(null);
 
   const handleMagicContinue = async () => {
     setActiveAction("continue");
@@ -73,41 +77,29 @@ export function AIToolbar({
   };
 
   return (
-    <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 border-b mb-4 rounded-t-lg">
-      {/* Magic Continue */}
-      <Button
-        variant="outline"
-        size="sm"
+    <div className="flex items-center gap-2 px-4 py-3 bg-surface border border-border rounded-xl shadow-sm">
+      {/* Magic Continue - Primary AI action */}
+      <ToolbarButton
+        icon={Wand2}
+        label="Continue"
         onClick={handleMagicContinue}
-        disabled={isProcessing || activeAction === "continue"}
-        className="gap-2"
-      >
-        {activeAction === "continue" ? (
-          <div className="animate-spin h-4 w-4 border-2 border-purple-600 border-t-transparent rounded-full" />
-        ) : (
-          <span>🪄</span>
-        )}
-        Magic Continue
-      </Button>
+        disabled={isProcessing}
+        isActive={activeAction === "continue"}
+        variant="primary"
+      />
 
       {/* Expand Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!selectedText || isProcessing || activeAction === "expand"}
-            className="gap-2"
-          >
-            {activeAction === "expand" ? (
-              <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
-            ) : (
-              <span>📝</span>
-            )}
-            Expand
-          </Button>
+          <ToolbarButton
+            icon={FileText}
+            label="Expand"
+            disabled={!selectedText || isProcessing}
+            isActive={activeAction === "expand"}
+            hasDropdown
+          />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent align="start" className="min-w-[160px]">
           <DropdownMenuItem onClick={() => handleExpand("dialogue")}>
             More Dialogue
           </DropdownMenuItem>
@@ -129,21 +121,15 @@ export function AIToolbar({
       {/* Polish Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!selectedText || isProcessing || activeAction === "polish"}
-            className="gap-2"
-          >
-            {activeAction === "polish" ? (
-              <div className="animate-spin h-4 w-4 border-2 border-green-600 border-t-transparent rounded-full" />
-            ) : (
-              <span>✨</span>
-            )}
-            Polish
-          </Button>
+          <ToolbarButton
+            icon={Sparkles}
+            label="Polish"
+            disabled={!selectedText || isProcessing}
+            isActive={activeAction === "polish"}
+            hasDropdown
+          />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent align="start" className="min-w-[160px]">
           <DropdownMenuItem onClick={() => handlePolish("light")}>
             Light Touch
           </DropdownMenuItem>
@@ -159,27 +145,77 @@ export function AIToolbar({
       <div className="flex-1" />
 
       {/* OOC Check */}
-      <Button
-        variant="outline"
-        size="sm"
+      <ToolbarButton
+        icon={Theater}
+        label="OOC Check"
         onClick={handleOOCCheck}
-        disabled={isProcessing || activeAction === "ooc" || storyContext.characters.length === 0}
-        className="gap-2"
-      >
-        {activeAction === "ooc" ? (
-          <div className="animate-spin h-4 w-4 border-2 border-orange-600 border-t-transparent rounded-full" />
-        ) : (
-          <span>🎭</span>
-        )}
-        OOC Check
-      </Button>
+        disabled={isProcessing || storyContext.characters.length === 0}
+        isActive={activeAction === "ooc"}
+      />
 
       {/* Selection indicator */}
       {selectedText && (
-        <span className="text-xs text-gray-500 ml-2">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs">
+          <span className="size-1.5 rounded-full bg-primary" />
           {selectedText.length} chars selected
-        </span>
+        </div>
       )}
     </div>
+  );
+}
+
+// Toolbar button component
+interface ToolbarButtonProps {
+  icon: React.ElementType;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  isActive?: boolean;
+  variant?: "default" | "primary";
+  hasDropdown?: boolean;
+}
+
+function ToolbarButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+  isActive,
+  variant = "default",
+  hasDropdown,
+}: ToolbarButtonProps) {
+  const Comp = hasDropdown ? "div" : Button;
+
+  return (
+    <Comp
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+        "border border-transparent",
+        // Default state
+        !isActive &&
+          variant === "default" &&
+          "text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border",
+        // Primary variant
+        !isActive &&
+          variant === "primary" &&
+          "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm",
+        // Active/Loading state
+        isActive && "bg-accent-subtle text-accent-foreground border-accent/30",
+        // Disabled
+        disabled && "opacity-50 cursor-not-allowed",
+        // Button style when not disabled
+        !disabled && "cursor-pointer"
+      )}
+    >
+      {isActive ? (
+        <div className="size-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <Icon className="size-4" />
+      )}
+      <span>{label}</span>
+      {hasDropdown && <ChevronDown className="size-3.5 ml-0.5 opacity-60" />}
+    </Comp>
   );
 }

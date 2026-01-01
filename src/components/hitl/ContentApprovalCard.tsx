@@ -1,9 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import {
+  FileText,
+  Wand2,
+  Maximize2,
+  Palette,
+  Sparkles,
+  Check,
+  X,
+  Pencil,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 interface ContentApprovalCardProps {
   type: "outline" | "continuation" | "expansion" | "image";
@@ -11,7 +22,31 @@ interface ContentApprovalCardProps {
   onApprove: () => void;
   onReject: () => void;
   onEdit?: (editedContent: string) => void;
+  className?: string;
 }
+
+const typeConfig = {
+  outline: {
+    title: "Story Outline",
+    icon: FileText,
+    description: "AI-crafted story structure",
+  },
+  continuation: {
+    title: "Story Continuation",
+    icon: Wand2,
+    description: "Magic continuation of your narrative",
+  },
+  expansion: {
+    title: "Expanded Text",
+    icon: Maximize2,
+    description: "Enhanced scene with more detail",
+  },
+  image: {
+    title: "Generated Image",
+    icon: Palette,
+    description: "Visual illustration for your story",
+  },
+};
 
 export function ContentApprovalCard({
   type,
@@ -19,18 +54,13 @@ export function ContentApprovalCard({
   onApprove,
   onReject,
   onEdit,
+  className,
 }: ContentApprovalCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
 
-  const typeLabels = {
-    outline: { title: "Story Outline", icon: "📋", color: "purple" },
-    continuation: { title: "Story Continuation", icon: "🪄", color: "blue" },
-    expansion: { title: "Expanded Text", icon: "📝", color: "green" },
-    image: { title: "Generated Image", icon: "🎨", color: "pink" },
-  };
-
-  const { title, icon, color } = typeLabels[type];
+  const { title, icon: Icon, description } = typeConfig[type];
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
 
   const handleSaveEdit = () => {
     onEdit?.(editedContent);
@@ -43,59 +73,117 @@ export function ContentApprovalCard({
   };
 
   return (
-    <Card className={`border-2 border-${color}-200 bg-${color}-50/50`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-lg">
-          <span className="flex items-center gap-2">
-            <span>{icon}</span>
-            {title}
-          </span>
-          <span className="text-xs font-normal text-gray-500">
-            AI Generated - Review before accepting
-          </span>
+    <Card
+      className={cn(
+        "relative overflow-hidden",
+        "border-accent/40 bg-ai-surface",
+        "shadow-md ai-glow",
+        "animate-approval-pulse",
+        className
+      )}
+    >
+      {/* AI Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-ai" />
+
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center size-9 rounded-lg bg-accent/15 text-accent">
+              <Icon className="size-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                {title}
+              </h3>
+              <p className="text-xs text-muted-foreground font-normal">
+                {description}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-3.5 text-accent" />
+            <span className="text-xs text-accent-foreground font-medium px-2 py-1 rounded-full bg-accent/15">
+              AI Generated
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+
+      <CardContent className="space-y-4">
         {isEditing ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
-              className="min-h-[200px] font-serif"
+              className="min-h-[200px] font-prose text-base leading-relaxed"
+              placeholder="Edit the AI-generated content..."
             />
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button size="sm" onClick={handleSaveEdit}>
+                <Check className="size-4 mr-1.5" />
                 Save Changes
               </Button>
-              <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+              <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
                 Cancel
               </Button>
             </div>
           </div>
         ) : (
           <>
-            <div className="prose prose-sm max-w-none mb-4 max-h-[300px] overflow-y-auto">
-              <div className="whitespace-pre-wrap font-serif text-gray-700 dark:text-gray-300 leading-relaxed">
-                {content}
+            {/* Content preview */}
+            <div className="relative">
+              <div
+                className={cn(
+                  "p-4 rounded-lg",
+                  "bg-surface border border-border",
+                  "max-h-[300px] overflow-y-auto",
+                  "scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                )}
+              >
+                <div className="font-prose text-base text-foreground leading-relaxed whitespace-pre-wrap">
+                  {content}
+                </div>
               </div>
+
+              {/* Fade overlay for long content */}
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-surface to-transparent pointer-events-none rounded-b-lg" />
             </div>
-            <div className="flex items-center gap-2 pt-2 border-t">
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
               <Button
                 size="sm"
+                variant="ai"
                 onClick={onApprove}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                className="gap-1.5"
               >
+                <Check className="size-4" />
                 Accept
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+                className="gap-1.5"
+              >
+                <Pencil className="size-3.5" />
                 Edit First
               </Button>
-              <Button size="sm" variant="ghost" onClick={onReject}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onReject}
+                className="text-muted-foreground hover:text-destructive gap-1.5"
+              >
+                <X className="size-4" />
                 Reject
               </Button>
+
               <div className="flex-1" />
-              <span className="text-xs text-gray-500">
-                {content.split(/\s+/).filter(Boolean).length} words
+
+              {/* Word count */}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {wordCount.toLocaleString()} words
               </span>
             </div>
           </>
@@ -104,3 +192,5 @@ export function ContentApprovalCard({
     </Card>
   );
 }
+
+export default ContentApprovalCard;

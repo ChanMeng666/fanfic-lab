@@ -5,6 +5,17 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
+import {
+  Feather,
+  Sparkles,
+  BookOpen,
+  Heart,
+  Users,
+  FileText,
+  PenLine,
+  Check,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +24,7 @@ import { ShipBuilder } from "@/components/wizard/ShipBuilder";
 import { CharacterSetup } from "@/components/wizard/CharacterSetup";
 import { OutlineApprovalCard } from "@/components/hitl/OutlineApprovalCard";
 import type { StoryCharacter } from "@/lib/types/agent-state";
+import { cn } from "@/lib/utils";
 
 interface WizardSession {
   step: "fandom" | "ship" | "characters" | "outline" | "complete";
@@ -34,10 +46,17 @@ const INITIAL_SESSION: WizardSession = {
   outline: "",
 };
 
+const WIZARD_STEPS = [
+  { key: "fandom", label: "Choose Fandom", icon: BookOpen },
+  { key: "ship", label: "Define Ships", icon: Heart },
+  { key: "characters", label: "Setup Characters", icon: Users },
+  { key: "outline", label: "Review Outline", icon: FileText },
+  { key: "complete", label: "Start Writing", icon: PenLine },
+] as const;
+
 export default function WizardPage() {
   const router = useRouter();
   const [session, setSession] = useState<WizardSession>(INITIAL_SESSION);
-  const [pendingOutline, setPendingOutline] = useState<string | null>(null);
 
   // Share wizard state with AI
   useCopilotReadable({
@@ -129,14 +148,25 @@ export default function WizardPage() {
       <OutlineApprovalCard
         outline={args.outline || ""}
         onApprove={() => {
-          setSession((prev) => ({ ...prev, outline: args.outline || "", step: "complete" }));
+          setSession((prev) => ({
+            ...prev,
+            outline: args.outline || "",
+            step: "complete",
+          }));
           respond?.({ approved: true, outline: args.outline || "" });
         }}
         onReject={() => {
-          respond?.({ approved: false, feedback: "Please regenerate with different ideas" });
+          respond?.({
+            approved: false,
+            feedback: "Please regenerate with different ideas",
+          });
         }}
         onEdit={(editedOutline) => {
-          setSession((prev) => ({ ...prev, outline: editedOutline, step: "complete" }));
+          setSession((prev) => ({
+            ...prev,
+            outline: editedOutline,
+            step: "complete",
+          }));
           respond?.({ approved: true, outline: editedOutline });
         }}
       />
@@ -149,95 +179,133 @@ export default function WizardPage() {
     description: "User is ready to start writing their story",
     parameters: [],
     handler: async () => {
-      // Store session data and redirect to editor
       sessionStorage.setItem("wizard-session", JSON.stringify(session));
       router.push("/editor");
     },
     render: () => (
-      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-        <span className="text-green-700">Redirecting to editor...</span>
+      <div className="flex items-center gap-2 p-4 bg-success/10 border border-success/30 rounded-xl">
+        <div className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+        <span className="text-success font-medium">
+          Redirecting to editor...
+        </span>
       </div>
     ),
   });
 
+  const currentStepIndex = WIZARD_STEPS.findIndex(
+    (s) => s.key === session.step
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-950">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+      <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">✨</span>
-            <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
+              <Feather className="size-4" />
+            </div>
+            <span className="text-xl font-display font-semibold text-foreground">
               FanFic Lab
             </span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="gap-1">
-              <span>🧙</span>
-              Creative Wizard
-            </Badge>
-          </div>
+          <Badge variant="secondary" className="gap-1.5">
+            <Sparkles className="size-3.5 text-accent" />
+            Creative Wizard
+          </Badge>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Progress Sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <span>🗺️</span>
+          <div className="lg:col-span-4 xl:col-span-3">
+            <Card className="sticky top-24">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2.5 text-lg">
+                  <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+                    <FileText className="size-4" />
+                  </div>
                   Story Progress
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <StepIndicator
-                    step={1}
-                    label="Choose Fandom"
-                    completed={!!session.fandom}
-                    current={session.step === "fandom"}
-                    value={session.fandom}
-                  />
-                  <StepIndicator
-                    step={2}
-                    label="Define Ships"
-                    completed={session.ships.length > 0}
-                    current={session.step === "ship"}
-                    value={session.ships.join(", ")}
-                  />
-                  <StepIndicator
-                    step={3}
-                    label="Setup Characters"
-                    completed={session.characters.length > 0}
-                    current={session.step === "characters"}
-                    value={`${session.characters.length} characters`}
-                  />
-                  <StepIndicator
-                    step={4}
-                    label="Review Outline"
-                    completed={!!session.outline}
-                    current={session.step === "outline"}
-                  />
-                  <StepIndicator
-                    step={5}
-                    label="Start Writing"
-                    completed={session.step === "complete"}
-                    current={session.step === "complete"}
-                  />
-                </div>
+              <CardContent className="space-y-1">
+                {WIZARD_STEPS.map((step, index) => {
+                  const Icon = step.icon;
+                  const isCompleted =
+                    index < currentStepIndex ||
+                    (step.key === "complete" && session.step === "complete");
+                  const isCurrent = step.key === session.step;
+
+                  let value: string | undefined;
+                  if (step.key === "fandom" && session.fandom) {
+                    value = session.fandom;
+                  } else if (step.key === "ship" && session.ships.length > 0) {
+                    value = session.ships.join(", ");
+                  } else if (
+                    step.key === "characters" &&
+                    session.characters.length > 0
+                  ) {
+                    value = `${session.characters.length} characters`;
+                  }
+
+                  return (
+                    <div
+                      key={step.key}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-lg transition-colors",
+                        isCurrent && "bg-secondary",
+                        !isCurrent && !isCompleted && "opacity-50"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "flex-shrink-0 size-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+                          isCompleted && "bg-success text-white",
+                          isCurrent && !isCompleted && "bg-primary text-primary-foreground",
+                          !isCurrent && !isCompleted && "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {isCompleted ? (
+                          <Check className="size-4" />
+                        ) : (
+                          <Icon className="size-4" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className={cn(
+                            "font-medium text-sm",
+                            isCurrent && "text-primary",
+                            !isCurrent && "text-foreground"
+                          )}
+                        >
+                          {step.label}
+                        </div>
+                        {value && (
+                          <div className="text-xs text-muted-foreground truncate mt-0.5">
+                            {value}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {session.step === "complete" && (
-                  <div className="mt-6 pt-4 border-t">
+                  <div className="mt-6 pt-4 border-t border-border">
                     <Button
                       onClick={() => {
-                        sessionStorage.setItem("wizard-session", JSON.stringify(session));
+                        sessionStorage.setItem(
+                          "wizard-session",
+                          JSON.stringify(session)
+                        );
                         router.push("/editor");
                       }}
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
+                      className="w-full gap-2"
                     >
                       Go to Editor
+                      <ArrowRight className="size-4" />
                     </Button>
                   </div>
                 )}
@@ -246,19 +314,26 @@ export default function WizardPage() {
           </div>
 
           {/* Chat Area */}
-          <div className="lg:col-span-2">
-            <Card className="h-[600px] flex flex-col">
-              <CardHeader className="border-b">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <span>🧙</span>
-                  Creative Assistant
+          <div className="lg:col-span-8 xl:col-span-9">
+            <Card className="h-[calc(100vh-200px)] min-h-[500px] flex flex-col overflow-hidden">
+              <CardHeader className="border-b border-border bg-ai-surface py-4">
+                <CardTitle className="flex items-center gap-2.5 text-base">
+                  <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+                    <Sparkles className="size-4" />
+                  </div>
+                  <span>Creative Assistant</span>
+                  <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
+                    <div className="size-2 rounded-full bg-success animate-pulse" />
+                    Ready to help
+                  </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 p-0">
+              <CardContent className="flex-1 p-0 overflow-hidden">
                 <CopilotChat
                   labels={{
                     title: "Story Wizard",
-                    initial: "Hi! I'm your creative writing assistant. Let's create an amazing fanfiction together! First, tell me which fandom you'd like to write in, or just say 'help me choose' if you're not sure.",
+                    initial:
+                      "Hi! I'm your creative writing assistant. Let's create an amazing fanfiction together!\n\nFirst, tell me which fandom you'd like to write in, or just say 'help me choose' if you're not sure.",
                   }}
                   className="h-full"
                 />
@@ -267,40 +342,6 @@ export default function WizardPage() {
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-function StepIndicator({
-  step,
-  label,
-  completed,
-  current,
-  value,
-}: {
-  step: number;
-  label: string;
-  completed: boolean;
-  current: boolean;
-  value?: string;
-}) {
-  return (
-    <div className={`flex items-start gap-3 ${current ? "opacity-100" : "opacity-60"}`}>
-      <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          completed
-            ? "bg-green-500 text-white"
-            : current
-            ? "bg-purple-600 text-white"
-            : "bg-gray-200 text-gray-600"
-        }`}
-      >
-        {completed ? "✓" : step}
-      </div>
-      <div>
-        <div className={`font-medium ${current ? "text-purple-600" : ""}`}>{label}</div>
-        {value && <div className="text-sm text-gray-500">{value}</div>}
-      </div>
     </div>
   );
 }
