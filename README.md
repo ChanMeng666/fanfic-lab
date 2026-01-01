@@ -14,6 +14,7 @@ An AI-powered fanfiction writing platform built with **Next.js 15**, **CopilotKi
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
+- [Design System](#design-system)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -152,6 +153,48 @@ graph LR
 | Database | Neon PostgreSQL + Prisma 7 |
 | Auth | Stack Auth (Neon integration) |
 | Deployment | Vercel (serverless) |
+
+## Design System
+
+FanFic Lab uses a **"Literary Atelier"** design concept with a Teal + Amber color palette.
+
+### Brand Colors
+
+| Color | Token | Light Mode | Dark Mode | Usage |
+|-------|-------|------------|-----------|-------|
+| **Teal** | `--primary` | `oklch(0.45 0.12 175)` | `oklch(0.60 0.12 175)` | Main actions, links |
+| **Amber** | `--accent` | `oklch(0.75 0.15 75)` | `oklch(0.75 0.15 75)` | AI interactions |
+| **Cream** | `--background` | `oklch(0.985 0.005 85)` | `oklch(0.18 0.015 50)` | Page background |
+| **Surface** | `--surface` | `oklch(1 0 0)` | `oklch(0.22 0.015 50)` | Cards, panels |
+
+### Typography
+
+| Font | Usage |
+|------|-------|
+| Cormorant Garamond | Display headings, titles (`font-display`) |
+| Source Sans 3 | UI text, body (default `font-sans`) |
+| Lora | Story content, prose (`font-prose`) |
+| JetBrains Mono | Code, technical text (`font-mono`) |
+
+### Icons
+
+All icons use **Lucide React**. No emojis in UI.
+
+| Concept | Icon |
+|---------|------|
+| Brand | `Feather` |
+| AI/Magic | `Sparkles` |
+| Writing | `PenLine` |
+| Characters | `Users` |
+| Stories | `BookOpen` |
+
+### AI-Specific Patterns
+
+- **AI Cards**: Use `bg-ai-surface` + `ai-glow` class + amber borders
+- **AI Actions**: Use amber accent color for AI-related buttons
+- **AI Badge**: Show `<Sparkles />` icon with "AI Generated" label
+
+For complete design system documentation, see [CLAUDE.md](./CLAUDE.md).
 
 ## Architecture
 
