@@ -1,291 +1,189 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { motion, stagger, useAnimate } from "motion/react";
 import {
   BookOpen,
-  Film,
-  Gamepad2,
-  Music,
-  Palette,
   Sparkles,
-  Wand2,
   PenLine,
-  Users,
-  Heart,
-  ArrowRight,
   Feather,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
 
-// Fandom categories for the Inspiration Hub
-const FANDOM_CATEGORIES = [
-  { name: "Anime & Manga", icon: BookOpen, count: "125K+" },
-  { name: "Books & Literature", icon: Feather, count: "89K+" },
-  { name: "Movies & Television", icon: Film, count: "156K+" },
-  { name: "Video Games", icon: Gamepad2, count: "67K+" },
-  { name: "K-Pop & Music", icon: Music, count: "45K+" },
-  { name: "Comics & Cartoons", icon: Palette, count: "34K+" },
-];
-
-// Popular tags for discovery
-const POPULAR_TAGS = [
-  "Fluff",
-  "Angst",
-  "Slow Burn",
-  "Enemies to Lovers",
-  "Coffee Shop AU",
-  "Hurt/Comfort",
-  "Found Family",
-  "Crack fic",
+// Literary themed images from Unsplash (known working URLs)
+const floatingImages = [
+  {
+    url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80",
+    alt: "Stack of old books",
+    className: "top-[8%] left-[5%] md:left-[11%]",
+    size: "w-20 h-28 md:w-28 md:h-40",
+    depth: 0.5,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80",
+    alt: "Open book pages",
+    className: "top-[5%] left-[60%] md:left-[68%]",
+    size: "w-24 h-16 md:w-36 md:h-24",
+    depth: 1,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=400&q=80",
+    alt: "Library bookshelves",
+    className: "top-[2%] left-[30%] md:left-[38%]",
+    size: "w-16 h-24 md:w-24 md:h-36",
+    depth: 2,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1474932430478-367dbb6832c1?w=400&q=80",
+    alt: "Vintage typewriter",
+    className: "top-[45%] left-[2%] md:left-[5%]",
+    size: "w-24 h-20 md:w-32 md:h-28",
+    depth: 1.5,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=400&q=80",
+    alt: "Books and coffee",
+    className: "top-[55%] md:top-[50%] left-[75%] md:left-[82%]",
+    size: "w-20 h-20 md:w-28 md:h-28",
+    depth: 2.5,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&q=80",
+    alt: "Library reading room",
+    className: "top-[75%] md:top-[72%] left-[8%] md:left-[15%]",
+    size: "w-28 h-20 md:w-40 md:h-28",
+    depth: 3,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=400&q=80",
+    alt: "Book and glasses",
+    className: "top-[78%] md:top-[75%] left-[55%] md:left-[60%]",
+    size: "w-20 h-20 md:w-28 md:h-28",
+    depth: 1,
+  },
+  {
+    url: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=400&q=80",
+    alt: "Old manuscript pages",
+    className: "top-[25%] left-[80%] md:left-[88%]",
+    size: "w-16 h-24 md:w-20 md:h-32",
+    depth: 4,
+  },
 ];
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/30" />
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+  const [scope, animate] = useAnimate();
 
-        <div className="container relative mx-auto px-4 py-24 md:py-32 text-center">
+  useEffect(() => {
+    animate(
+      ".floating-image",
+      { opacity: [0, 1], scale: [0.8, 1] },
+      { duration: 0.5, delay: stagger(0.12) }
+    );
+  }, [animate]);
+
+  return (
+    <main
+      ref={scope}
+      className="relative h-screen w-full overflow-hidden bg-background"
+    >
+      {/* Subtle background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/20" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+
+      {/* Floating book images layer */}
+      <Floating sensitivity={-0.5} className="overflow-hidden z-0">
+        {floatingImages.map((image, index) => (
+          <FloatingElement
+            key={index}
+            depth={image.depth}
+            className={image.className}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              className="floating-image"
+            >
+              <Image
+                src={image.url}
+                alt={image.alt}
+                width={200}
+                height={200}
+                className={`${image.size} object-cover rounded-lg shadow-xl hover:scale-105 duration-300 cursor-pointer transition-transform ring-1 ring-border/50`}
+                unoptimized
+              />
+            </motion.div>
+          </FloatingElement>
+        ))}
+      </Floating>
+
+      {/* Centered hero content */}
+      <div className="relative z-10 flex flex-col items-center justify-center h-full px-4">
+        <motion.div
+          className="text-center space-y-6 max-w-2xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.2 }}
+        >
+          {/* AI Badge */}
           <Badge
             variant="secondary"
-            className="mb-6 gap-1.5 px-4 py-1.5 text-sm"
+            className="gap-1.5 px-4 py-1.5 text-sm bg-surface/80 backdrop-blur-sm"
           >
             <Sparkles className="size-3.5 text-accent" />
             AI-Powered Writing Partner
           </Badge>
 
-          <h1 className="mb-6 font-display text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground">
-            Where Stories
-            <br />
-            <span className="text-primary">Come Alive</span>
+          {/* Logo and brand */}
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center size-12 md:size-14 rounded-xl bg-primary text-primary-foreground shadow-lg">
+              <Feather className="size-6 md:size-7" />
+            </div>
+          </div>
+
+          {/* Main headline */}
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground">
+            FanFic Lab
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed">
-            Write fanfiction with an AI partner that understands your characters,
-            respects canon, and helps bring your stories to life. A creative
-            collaboration, not just a tool.
+          {/* Tagline */}
+          <p className="text-xl md:text-2xl text-muted-foreground font-light">
+            Where Stories{" "}
+            <span className="text-primary font-medium">Come Alive</span>
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          {/* Description */}
+          <p className="text-base md:text-lg text-muted-foreground/80 max-w-lg mx-auto leading-relaxed">
+            Write fanfiction with an AI partner that understands your characters
+            and helps bring your stories to life.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
             <Link href="/wizard">
-              <Button size="lg" className="gap-2 min-w-[180px]">
+              <Button size="lg" className="gap-2 min-w-[180px] shadow-lg">
                 <PenLine className="size-5" />
                 Start Writing
               </Button>
             </Link>
             <Link href="/feed">
-              <Button size="lg" variant="outline" className="gap-2 min-w-[180px]">
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2 min-w-[180px] bg-surface/50 backdrop-blur-sm"
+              >
                 <BookOpen className="size-5" />
                 Explore Stories
               </Button>
             </Link>
           </div>
+        </motion.div>
+      </div>
 
-          {/* Trust indicators */}
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Users className="size-4" />
-              <span>10,000+ writers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <BookOpen className="size-4" />
-              <span>50,000+ stories created</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Heart className="size-4 text-accent" />
-              <span>Made for fans, by fans</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24 bg-surface">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Your AI Writing Partner
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              More than just suggestions—a creative collaborator that helps you
-              craft the stories you've always imagined.
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card variant="story" className="group">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-11 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <Wand2 className="size-5" />
-                  </div>
-                  <CardTitle className="text-lg">Smart Editor</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">Magic Continue</strong> writes
-                  naturally from where you left off.{" "}
-                  <strong className="text-foreground">Expand & Polish</strong> enriches
-                  your prose.{" "}
-                  <strong className="text-foreground">OOC Check</strong> keeps
-                  characters true to form.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card variant="story" className="group">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-11 rounded-xl bg-accent/15 text-accent group-hover:bg-accent group-hover:text-white transition-colors">
-                    <Sparkles className="size-5" />
-                  </div>
-                  <CardTitle className="text-lg">Creative Wizard</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">
-                  Chat your way through story setup. Pick your fandom, choose your
-                  ship, define characters, and brainstorm plot ideas with AI
-                  guidance every step of the way.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card variant="story" className="group">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-11 rounded-xl bg-secondary text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <Heart className="size-5" />
-                  </div>
-                  <CardTitle className="text-lg">Fandom Feed</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">
-                  Discover stories with authentic tags like{" "}
-                  <em className="text-foreground">Slow Burn</em>,{" "}
-                  <em className="text-foreground">Enemies to Lovers</em>, and{" "}
-                  <em className="text-foreground">Found Family</em>. Find your next
-                  obsession.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Inspiration Hub */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Inspiration Hub
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Find your fandom and start creating
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-            {FANDOM_CATEGORIES.map((category) => {
-              const Icon = category.icon;
-              return (
-                <Card
-                  key={category.name}
-                  className="group cursor-pointer hover:shadow-lg transition-all duration-300"
-                >
-                  <CardContent className="flex items-center gap-4 p-5">
-                    <div className="flex items-center justify-center size-12 rounded-xl bg-secondary text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <Icon className="size-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {category.count} stories
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Popular Tags */}
-      <section className="py-12 bg-secondary/30">
-        <div className="container mx-auto px-4">
-          <h3 className="mb-6 text-center text-lg font-medium text-muted-foreground">
-            Popular Tags
-          </h3>
-          <div className="flex flex-wrap justify-center gap-2">
-            {POPULAR_TAGS.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors px-4 py-1.5"
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="relative rounded-3xl bg-primary p-12 md:p-16 text-center overflow-hidden">
-            {/* Background pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 left-1/4 size-64 bg-white rounded-full blur-3xl" />
-              <div className="absolute bottom-0 right-1/4 size-48 bg-accent rounded-full blur-3xl" />
-            </div>
-
-            <div className="relative">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
-                Ready to write your story?
-              </h2>
-              <p className="text-lg text-primary-foreground/80 mb-8 max-w-xl mx-auto">
-                Join thousands of fans bringing their favorite characters to life
-                with an AI partner that truly understands fanfiction.
-              </p>
-              <Link href="/wizard">
-                <Button size="lg" variant="secondary" className="gap-2">
-                  <PenLine className="size-5" />
-                  Start Creating Free
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border bg-surface">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center size-7 rounded-md bg-primary text-primary-foreground">
-                <Feather className="size-3.5" />
-              </div>
-              <span className="font-display font-semibold text-foreground">
-                FanFic Lab
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              Made with <Heart className="size-3.5 text-accent fill-accent" /> for
-              fans, by fans
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+      {/* Bottom fade for scroll indication (optional) */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+    </main>
   );
 }
