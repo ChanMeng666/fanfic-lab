@@ -9,7 +9,7 @@
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "start:agent": "langgraphjs dev --host 0.0.0.0 --port 8123 --config src/agent/langgraph.json",
+    "start:agent": "langgraphjs dev --host 0.0.0.0 --port ${PORT:-8123} --config src/agent/langgraph.json",
     "start:all": "concurrently \"npm run start\" \"npm run start:agent\"",
     "lint": "eslint"
   },
