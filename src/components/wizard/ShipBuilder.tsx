@@ -53,7 +53,7 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
     <Card className="border-accent/30 bg-accent/5">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2.5 text-lg font-display">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+          <div className="flex items-center justify-center size-8 rounded-xl bg-accent/15 text-accent">
             <Heart className="size-4" />
           </div>
           Define Ships & Pairings

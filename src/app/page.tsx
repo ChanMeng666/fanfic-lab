@@ -111,7 +111,7 @@ export default function Home() {
                 alt={image.alt}
                 width={200}
                 height={200}
-                className={`${image.size} object-cover rounded-lg shadow-xl hover:scale-105 duration-300 cursor-pointer transition-transform ring-1 ring-border/50`}
+                className={`${image.size} object-cover rounded-2xl shadow-xl hover:scale-105 duration-300 cursor-pointer transition-transform ring-1 ring-border/50`}
                 unoptimized
               />
             </motion.div>
@@ -138,7 +138,7 @@ export default function Home() {
 
           {/* Logo and brand */}
           <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center justify-center size-12 md:size-14 rounded-xl bg-primary text-primary-foreground shadow-lg">
+            <div className="flex items-center justify-center size-12 md:size-14 rounded-2xl bg-primary text-primary-foreground shadow-lg">
               <Feather className="size-6 md:size-7" />
             </div>
           </div>

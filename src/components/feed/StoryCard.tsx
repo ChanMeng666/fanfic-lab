@@ -79,7 +79,7 @@ export function StoryCard({ story, variant = "full", onLike }: StoryCardProps) {
               <img
                 src={story.coverUrl}
                 alt={story.title}
-                className="w-16 h-20 object-cover rounded-lg"
+                className="w-16 h-20 object-cover rounded-2xl"
               />
             )}
             <div className="flex-1 min-w-0">

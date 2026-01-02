@@ -7,10 +7,10 @@ export default function ProfileLoading() {
       <header className="border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
-            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-8 w-8 rounded-xl" />
             <Skeleton className="h-6 w-24" />
           </div>
-          <Skeleton className="h-8 w-24 rounded-lg" />
+          <Skeleton className="h-8 w-24 rounded-xl" />
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">
@@ -24,9 +24,9 @@ export default function ProfileLoading() {
                   <Skeleton className="h-4 w-24" />
                 </div>
                 <div className="mt-6 pt-6 border-t border-border grid grid-cols-3 gap-4">
-                  <Skeleton className="h-12 w-full rounded-lg" />
-                  <Skeleton className="h-12 w-full rounded-lg" />
-                  <Skeleton className="h-12 w-full rounded-lg" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
                 </div>
               </CardContent>
             </Card>
@@ -35,7 +35,7 @@ export default function ProfileLoading() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-8 w-32" />
-              <Skeleton className="h-9 w-28 rounded-lg" />
+              <Skeleton className="h-9 w-28 rounded-xl" />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Skeleton className="h-48 w-full rounded-xl" />

@@ -343,7 +343,7 @@ export default function ProfilePage() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2.5 text-base">
-                    <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+                    <div className="flex items-center justify-center size-8 rounded-xl bg-secondary text-secondary-foreground">
                       <BarChart3 className="size-4" />
                     </div>
                     Writing Stats
@@ -378,7 +378,7 @@ export default function ProfilePage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2.5 text-base">
-                      <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+                      <div className="flex items-center justify-center size-8 rounded-xl bg-accent/15 text-accent">
                         <Heart className="size-4" />
                       </div>
                       Favorite Fandoms

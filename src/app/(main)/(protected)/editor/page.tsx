@@ -99,7 +99,7 @@ export default function NewEditorPage() {
         <header className="border-b border-border bg-surface/80 backdrop-blur-sm">
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-center justify-center size-9 rounded-lg bg-primary/10">
+              <div className="flex items-center justify-center size-9 rounded-xl bg-primary/10">
                 <Feather className="size-5 text-primary" />
               </div>
               <span className="text-xl font-display font-bold text-foreground">
@@ -211,7 +211,7 @@ export default function NewEditorPage() {
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10">
+              <div className="flex items-center justify-center size-8 rounded-xl bg-primary/10">
                 <Feather className="size-4 text-primary" />
               </div>
               <span className="font-display font-bold text-foreground">

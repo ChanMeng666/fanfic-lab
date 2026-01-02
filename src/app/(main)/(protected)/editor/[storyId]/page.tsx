@@ -178,7 +178,7 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
         <header className="border-b border-border bg-surface sticky top-0 z-50">
           <div className="flex h-14 items-center justify-between px-4">
             <div className="flex items-center gap-4">
-              <Skeleton className="h-8 w-8 rounded-lg" />
+              <Skeleton className="h-8 w-8 rounded-xl" />
               <Skeleton className="h-5 w-48" />
             </div>
             <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
           {/* Left side: Logo, Back, Title */}
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 mr-2">
-              <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground">
+              <div className="flex items-center justify-center size-8 rounded-xl bg-primary text-primary-foreground">
                 <Feather className="size-4" />
               </div>
             </Link>

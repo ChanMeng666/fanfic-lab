@@ -78,7 +78,7 @@ export function CharacterSetup({
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2.5 text-lg font-display">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-primary/15 text-primary">
+          <div className="flex items-center justify-center size-8 rounded-xl bg-primary/15 text-primary">
             <Users className="size-4" />
           </div>
           Setup Characters
@@ -126,7 +126,7 @@ export function CharacterSetup({
                 {characters.map((char) => (
                   <div
                     key={char.id}
-                    className="flex items-center justify-between p-2 bg-surface rounded-lg border border-border"
+                    className="flex items-center justify-between p-2 bg-surface rounded-2xl border border-border"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">{char.name}</span>
@@ -160,7 +160,7 @@ export function CharacterSetup({
 
         {/* Add Custom Character Form */}
         {showAddForm ? (
-          <div className="space-y-3 p-3 bg-surface rounded-lg border border-border">
+          <div className="space-y-3 p-3 bg-surface rounded-2xl border border-border">
             <div>
               <label className="text-sm font-medium text-foreground">Character Name</label>
               <Input

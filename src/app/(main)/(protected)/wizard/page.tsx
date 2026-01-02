@@ -203,7 +203,7 @@ export default function WizardPage() {
             <Card className="sticky top-24">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2.5 text-lg">
-                  <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+                  <div className="flex items-center justify-center size-8 rounded-2xl bg-secondary text-secondary-foreground">
                     <FileText className="size-4" />
                   </div>
                   Story Progress
@@ -233,7 +233,7 @@ export default function WizardPage() {
                     <div
                       key={step.key}
                       className={cn(
-                        "flex items-start gap-3 p-3 rounded-lg transition-colors",
+                        "flex items-start gap-3 p-3 rounded-2xl transition-colors",
                         isCurrent && "bg-secondary",
                         !isCurrent && !isCompleted && "opacity-50"
                       )}
@@ -298,7 +298,7 @@ export default function WizardPage() {
             <Card className="h-[calc(100vh-200px)] min-h-[500px] flex flex-col overflow-hidden">
               <CardHeader className="border-b border-border bg-ai-surface py-4">
                 <CardTitle className="flex items-center gap-2.5 text-base">
-                  <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+                  <div className="flex items-center justify-center size-8 rounded-2xl bg-accent/15 text-accent">
                     <Sparkles className="size-4" />
                   </div>
                   <span>Creative Assistant</span>

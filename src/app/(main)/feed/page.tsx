@@ -183,7 +183,7 @@ export default function FeedPage() {
             <Card className="sticky top-24">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2.5 text-base">
-                  <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+                  <div className="flex items-center justify-center size-8 rounded-xl bg-secondary text-secondary-foreground">
                     <Filter className="size-4" />
                   </div>
                   Filters

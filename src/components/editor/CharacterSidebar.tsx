@@ -64,7 +64,7 @@ export function CharacterSidebar({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+            <div className="flex items-center justify-center size-8 rounded-xl bg-secondary text-secondary-foreground">
               <Users className="size-4" />
             </div>
             Characters

@@ -64,7 +64,7 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2.5 text-lg font-display">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-primary/15 text-primary">
+          <div className="flex items-center justify-center size-8 rounded-xl bg-primary/15 text-primary">
             <Library className="size-4" />
           </div>
           Choose Your Fandom

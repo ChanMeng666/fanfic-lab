@@ -88,7 +88,7 @@ export function ContentApprovalCard({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-9 rounded-lg bg-accent/15 text-accent">
+            <div className="flex items-center justify-center size-9 rounded-2xl bg-accent/15 text-accent">
               <Icon className="size-5" />
             </div>
             <div>
@@ -134,7 +134,7 @@ export function ContentApprovalCard({
             <div className="relative">
               <div
                 className={cn(
-                  "p-4 rounded-lg",
+                  "p-4 rounded-2xl",
                   "bg-surface border border-border",
                   "max-h-[300px] overflow-y-auto",
                   "scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"

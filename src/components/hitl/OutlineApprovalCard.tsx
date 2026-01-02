@@ -41,7 +41,7 @@ export function OutlineApprovalCard({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
           <span className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+            <div className="flex items-center justify-center size-8 rounded-2xl bg-accent/15 text-accent">
               <ClipboardList className="size-4" />
             </div>
             <span className="font-display">Story Outline</span>

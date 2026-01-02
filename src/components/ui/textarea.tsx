@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 
 const textareaVariants = cva(
   // Base styles
-  "flex w-full rounded-lg border bg-surface px-4 py-3 text-base transition-all duration-150 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+  "flex w-full rounded-2xl border bg-surface px-4 py-3 text-base transition-all duration-150 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {

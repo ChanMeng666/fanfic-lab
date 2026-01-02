@@ -127,7 +127,7 @@ export function OOCChecker({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-warning/15 text-warning">
+            <div className="flex items-center justify-center size-8 rounded-2xl bg-warning/15 text-warning">
               <Theater className="size-4" />
             </div>
             OOC Check Results
@@ -190,13 +190,13 @@ export function OOCChecker({
                               </Badge>
                             </div>
 
-                            <div className="bg-surface rounded-lg p-2 text-sm italic text-muted-foreground border border-border">
+                            <div className="bg-surface rounded-2xl p-2 text-sm italic text-muted-foreground border border-border">
                               "{issue.excerpt}"
                             </div>
 
                             <p className="text-sm text-foreground">{issue.explanation}</p>
 
-                            <div className="bg-success/10 border border-success/20 rounded-lg p-2 text-sm">
+                            <div className="bg-success/10 border border-success/20 rounded-2xl p-2 text-sm">
                               <span className="font-medium text-success">Suggestion: </span>
                               <span className="text-foreground">{issue.suggestion}</span>
                             </div>

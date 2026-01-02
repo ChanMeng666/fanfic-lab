@@ -43,7 +43,7 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
 
   const ImageCard = ({ image }: { image: StoryImage }) => (
     <div
-      className="relative group cursor-pointer rounded-lg overflow-hidden border border-border bg-surface hover:shadow-md transition-shadow"
+      className="relative group cursor-pointer rounded-2xl overflow-hidden border border-border bg-surface hover:shadow-md transition-shadow"
       onClick={() => setSelectedImage(image)}
     >
       <img
@@ -93,7 +93,7 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between text-base">
             <span className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center size-8 rounded-lg bg-secondary text-secondary-foreground">
+              <div className="flex items-center justify-center size-8 rounded-2xl bg-secondary text-secondary-foreground">
                 <ImageIcon className="size-4" />
               </div>
               Images
@@ -150,10 +150,10 @@ export function ImageGallery({ images, onDelete, onInsert }: ImageGalleryProps) 
                 <img
                   src={selectedImage.url}
                   alt={selectedImage.prompt}
-                  className="max-w-full max-h-[400px] rounded-lg object-contain"
+                  className="max-w-full max-h-[400px] rounded-2xl object-contain"
                 />
               </div>
-              <div className="bg-surface rounded-lg p-3 border border-border">
+              <div className="bg-surface rounded-2xl p-3 border border-border">
                 <span className="text-xs font-medium text-muted-foreground">
                   Prompt:
                 </span>

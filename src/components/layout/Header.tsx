@@ -5,12 +5,10 @@ import Link from "next/link";
 import { useUser } from "@stackframe/stack";
 import {
   Feather,
-  User,
   Settings,
   LogOut,
   BookOpen,
   FileText,
-  PenLine,
   Menu,
   X,
   ArrowRight,
@@ -26,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { FloatingNavbar, NavLink, NavDivider } from "@/components/ui/floating-navbar";
 import { syncUser } from "@/lib/actions/user";
 
 export function Header({ className }: { className?: string }) {
@@ -34,7 +32,6 @@ export function Header({ className }: { className?: string }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
 
-  // Loading state: useUser() returns undefined initially, then user or null
   const isLoading = user === undefined;
   const isLoggedIn = user !== null && user !== undefined;
 
@@ -42,12 +39,8 @@ export function Header({ className }: { className?: string }) {
   useEffect(() => {
     if (isLoggedIn && !hasSynced) {
       syncUser()
-        .then(() => {
-          setHasSynced(true);
-        })
-        .catch((error) => {
-          console.error("Failed to sync user:", error);
-        });
+        .then(() => setHasSynced(true))
+        .catch((error) => console.error("Failed to sync user:", error));
     }
   }, [isLoggedIn, hasSynced]);
 
@@ -58,197 +51,182 @@ export function Header({ className }: { className?: string }) {
   };
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-md",
-        className
-      )}
-    >
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+    <>
+      <FloatingNavbar className={className}>
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-            <Feather className="size-4" />
+        <Link href="/" className="flex items-center gap-2 group px-1">
+          <div className="flex items-center justify-center size-7 rounded-xl bg-primary text-primary-foreground transition-transform group-hover:scale-105">
+            <Feather className="size-3.5" />
           </div>
-          <span className="text-xl font-display font-semibold text-foreground">
+          <span className="text-base font-display font-semibold text-foreground hidden sm:inline">
             FanFic Lab
           </span>
         </Link>
 
+        {/* Divider */}
+        <NavDivider className="hidden sm:block" />
+
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link
-            href="/feed"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Explore
-          </Link>
-          <Link
-            href="/wizard"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Wizard
-          </Link>
+        <nav className="hidden sm:flex items-center">
+          <NavLink href="/feed">Explore</NavLink>
+          <NavLink href="/wizard">Wizard</NavLink>
         </nav>
 
-        {/* Right Side: Auth Section */}
-        <div className="flex items-center gap-3">
-          {isLoading ? (
-            // Loading skeleton
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-20 rounded-md" />
-              <Skeleton className="size-9 rounded-full" />
-            </div>
-          ) : isLoggedIn ? (
-            // Logged-in state
-            <>
-              {/* Quick Actions (Desktop) */}
-              <div className="hidden md:flex items-center gap-2">
-                <Link href="/wizard">
-                  <Button size="sm" className="gap-1.5">
-                    <PenLine className="size-4" />
-                    New Story
-                  </Button>
-                </Link>
-              </div>
+        {/* Divider before auth */}
+        <NavDivider />
 
-              {/* User Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="relative size-9 rounded-full p-0"
-                  >
-                    <Avatar className="size-9 ring-2 ring-border">
-                      <AvatarImage src={user.profileImageUrl || undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                        {user.displayName?.[0]?.toUpperCase() ||
-                          user.primaryEmail?.[0]?.toUpperCase() ||
-                          "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {user.displayName || "User"}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {user.primaryEmail}
-                      </span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer gap-2">
-                      <BookOpen className="size-4" />
-                      My Stories
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/profile?tab=drafts"
-                      className="cursor-pointer gap-2"
-                    >
-                      <FileText className="size-4" />
-                      Drafts
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/handler/account-settings"
-                      className="cursor-pointer gap-2"
-                    >
-                      <Settings className="size-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleSignOut}
-                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
-                  >
-                    <LogOut className="size-4" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+        {/* Auth Section */}
+        <div className="flex items-center gap-1.5">
+          {isLoading ? (
+            <Skeleton className="size-8 rounded-full" />
+          ) : isLoggedIn ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="relative size-8 rounded-full p-0 hover:bg-transparent"
+                >
+                  <Avatar className="size-8 ring-2 ring-border/50 hover:ring-primary/50 transition-all">
+                    <AvatarImage src={user.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {user.displayName?.[0]?.toUpperCase() ||
+                        user.primaryEmail?.[0]?.toUpperCase() ||
+                        "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">
+                      {user.displayName || "User"}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {user.primaryEmail}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="cursor-pointer gap-2">
+                    <BookOpen className="size-4" />
+                    My Stories
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/profile?tab=drafts" className="cursor-pointer gap-2">
+                    <FileText className="size-4" />
+                    Drafts
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/handler/account-settings" className="cursor-pointer gap-2">
+                    <Settings className="size-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                >
+                  <LogOut className="size-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
-            // Logged-out state
-            <div className="flex items-center gap-3">
-              <Link href="/handler/sign-in">
-                <Button variant="ghost" size="sm">
+            <div className="flex items-center gap-1.5">
+              <Link href="/handler/sign-in" className="hidden sm:block">
+                <Button variant="ghost" size="sm" className="h-8 px-3 text-sm rounded-full">
                   Sign In
                 </Button>
               </Link>
               <Link href="/wizard">
-                <Button size="sm">
-                  Get Started
-                  <ArrowRight className="size-4 ml-1.5" />
+                <Button size="sm" className="h-8 px-3 text-sm rounded-full gap-1">
+                  <span className="hidden sm:inline">Get Started</span>
+                  <span className="sm:hidden">Start</span>
+                  <ArrowRight className="size-3.5" />
                 </Button>
               </Link>
             </div>
           )}
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="sm:hidden size-8 rounded-full"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
-              <X className="size-5" />
+              <X className="size-4" />
             ) : (
-              <Menu className="size-5" />
+              <Menu className="size-4" />
             )}
           </Button>
         </div>
-      </div>
+      </FloatingNavbar>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-surface p-4">
-          <nav className="flex flex-col gap-2">
-            <Link
-              href="/feed"
-              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Explore
-            </Link>
-            <Link
-              href="/wizard"
-              className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Wizard
-            </Link>
-            {isLoggedIn && (
-              <>
-                <Link
-                  href="/profile"
-                  className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  My Stories
-                </Link>
-                <Link
-                  href="/profile?tab=drafts"
-                  className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Drafts
-                </Link>
-              </>
-            )}
-          </nav>
+        <div className="fixed top-16 inset-x-0 mx-auto max-w-[280px] z-40 sm:hidden">
+          <div className="bg-surface/95 backdrop-blur-lg border border-border/50 rounded-2xl shadow-lg p-2 animate-fade-slide-in">
+            <nav className="flex flex-col gap-1">
+              <Link
+                href="/feed"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Explore
+              </Link>
+              <Link
+                href="/wizard"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Wizard
+              </Link>
+              {isLoggedIn && (
+                <>
+                  <div className="h-px bg-border/50 my-1" />
+                  <Link
+                    href="/profile"
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    My Stories
+                  </Link>
+                  <Link
+                    href="/profile?tab=drafts"
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Drafts
+                  </Link>
+                </>
+              )}
+              {!isLoggedIn && (
+                <>
+                  <div className="h-px bg-border/50 my-1" />
+                  <Link
+                    href="/handler/sign-in"
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                </>
+              )}
+            </nav>
+          </div>
         </div>
       )}
-    </header>
+
+      {/* Spacer for floating navbar */}
+      <div className="h-16" />
+    </>
   );
 }

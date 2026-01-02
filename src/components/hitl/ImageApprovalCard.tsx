@@ -61,7 +61,7 @@ export function ImageApprovalCard({
       <Card className="border-accent/30 bg-ai-surface ai-glow">
         <CardContent className="py-8">
           <div className="flex flex-col items-center justify-center gap-4">
-            <div className="animate-pulse w-48 h-48 bg-secondary rounded-lg flex items-center justify-center">
+            <div className="animate-pulse w-48 h-48 bg-secondary rounded-2xl flex items-center justify-center">
               <Icon className="size-12 text-muted-foreground animate-bounce" />
             </div>
             <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export function ImageApprovalCard({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
           <span className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+            <div className="flex items-center justify-center size-8 rounded-2xl bg-accent/15 text-accent">
               <Icon className="size-4" />
             </div>
             <span className="font-display">{title}</span>
@@ -103,9 +103,9 @@ export function ImageApprovalCard({
               <img
                 src={imageUrl}
                 alt={`Generated ${type}`}
-                className="max-w-full max-h-[400px] rounded-lg shadow-lg object-contain"
+                className="max-w-full max-h-[400px] rounded-2xl shadow-lg object-contain"
               />
-              <div className="absolute inset-0 bg-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+              <div className="absolute inset-0 bg-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
                 <a
                   href={imageUrl}
                   target="_blank"
@@ -120,7 +120,7 @@ export function ImageApprovalCard({
           </div>
         ) : (
           <div className="flex justify-center">
-            <div className="w-48 h-48 bg-secondary rounded-lg flex items-center justify-center">
+            <div className="w-48 h-48 bg-secondary rounded-2xl flex items-center justify-center">
               <span className="text-muted-foreground text-sm">No image generated</span>
             </div>
           </div>
@@ -153,7 +153,7 @@ export function ImageApprovalCard({
             </div>
           </div>
         ) : (
-          <div className="bg-surface rounded-lg p-3 border border-border">
+          <div className="bg-surface rounded-2xl p-3 border border-border">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-muted-foreground">Prompt:</span>
               {onRegenerate && (
