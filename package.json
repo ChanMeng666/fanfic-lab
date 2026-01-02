@@ -2,6 +2,9 @@
   "name": "fanfic-lab",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:agent": "langgraphjs dev --host localhost --port 8123 --config src/agent/langgraph.json",
