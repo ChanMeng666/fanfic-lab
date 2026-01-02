@@ -1,0 +1,11 @@
+# Use Node.js 20 LTS (more stable) instead of 22
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x", "openssl"]
+
+# Skip the build phase since we only need LangGraph agent
+[phases.build]
+cmds = ["echo 'Skipping Next.js build for LangGraph-only deployment'"]
+
+# Install dependencies but skip Prisma generate
+[phases.install]
+cmds = ["npm ci --ignore-scripts", "npm rebuild"]
