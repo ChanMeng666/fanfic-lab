@@ -6,6 +6,6 @@ nixPkgs = ["nodejs_20", "npm-9_x", "openssl"]
 [phases.build]
 cmds = ["echo 'Skipping Next.js build for LangGraph-only deployment'"]
 
-# Install dependencies but skip Prisma generate
+# Install dependencies, skip all scripts (no Prisma needed for LangGraph)
 [phases.install]
-cmds = ["npm ci --ignore-scripts", "npm rebuild"]
+cmds = ["npm ci --ignore-scripts"]
