@@ -26,8 +26,9 @@
       "Bash(vercel env:*)",
       "Bash(cd:*)",
       "Bash(tree:*)",
-      "Bash(ls -la \"D:\\\\github_repository\\\\fanfic-lab\\\\src\\\\components\"\" | grep -i \"copilot|chat|ai \")",
-      "Skill(example-skills:frontend-design)"
+      "Bash(ls:*)",
+      "Skill(example-skills:frontend-design)",
+      "Bash(powershell -Command:*)"
     ]
   }
 }
