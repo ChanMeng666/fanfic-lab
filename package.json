@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:agent": "npx @langchain/langgraph-cli dev --host localhost --port 8123 --config src/agent/langgraph.json",
+    "dev:agent": "langgraphjs dev --host localhost --port 8123 --config src/agent/langgraph.json",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:agent\"",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
@@ -48,10 +48,12 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@langchain/langgraph-cli": "^1.1.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",

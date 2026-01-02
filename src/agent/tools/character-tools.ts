@@ -7,7 +7,7 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import type { StoryCharacter, OOCCheckResult } from "@/lib/types/agent-state";
+import type { StoryCharacter, OOCCheckResult } from "../../lib/types/agent-state";
 
 /**
  * Create Character Tool

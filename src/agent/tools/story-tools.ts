@@ -7,7 +7,7 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import type { StoryContext } from "@/lib/types/agent-state";
+import type { StoryContext } from "../../lib/types/agent-state";
 
 /**
  * Continue Story Tool - "Magic Continue"

@@ -3,7 +3,7 @@ import {
   OpenAIAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
-import { LangGraphHttpAgent } from "@copilotkit/runtime/langgraph";
+import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 import { NextRequest } from "next/server";
 
 // Vercel serverless function configuration
@@ -18,10 +18,12 @@ const serviceAdapter = new OpenAIAdapter({
 const LANGGRAPH_URL = process.env.LANGGRAPH_URL || "http://localhost:8123";
 
 // Create the CopilotKit runtime with LangGraph agent
+// Using LangGraphAgent for LangGraph CLI dev server (langgraphjs dev)
 const runtime = new CopilotRuntime({
   agents: {
-    fanfic_agent: new LangGraphHttpAgent({
-      url: `${LANGGRAPH_URL}/agents/fanfic_agent`,
+    fanfic_agent: new LangGraphAgent({
+      deploymentUrl: LANGGRAPH_URL,
+      graphId: "fanfic_agent",
     }),
   },
 });

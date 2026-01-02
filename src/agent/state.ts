@@ -10,7 +10,7 @@ import type {
   PendingContent,
   OOCCheckResult,
   GeneratedImage,
-} from "@/lib/types/agent-state";
+} from "../lib/types/agent-state";
 
 // Import CopilotKit state annotation for integration
 // Note: CopilotKitStateAnnotation provides the 'copilotkit' property

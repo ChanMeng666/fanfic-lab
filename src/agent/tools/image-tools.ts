@@ -8,7 +8,7 @@
 
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import type { GeneratedImage } from "@/lib/types/agent-state";
+import type { GeneratedImage } from "../../lib/types/agent-state";
 
 // Feature flag: Image generation is temporarily disabled
 const IMAGE_GENERATION_ENABLED = false;
@@ -42,7 +42,7 @@ async function uploadToCloudinary(
 
   try {
     // Dynamic import to avoid issues when cloudinary isn't installed
-    const { uploadImage } = await import("@/lib/cloudinary");
+    const { uploadImage } = await import("../../lib/cloudinary");
     const result = await uploadImage(base64Image, {
       type: folder as "portrait" | "cover" | "illustration",
     });
