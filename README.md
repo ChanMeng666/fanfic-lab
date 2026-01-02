@@ -120,15 +120,15 @@ graph TB
 
 ```mermaid
 graph LR
-    subgraph "Frontend"
-        A[Next.js 15] --> B[React 19]
+    subgraph "Frontend (Vercel)"
+        A[Next.js 16] --> B[React 19]
         B --> C[TailwindCSS 4]
         C --> D[shadcn/ui]
+        E[CopilotKit Runtime]
     end
 
-    subgraph "AI Framework"
-        E[CopilotKit] --> F[LangGraph.js]
-        F --> G[OpenAI GPT-4o]
+    subgraph "AI Agent (Railway)"
+        F[LangGraph.js] --> G[OpenAI GPT-4o]
     end
 
     subgraph "Database"
@@ -139,20 +139,18 @@ graph LR
         J[Stack Auth]
     end
 
-    subgraph "Deployment"
-        K[Vercel]
-    end
+    E -->|HTTP| F
 ```
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 15 (App Router, Turbopack) |
-| UI | React 19, TailwindCSS 4, shadcn/ui |
-| AI | CopilotKit 1.8, LangGraph.js 0.3 |
-| LLM | OpenAI GPT-4o |
-| Database | Neon PostgreSQL + Prisma 7 |
-| Auth | Stack Auth (Neon integration) |
-| Deployment | Vercel (serverless) |
+| Layer | Technology | Deployment |
+|-------|------------|------------|
+| Framework | Next.js 16 (App Router, Turbopack) | Vercel |
+| UI | React 19, TailwindCSS 4, shadcn/ui | Vercel |
+| AI Runtime | CopilotKit 1.8 | Vercel |
+| AI Agent | LangGraph.js 0.3 | Railway |
+| LLM | OpenAI GPT-4o | OpenAI API |
+| Database | Neon PostgreSQL + Prisma 7 | Neon |
+| Auth | Stack Auth | Stack Auth Cloud |
 
 ## Design System
 
@@ -342,8 +340,8 @@ fanfic-lab/
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 20.9.0+ (required by Prisma 7.2.0)
+- npm 9.x
 - PostgreSQL database (Neon recommended)
 - OpenAI API key
 
@@ -367,36 +365,59 @@ npx prisma generate
 # Run database migrations
 npx prisma migrate dev
 
-# Start development server
-npm run dev
+# Start both Next.js and LangGraph agent
+npm run dev:all
 ```
 
 ### Development Commands
 
 ```bash
-npm run dev      # Start dev server with Turbopack
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
+npm run dev        # Start Next.js dev server only
+npm run dev:agent  # Start LangGraph agent only
+npm run dev:all    # Start both services (recommended)
+npm run build      # Build for production
+npm run start      # Start production server
+npm run lint       # Run ESLint
 ```
 
 ## Environment Variables
 
+### Local Development (`.env.local`)
+
 ```env
 # Database (Neon PostgreSQL)
-DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+DATABASE_URL=postgresql://user:pass@host.neon.tech/fanficlab?sslmode=require
 
 # Stack Auth
 STACK_SECRET_SERVER_KEY=ssk_...
 NEXT_PUBLIC_STACK_PROJECT_ID=...
 NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=pck_...
 
-# OpenAI
+# OpenAI (required for AI features)
 OPENAI_API_KEY=sk-...
 
-# LangGraph (optional, for external agent)
+# LangGraph (local development)
 LANGGRAPH_URL=http://localhost:8123
+
+# Optional: Together AI for image generation
+TOGETHER_API_KEY=...
+
+# Optional: LangSmith for tracing
+LANGSMITH_API_KEY=lsv2_...
 ```
+
+### Production Environment Variables
+
+**Vercel** requires:
+- `DATABASE_URL` - Neon PostgreSQL connection string
+- `STACK_SECRET_SERVER_KEY` - Stack Auth server key
+- `NEXT_PUBLIC_STACK_PROJECT_ID` - Stack Auth project ID
+- `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` - Stack Auth client key
+- `LANGGRAPH_URL` - Railway agent URL (e.g., `https://fanfic-lab-production.up.railway.app`)
+
+**Railway** requires:
+- `OPENAI_API_KEY` - OpenAI API key for AI features
+- `PORT` - Automatically assigned by Railway
 
 ## Database Schema
 
@@ -662,22 +683,65 @@ Stack Auth handler for authentication flows (sign-in, sign-up, sign-out).
 
 ## Deployment
 
+FanFic Lab uses a **split deployment architecture**: Vercel for the Next.js frontend and Railway for the LangGraph agent.
+
+### Production URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend (Vercel) | https://fanfic-lab.vercel.app |
+| Agent (Railway) | https://fanfic-lab-production.up.railway.app |
+
+### Architecture Diagram
+
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│      Vercel         │         │      Railway        │
+│  (Next.js + API)    │         │   (LangGraph Agent) │
+├─────────────────────┤         ├─────────────────────┤
+│  • Next.js 16       │         │  • LangGraph.js     │
+│  • React 19         │  HTTP   │  • OpenAI GPT-4o    │
+│  • CopilotKit       │◄───────►│  • Agent Tools      │
+│  • Prisma 7         │         │                     │
+│  • Stack Auth       │         │  Port: 8123         │
+└─────────────────────┘         └─────────────────────┘
+```
+
+### Why Split Deployment?
+
+- **Vercel** cannot run long-running processes like `langgraphjs dev`
+- **Railway** provides a persistent server for the LangGraph agent
+- CopilotKit on Vercel connects to Railway via the `LANGGRAPH_URL` environment variable
+
 ### Vercel Deployment
 
 1. Connect GitHub repository to Vercel
-2. Configure environment variables in Vercel dashboard
-3. Enable integrations:
-   - Neon PostgreSQL
-   - Stack Auth
-   - Vercel Blob (optional)
-   - Vercel KV (optional)
+2. Configure environment variables (see above)
+3. Vercel auto-deploys on push to `master`
+
+### Railway Deployment
+
+1. Connect GitHub repository to Railway
+2. Set `OPENAI_API_KEY` environment variable
+3. Railway uses `railway.json` and `nixpacks.toml` for configuration
+4. Deploys with `npm run start:agent` command
+
+### Key Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `railway.json` | Railway deployment settings (start command, restart policy) |
+| `nixpacks.toml` | Railway build config (Node.js 20, skip Prisma) |
+| `.nvmrc` | Node.js version specification |
+| `src/agent/langgraph.json` | LangGraph agent configuration |
 
 ### Build Configuration
 
 ```json
 {
   "build": "prisma generate && next build",
-  "postinstall": "prisma generate"
+  "postinstall": "prisma generate",
+  "start:agent": "langgraphjs dev --host 0.0.0.0 --port ${PORT:-8123} --config src/agent/langgraph.json"
 }
 ```
 

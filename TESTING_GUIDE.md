@@ -24,15 +24,15 @@ This document provides step-by-step testing instructions for the FanFic Lab plat
 ## 1. Prerequisites & Setup
 
 ### Required Software
-- Node.js 18+
-- npm or yarn
+- Node.js 20.9.0+ (required by Prisma 7.2.0)
+- npm 9.x
 - Git
 
 ### Installation Steps
 
 ```bash
 # 1. Clone the repository
-git clone <repository-url>
+git clone https://github.com/ChanMeng666/fanfic-lab.git
 cd fanfic-lab
 
 # 2. Install dependencies
@@ -44,14 +44,23 @@ npx prisma generate
 # 4. Run database migrations (requires DATABASE_URL)
 npx prisma db push
 
-# 5. Start the development server
-npm run dev
+# 5. Start both Next.js and LangGraph agent
+npm run dev:all
 ```
+
+### Available Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Next.js only (http://localhost:3000) |
+| `npm run dev:agent` | Start LangGraph agent only (http://localhost:8123) |
+| `npm run dev:all` | Start both services (recommended) |
 
 ### Verify Installation
 - [ ] Open `http://localhost:3000` in your browser
 - [ ] The homepage should load with the FanFic Lab branding
 - [ ] No console errors should appear
+- [ ] LangGraph agent running at `http://localhost:8123` (check terminal)
 
 ---
 
@@ -71,7 +80,10 @@ NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=your_publishable_key
 # OpenAI (Required for AI writing features)
 OPENAI_API_KEY=sk-...
 
-# Together AI (Required for image generation - FREE!)
+# LangGraph Agent URL (local development)
+LANGGRAPH_URL=http://localhost:8123
+
+# Together AI (Optional - for image generation)
 # Get your key at: https://www.together.ai/
 TOGETHER_API_KEY=your_together_api_key
 
@@ -89,6 +101,7 @@ LANGSMITH_API_KEY=lsv2_...
 - [ ] Database connection works (check Prisma logs)
 - [ ] Stack Auth loads without errors
 - [ ] OpenAI API key is recognized (test AI features)
+- [ ] LangGraph agent accessible at `LANGGRAPH_URL`
 
 ---
 
@@ -466,8 +479,18 @@ Test these routes redirect to sign-in when unauthenticated:
 
 ## 12. Known Issues & Limitations
 
+### Deployment Architecture
+FanFic Lab uses a **split deployment**:
+- **Vercel**: Next.js frontend, API routes, CopilotKit runtime
+- **Railway**: LangGraph.js agent server
+
+For local development, both services must run:
+```bash
+npm run dev:all   # Starts both Next.js and LangGraph agent
+```
+
 ### Current Limitations
-1. **Image Generation**: Requires Google API key with Imagen access
+1. **Image Generation**: Requires Together AI API key (free at together.ai)
 2. **Cloudinary**: Images stored as base64 without Cloudinary configured
 3. **Social Features**: Like/comment/follow UI exists but may need database connection
 4. **Real-time Updates**: No WebSocket/SSE for live updates
@@ -476,7 +499,7 @@ Test these routes redirect to sign-in when unauthenticated:
 ### Expected Behaviors
 - Unauthenticated users are redirected to sign-in for protected routes
 - Autosave uses localStorage when not signed in
-- AI features require OpenAI API key
+- AI features require OpenAI API key AND running LangGraph agent
 - Some feed stories are sample data for demonstration
 
 ### Browser Compatibility
@@ -484,6 +507,12 @@ Test these routes redirect to sign-in when unauthenticated:
 - Firefox 88+: Full support
 - Safari 14+: Full support
 - Edge 90+: Full support
+
+### Production URLs
+| Service | URL |
+|---------|-----|
+| Frontend | https://fanfic-lab.vercel.app |
+| Agent | https://fanfic-lab-production.up.railway.app |
 
 ---
 

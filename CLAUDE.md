@@ -1,6 +1,174 @@
 # FanFic Lab - Claude Code Development Guidelines
 
-This document provides comprehensive guidelines for Claude Code to follow when developing FanFic Lab. It covers the design system, coding patterns, and best practices.
+This document provides comprehensive guidelines for Claude Code to follow when developing FanFic Lab. It covers project architecture, deployment setup, design system, coding patterns, and best practices.
+
+---
+
+## Project Overview
+
+FanFic Lab is an AI-powered fanfiction writing platform built with a split deployment architecture.
+
+| Layer | Technology | Deployment |
+|-------|------------|------------|
+| Frontend | Next.js 16, React 19, TailwindCSS 4 | Vercel |
+| UI Components | shadcn/ui | Vercel |
+| AI Runtime | CopilotKit 1.8 | Vercel |
+| AI Agent | LangGraph.js 0.3 | Railway |
+| Database | Prisma 7 + Neon PostgreSQL | Neon |
+| Auth | Stack Auth | Stack Auth Cloud |
+
+---
+
+## Deployment Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Production URLs                          │
+├─────────────────────────────────────────────────────────────────┤
+│  Frontend:  https://fanfic-lab.vercel.app                       │
+│  Agent:     https://fanfic-lab-production.up.railway.app        │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────┐         ┌─────────────────────┐
+│      Vercel         │         │      Railway        │
+│  (Next.js + API)    │         │   (LangGraph Agent) │
+├─────────────────────┤         ├─────────────────────┤
+│  • Next.js 16       │         │  • LangGraph.js     │
+│  • React 19         │  HTTP   │  • OpenAI GPT-4o    │
+│  • CopilotKit       │◄───────►│  • Agent Tools      │
+│  • Prisma 7         │         │                     │
+│  • Stack Auth       │         │  Port: 8123         │
+└─────────────────────┘         └─────────────────────┘
+         │                               │
+         │                               │
+         ▼                               ▼
+┌─────────────────────┐         ┌─────────────────────┐
+│  Neon PostgreSQL    │         │   OpenAI API        │
+└─────────────────────┘         └─────────────────────┘
+```
+
+### Why Split Deployment?
+
+- **Vercel** cannot run long-running processes like `langgraphjs dev`
+- **Railway** provides persistent server for LangGraph agent
+- CopilotKit on Vercel connects to Railway via `LANGGRAPH_URL` environment variable
+
+---
+
+## Development Setup
+
+### Prerequisites
+
+- Node.js 20.9.0+ (required by Prisma 7.2.0)
+- npm 9.x
+- OpenAI API key
+- Neon PostgreSQL database
+
+### Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start both services (recommended)
+npm run dev:all
+
+# Or start separately:
+npm run dev         # Next.js on http://localhost:3000
+npm run dev:agent   # LangGraph on http://localhost:8123
+```
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Next.js development server |
+| `npm run dev:agent` | Start LangGraph agent server |
+| `npm run dev:all` | Start both services concurrently |
+| `npm run build` | Build Next.js for production |
+| `npm run start` | Start Next.js production server |
+| `npm run start:agent` | Start LangGraph agent (Railway uses this) |
+| `npm run start:all` | Start both services in production |
+| `npm run lint` | Run ESLint |
+
+---
+
+## Environment Variables
+
+### Local Development (`.env.local`)
+
+```env
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://user:pass@host.neon.tech/fanficlab?sslmode=require
+
+# Stack Auth
+STACK_SECRET_SERVER_KEY=ssk_...
+NEXT_PUBLIC_STACK_PROJECT_ID=...
+NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=pck_...
+
+# OpenAI (required for AI features)
+OPENAI_API_KEY=sk-...
+
+# LangGraph (local development)
+LANGGRAPH_URL=http://localhost:8123
+
+# Optional: Together AI for image generation
+TOGETHER_API_KEY=...
+
+# Optional: LangSmith for tracing
+LANGSMITH_API_KEY=lsv2_...
+```
+
+### Vercel Environment Variables
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `DATABASE_URL` | `postgresql://...` | Neon PostgreSQL connection |
+| `STACK_SECRET_SERVER_KEY` | `ssk_...` | Stack Auth server key |
+| `NEXT_PUBLIC_STACK_PROJECT_ID` | `...` | Stack Auth project ID |
+| `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | `pck_...` | Stack Auth client key |
+| `LANGGRAPH_URL` | `https://fanfic-lab-production.up.railway.app` | Railway agent URL |
+
+### Railway Environment Variables
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `OPENAI_API_KEY` | `sk-...` | OpenAI API key for AI features |
+| `PORT` | Auto-assigned | Railway sets this automatically |
+
+---
+
+## Key Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `src/agent/langgraph.json` | LangGraph agent configuration |
+| `railway.json` | Railway deployment configuration |
+| `nixpacks.toml` | Railway build configuration (skips Prisma) |
+| `.nvmrc` | Node.js version specification (20) |
+| `prisma/schema.prisma` | Database schema |
+
+---
+
+## API Route: CopilotKit
+
+The CopilotKit runtime connects to the LangGraph agent:
+
+```typescript
+// src/app/api/copilotkit/route.ts
+const LANGGRAPH_URL = process.env.LANGGRAPH_URL || "http://localhost:8123";
+
+const runtime = new CopilotRuntime({
+  agents: {
+    fanfic_agent: new LangGraphAgent({
+      deploymentUrl: LANGGRAPH_URL,
+      graphId: "fanfic_agent",
+    }),
+  },
+});
+```
+
+---
 
 ## Brand Identity: "Literary Atelier"
 
