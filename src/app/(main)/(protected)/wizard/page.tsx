@@ -13,6 +13,15 @@ import { InlineWritingArea } from "@/components/wizard/InlineWritingArea";
 import type { StoryCharacter } from "@/lib/types/agent-state";
 import { saveDraft } from "@/lib/actions/user";
 
+// Custom AI thinking animation - three bouncing dots
+const ThinkingDots = (
+  <div className="flex items-center gap-1.5">
+    <span className="thinking-dot" style={{ animationDelay: "0s" }} />
+    <span className="thinking-dot" style={{ animationDelay: "0.15s" }} />
+    <span className="thinking-dot" style={{ animationDelay: "0.3s" }} />
+  </div>
+);
+
 interface WizardSession {
   step: "fandom" | "ship" | "characters" | "outline" | "complete";
   fandom: string;
@@ -228,6 +237,9 @@ export default function WizardPage() {
               title: "Story Wizard",
               initial:
                 "Hi! I'm your creative writing assistant. Let's create an amazing fanfiction together!\n\nFirst, tell me which fandom you'd like to write in, or just say 'help me choose' if you're not sure.",
+            }}
+            icons={{
+              activityIcon: ThinkingDots,
             }}
             className="h-full"
           />

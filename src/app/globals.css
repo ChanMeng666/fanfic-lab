@@ -659,4 +659,27 @@
   .wizard-chat-cream p.poweredBy {
     background-color: var(--background) !important;
   }
+
+  /* AI Thinking Animation - Custom Three Bouncing Dots */
+  @keyframes thinkingBounce {
+    0%, 80%, 100% {
+      transform: translateY(0);
+      opacity: 0.5;
+    }
+    40% {
+      transform: translateY(-6px);
+      opacity: 1;
+    }
+  }
+
+  /* Custom thinking dot style */
+  .thinking-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent);
+    border-radius: 50%;
+    animation: thinkingBounce 1.4s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--ai-glow);
+  }
 }
