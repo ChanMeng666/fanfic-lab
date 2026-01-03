@@ -8,7 +8,6 @@ import {
   BookOpen,
   Sparkles,
   PenLine,
-  Feather,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -138,8 +137,15 @@ export default function Home() {
 
           {/* Logo and brand */}
           <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center justify-center size-12 md:size-14 rounded-2xl bg-primary text-primary-foreground shadow-lg">
-              <Feather className="size-6 md:size-7" />
+            <div className="flex items-center justify-center size-12 md:size-14 rounded-2xl overflow-hidden shadow-lg">
+              <Image
+                src="/logo/fanfic-lab-logo.svg"
+                alt="FanFic Lab"
+                width={56}
+                height={56}
+                className="size-12 md:size-14"
+                priority
+              />
             </div>
           </div>
 

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useUser } from "@stackframe/stack";
 import {
-  Feather,
   Settings,
   LogOut,
   BookOpen,
@@ -55,8 +55,15 @@ export function Header({ className }: { className?: string }) {
       <FloatingNavbar className={className}>
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group px-1">
-          <div className="flex items-center justify-center size-7 rounded-xl bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-            <Feather className="size-3.5" />
+          <div className="flex items-center justify-center size-7 rounded-xl overflow-hidden transition-transform group-hover:scale-105">
+            <Image
+              src="/logo/fanfic-lab-logo.svg"
+              alt="FanFic Lab"
+              width={28}
+              height={28}
+              className="size-7"
+              priority
+            />
           </div>
           <span className="text-base font-display font-semibold text-foreground hidden sm:inline">
             FanFic Lab
