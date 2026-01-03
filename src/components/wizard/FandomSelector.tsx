@@ -15,7 +15,6 @@ import {
   Volleyball,
   Sparkles,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -61,88 +60,86 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
   };
 
   return (
-    <Card className="border-primary/30 bg-primary/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2.5 text-lg font-display">
-          <div className="flex items-center justify-center size-8 rounded-xl bg-primary/15 text-primary">
-            <Library className="size-4" />
-          </div>
-          Choose Your Fandom
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+    <div className="p-4 rounded-2xl bg-ai-surface border border-accent/30 ai-glow space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
+          <Library className="size-4" />
+        </div>
+        <span className="font-display text-lg">Choose Your Fandom</span>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search fandoms..."
+          className="pl-9 bg-surface"
+        />
+      </div>
+
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2">
+        {CATEGORIES.map((cat) => (
+          <Badge
+            key={cat}
+            variant={selectedCategory === cat ? "default" : "outline"}
+            className="cursor-pointer transition-colors"
+            onClick={() => setSelectedCategory(cat)}
+          >
+            {cat}
+          </Badge>
+        ))}
+      </div>
+
+      {/* Fandom Grid */}
+      <ScrollArea className="h-[200px]">
+        <div className="grid grid-cols-2 gap-2">
+          {filteredFandoms.map((fandom) => {
+            const Icon = fandom.icon;
+            return (
+              <Button
+                key={fandom.name}
+                variant="outline"
+                className="h-auto py-3 justify-start gap-2 hover:bg-primary/10 hover:border-primary/30"
+                onClick={() => onSelect(fandom.name)}
+              >
+                <Icon className="size-5 text-primary" />
+                <div className="text-left">
+                  <div className="font-medium text-sm text-foreground">{fandom.name}</div>
+                  <div className="text-xs text-muted-foreground">{fandom.category}</div>
+                </div>
+              </Button>
+            );
+          })}
+        </div>
+      </ScrollArea>
+
+      {/* Custom Fandom */}
+      <div className="pt-3 border-t border-border/50">
+        <label className="text-sm font-medium text-muted-foreground mb-2 block">
+          Or enter a custom fandom:
+        </label>
+        <div className="flex gap-2">
           <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search fandoms..."
-            className="pl-9 bg-surface"
+            value={customFandom}
+            onChange={(e) => setCustomFandom(e.target.value)}
+            placeholder="e.g., Percy Jackson, One Direction..."
+            className="bg-surface"
+            onKeyDown={(e) => e.key === "Enter" && handleCustomSubmit()}
           />
+          <Button
+            onClick={handleCustomSubmit}
+            disabled={!customFandom.trim()}
+            className="gap-1.5"
+          >
+            <Sparkles className="size-4" />
+            Select
+          </Button>
         </div>
-
-        {/* Category Filter */}
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((cat) => (
-            <Badge
-              key={cat}
-              variant={selectedCategory === cat ? "default" : "outline"}
-              className="cursor-pointer transition-colors"
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </Badge>
-          ))}
-        </div>
-
-        {/* Fandom Grid */}
-        <ScrollArea className="h-[200px]">
-          <div className="grid grid-cols-2 gap-2">
-            {filteredFandoms.map((fandom) => {
-              const Icon = fandom.icon;
-              return (
-                <Button
-                  key={fandom.name}
-                  variant="outline"
-                  className="h-auto py-3 justify-start gap-2 hover:bg-primary/10 hover:border-primary/30"
-                  onClick={() => onSelect(fandom.name)}
-                >
-                  <Icon className="size-5 text-primary" />
-                  <div className="text-left">
-                    <div className="font-medium text-sm text-foreground">{fandom.name}</div>
-                    <div className="text-xs text-muted-foreground">{fandom.category}</div>
-                  </div>
-                </Button>
-              );
-            })}
-          </div>
-        </ScrollArea>
-
-        {/* Custom Fandom */}
-        <div className="pt-2 border-t border-border">
-          <label className="text-sm font-medium text-muted-foreground mb-2 block">
-            Or enter a custom fandom:
-          </label>
-          <div className="flex gap-2">
-            <Input
-              value={customFandom}
-              onChange={(e) => setCustomFandom(e.target.value)}
-              placeholder="e.g., Percy Jackson, One Direction..."
-              className="bg-surface"
-              onKeyDown={(e) => e.key === "Enter" && handleCustomSubmit()}
-            />
-            <Button
-              onClick={handleCustomSubmit}
-              disabled={!customFandom.trim()}
-              className="gap-1.5"
-            >
-              <Sparkles className="size-4" />
-              Select
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

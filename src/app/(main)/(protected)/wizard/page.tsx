@@ -1,28 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { CopilotChat } from "@copilotkit/react-ui";
+import { CopilotChat, CopilotPopup } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
-import {
-  Sparkles,
-  BookOpen,
-  Heart,
-  Users,
-  FileText,
-  PenLine,
-  Check,
-  ArrowRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 import { FandomSelector } from "@/components/wizard/FandomSelector";
 import { ShipBuilder } from "@/components/wizard/ShipBuilder";
 import { CharacterSetup } from "@/components/wizard/CharacterSetup";
 import { OutlineApprovalCard } from "@/components/hitl/OutlineApprovalCard";
+import { InlineWritingArea } from "@/components/wizard/InlineWritingArea";
 import type { StoryCharacter } from "@/lib/types/agent-state";
-import { cn } from "@/lib/utils";
+import { saveDraft } from "@/lib/actions/user";
 
 interface WizardSession {
   step: "fandom" | "ship" | "characters" | "outline" | "complete";
@@ -44,17 +33,31 @@ const INITIAL_SESSION: WizardSession = {
   outline: "",
 };
 
-const WIZARD_STEPS = [
-  { key: "fandom", label: "Choose Fandom", icon: BookOpen },
-  { key: "ship", label: "Define Ships", icon: Heart },
-  { key: "characters", label: "Setup Characters", icon: Users },
-  { key: "outline", label: "Review Outline", icon: FileText },
-  { key: "complete", label: "Start Writing", icon: PenLine },
-] as const;
-
 export default function WizardPage() {
   const router = useRouter();
   const [session, setSession] = useState<WizardSession>(INITIAL_SESSION);
+  const [mode, setMode] = useState<"setup" | "writing">("setup");
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [content, setContent] = useState("");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Handle content save
+  const handleSaveContent = useCallback(async (newContent: string) => {
+    if (!draftId) return;
+    setIsSaving(true);
+    try {
+      await saveDraft({
+        id: draftId,
+        content: newContent,
+      });
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [draftId]);
 
   // Share wizard state with AI
   useCopilotReadable({
@@ -130,7 +133,7 @@ export default function WizardPage() {
     ),
   });
 
-  // HITL: Approve outline
+  // HITL: Approve outline with auto-save
   useCopilotAction({
     name: "present_outline",
     description: "Present the generated story outline for approval",
@@ -142,186 +145,147 @@ export default function WizardPage() {
         required: true,
       },
     ],
-    renderAndWaitForResponse: ({ args, respond }) => (
-      <OutlineApprovalCard
-        outline={args.outline || ""}
-        onApprove={() => {
-          setSession((prev) => ({
-            ...prev,
-            outline: args.outline || "",
-            step: "complete",
-          }));
-          respond?.({ approved: true, outline: args.outline || "" });
-        }}
-        onReject={() => {
-          respond?.({
-            approved: false,
-            feedback: "Please regenerate with different ideas",
+    renderAndWaitForResponse: ({ args, respond }) => {
+      const handleApprove = async (finalOutline: string) => {
+        // Update local state
+        setSession((prev) => ({
+          ...prev,
+          outline: finalOutline,
+          step: "complete",
+        }));
+
+        try {
+          // Auto-save to database
+          const draft = await saveDraft({
+            title: `${session.fandom} Story`,
+            content: "",
+            fandom: session.fandom,
+            ships: session.ships,
+            tags: session.tags,
+            aiContext: {
+              characters: session.characters,
+              outline: finalOutline,
+              tone: session.tone,
+            },
           });
-        }}
-        onEdit={(editedOutline) => {
-          setSession((prev) => ({
-            ...prev,
-            outline: editedOutline,
-            step: "complete",
-          }));
-          respond?.({ approved: true, outline: editedOutline });
-        }}
-      />
-    ),
+
+          setDraftId(draft.id);
+          setLastSaved(new Date());
+          setMode("writing");
+        } catch (error) {
+          console.error("Failed to save draft:", error);
+        }
+
+        respond?.({ approved: true, outline: finalOutline });
+      };
+
+      return (
+        <OutlineApprovalCard
+          outline={args.outline || ""}
+          onApprove={() => handleApprove(args.outline || "")}
+          onReject={() => {
+            respond?.({
+              approved: false,
+              feedback: "Please regenerate with different ideas",
+            });
+          }}
+          onEdit={(editedOutline) => handleApprove(editedOutline)}
+        />
+      );
+    },
   });
 
-  // Action to start writing
+  // Action to continue to writing (legacy support)
   useCopilotAction({
     name: "start_writing",
     description: "User is ready to start writing their story",
     parameters: [],
     handler: async () => {
-      sessionStorage.setItem("wizard-session", JSON.stringify(session));
-      router.push("/editor");
+      // Just switch to writing mode if not already
+      if (mode !== "writing") {
+        setMode("writing");
+      }
     },
     render: () => (
       <div className="flex items-center gap-2 p-4 bg-success/10 border border-success/30 rounded-xl">
-        <div className="animate-spin size-4 border-2 border-primary border-t-transparent rounded-full" />
+        <Sparkles className="size-4 text-success" />
         <span className="text-success font-medium">
-          Redirecting to editor...
+          Ready to start writing! Your draft has been saved.
         </span>
       </div>
     ),
   });
 
-  const currentStepIndex = WIZARD_STEPS.findIndex(
-    (s) => s.key === session.step
-  );
-
+  // Full-screen layout
   return (
-    <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Progress Sidebar */}
-          <div className="lg:col-span-4 xl:col-span-3">
-            <Card className="sticky top-24">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2.5 text-lg">
-                  <div className="flex items-center justify-center size-8 rounded-2xl bg-secondary text-secondary-foreground">
-                    <FileText className="size-4" />
-                  </div>
-                  Story Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {WIZARD_STEPS.map((step, index) => {
-                  const Icon = step.icon;
-                  const isCompleted =
-                    index < currentStepIndex ||
-                    (step.key === "complete" && session.step === "complete");
-                  const isCurrent = step.key === session.step;
-
-                  let value: string | undefined;
-                  if (step.key === "fandom" && session.fandom) {
-                    value = session.fandom;
-                  } else if (step.key === "ship" && session.ships.length > 0) {
-                    value = session.ships.join(", ");
-                  } else if (
-                    step.key === "characters" &&
-                    session.characters.length > 0
-                  ) {
-                    value = `${session.characters.length} characters`;
-                  }
-
-                  return (
-                    <div
-                      key={step.key}
-                      className={cn(
-                        "flex items-start gap-3 p-3 rounded-2xl transition-colors",
-                        isCurrent && "bg-secondary",
-                        !isCurrent && !isCompleted && "opacity-50"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "flex-shrink-0 size-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
-                          isCompleted && "bg-success text-white",
-                          isCurrent && !isCompleted && "bg-primary text-primary-foreground",
-                          !isCurrent && !isCompleted && "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {isCompleted ? (
-                          <Check className="size-4" />
-                        ) : (
-                          <Icon className="size-4" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div
-                          className={cn(
-                            "font-medium text-sm",
-                            isCurrent && "text-primary",
-                            !isCurrent && "text-foreground"
-                          )}
-                        >
-                          {step.label}
-                        </div>
-                        {value && (
-                          <div className="text-xs text-muted-foreground truncate mt-0.5">
-                            {value}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {session.step === "complete" && (
-                  <div className="mt-6 pt-4 border-t border-border">
-                    <Button
-                      onClick={() => {
-                        sessionStorage.setItem(
-                          "wizard-session",
-                          JSON.stringify(session)
-                        );
-                        router.push("/editor");
-                      }}
-                      className="w-full gap-2"
-                    >
-                      Go to Editor
-                      <ArrowRight className="size-4" />
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Chat Area */}
-          <div className="lg:col-span-8 xl:col-span-9">
-            <Card className="h-[calc(100vh-200px)] min-h-[500px] flex flex-col overflow-hidden">
-              <CardHeader className="border-b border-border bg-ai-surface py-4">
-                <CardTitle className="flex items-center gap-2.5 text-base">
-                  <div className="flex items-center justify-center size-8 rounded-2xl bg-accent/15 text-accent">
-                    <Sparkles className="size-4" />
-                  </div>
-                  <span>Creative Assistant</span>
-                  <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
-                    <div className="size-2 rounded-full bg-success animate-pulse" />
-                    Ready to help
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 p-0 overflow-hidden">
-                <CopilotChat
-                  labels={{
-                    title: "Story Wizard",
-                    initial:
-                      "Hi! I'm your creative writing assistant. Let's create an amazing fanfiction together!\n\nFirst, tell me which fandom you'd like to write in, or just say 'help me choose' if you're not sure.",
-                  }}
-                  className="h-full"
-                />
-              </CardContent>
-            </Card>
-          </div>
+    <div className="h-screen flex flex-col">
+      {/* Main Content */}
+      {mode === "setup" ? (
+        /* Setup Mode: Full-screen Chat with cream background */
+        <div className="flex-1 overflow-hidden wizard-chat-cream bg-background">
+          <CopilotChat
+            labels={{
+              title: "Story Wizard",
+              initial:
+                "Hi! I'm your creative writing assistant. Let's create an amazing fanfiction together!\n\nFirst, tell me which fandom you'd like to write in, or just say 'help me choose' if you're not sure.",
+            }}
+            className="h-full"
+          />
         </div>
-      </main>
+      ) : (
+        /* Writing Mode: Editor with AI Popup */
+        <div className="flex-1 overflow-hidden relative flex flex-col bg-background">
+          {/* Writing Mode Header */}
+          <header className="h-12 border-b border-border/50 flex items-center px-4 gap-3 flex-shrink-0 bg-surface/80 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-foreground">{session.fandom}</span>
+              {session.ships.length > 0 && (
+                <>
+                  <span className="text-muted-foreground">/</span>
+                  <span className="text-muted-foreground">{session.ships.join(", ")}</span>
+                </>
+              )}
+            </div>
+
+            <div className="ml-auto text-xs text-muted-foreground">
+              {isSaving ? (
+                <span className="flex items-center gap-1.5">
+                  <div className="animate-spin size-3 border-2 border-primary border-t-transparent rounded-full" />
+                  Saving...
+                </span>
+              ) : lastSaved ? (
+                <span>Saved {lastSaved.toLocaleTimeString()}</span>
+              ) : null}
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-hidden">
+            <InlineWritingArea
+              draftId={draftId}
+              storyContext={{
+                fandom: session.fandom,
+                ships: session.ships,
+                characters: session.characters,
+                tone: session.tone,
+                outline: session.outline,
+              }}
+              content={content}
+              onContentChange={(newContent) => {
+                setContent(newContent);
+                handleSaveContent(newContent);
+              }}
+            />
+          </div>
+
+          {/* AI Assistant Popup */}
+          <CopilotPopup
+            labels={{
+              title: "Writing Assistant",
+              initial: "Need help with your story? I can help you continue writing, expand scenes, or polish your prose.",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

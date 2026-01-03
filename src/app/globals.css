@@ -505,8 +505,41 @@
   /* Assistant message styling */
   .copilotKitAssistantMessage {
     background: var(--ai-surface) !important;
-    border-left: 3px solid var(--accent) !important;
-    border-radius: 0 12px 12px 0 !important;
+    border: none !important;
+    border-left: none !important;
+    border-radius: 12px !important;
+  }
+
+  /* Wizard page: Remove all borders from assistant messages */
+  .wizard-chat-cream .copilotKitMessage.copilotKitAssistantMessage {
+    background: var(--background) !important;
+    border: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .wizard-chat-cream .copilotKitAssistantMessage .copilotKitMarkdown {
+    background: var(--surface) !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+  }
+
+  .wizard-chat-cream .copilotKitAssistantMessage .copilotKitMessageControls {
+    background: transparent !important;
+  }
+
+  .wizard-chat-cream .copilotKitAssistantMessage * {
+    border-color: transparent !important;
   }
 
   /* User message styling */
@@ -526,9 +559,83 @@
     box-shadow: 0 0 0 3px oklch(0.45 0.12 175 / 0.15) !important;
   }
 
+  /* Wizard page: Keep outer container border visible, but remove textarea internal border */
+  .wizard-chat-cream .copilotKitInput {
+    border-color: var(--border) !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+  }
+
+  .wizard-chat-cream .copilotKitInput:focus-within {
+    border-color: var(--border) !important;
+    box-shadow: none !important;
+  }
+
+  .wizard-chat-cream .copilotKitInput textarea {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .wizard-chat-cream .copilotKitInput textarea:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
+  }
+
+  .wizard-chat-cream .copilotKitInput textarea:focus-visible {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-offset-shadow: none !important;
+  }
+
   /* Header styling */
   .copilotKitHeader {
     background: var(--ai-surface) !important;
     border-bottom-color: var(--border) !important;
+  }
+
+  /* Wizard page: Full cream background for chat */
+  .wizard-chat-cream {
+    --copilot-kit-background-color: var(--background) !important;
+  }
+
+  .wizard-chat-cream,
+  .wizard-chat-cream .copilotKitWindow,
+  .wizard-chat-cream .copilotKitMessages,
+  .wizard-chat-cream .copilotKitMessagesContainer,
+  .wizard-chat-cream .copilotKitMessagesFooter,
+  .wizard-chat-cream .copilotKitChat,
+  .wizard-chat-cream [class*="copilotKit"]:not(.copilotKitAssistantMessage):not(.copilotKitUserMessage),
+  .wizard-chat-cream > div,
+  .wizard-chat-cream > div > div {
+    background-color: var(--background) !important;
+  }
+
+  .wizard-chat-cream .copilotKitHeader {
+    background-color: transparent !important;
+    border-bottom: none !important;
+  }
+
+  .wizard-chat-cream .copilotKitInputWrapper,
+  .wizard-chat-cream .copilotKitFooter {
+    background-color: var(--background) !important;
+  }
+
+  /* Input area: slightly lighter for distinction */
+  .wizard-chat-cream .copilotKitInput {
+    background-color: var(--surface) !important;
+    border-radius: 1rem !important;
+  }
+
+  /* Powered by CopilotKit footer */
+  .wizard-chat-cream .poweredBy,
+  .wizard-chat-cream p.poweredBy {
+    background-color: var(--background) !important;
   }
 }
