@@ -14,16 +14,20 @@ const serviceAdapter = new OpenAIAdapter({
   model: "gpt-4o",
 });
 
-// LangGraph agent URL - local dev or production
-const LANGGRAPH_URL = process.env.LANGGRAPH_URL || "http://localhost:8123";
+// LangGraph agent URL - uses Railway in production and local dev
+// For local agent development, comment out LANGGRAPH_URL in .env.local
+const LANGGRAPH_URL = process.env.LANGGRAPH_URL || "http://127.0.0.1:8123";
+
+// LangSmith API key for LangGraph Platform authentication
+const LANGSMITH_API_KEY = process.env.LANGSMITH_API_KEY;
 
 // Create the CopilotKit runtime with LangGraph agent
-// Using LangGraphAgent for LangGraph CLI dev server (langgraphjs dev)
 const runtime = new CopilotRuntime({
   agents: {
     fanfic_agent: new LangGraphAgent({
       deploymentUrl: LANGGRAPH_URL,
       graphId: "fanfic_agent",
+      langsmithApiKey: LANGSMITH_API_KEY,
     }),
   },
 });

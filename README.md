@@ -414,9 +414,12 @@ LANGSMITH_API_KEY=lsv2_...
 - `NEXT_PUBLIC_STACK_PROJECT_ID` - Stack Auth project ID
 - `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` - Stack Auth client key
 - `LANGGRAPH_URL` - Railway agent URL (e.g., `https://fanfic-lab-production.up.railway.app`)
+- `LANGSMITH_API_KEY` - LangSmith API key for LangGraph Platform authentication
+- `OPENAI_API_KEY` - OpenAI API key for CopilotKit adapter
 
 **Railway** requires:
 - `OPENAI_API_KEY` - OpenAI API key for AI features
+- `LANGSMITH_API_KEY` - LangSmith API key for LangGraph Platform
 - `PORT` - Automatically assigned by Railway
 
 ## Database Schema
