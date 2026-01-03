@@ -125,17 +125,15 @@ export default function Home() {
           transition={{ duration: 0.8, delay: 1.2 }}
         >
           {/* Logo and brand */}
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center justify-center size-12 md:size-14 rounded-2xl overflow-hidden shadow-lg">
-              <Image
-                src="/logo/fanfic-lab-logo-green.svg"
-                alt="FanFic Lab"
-                width={56}
-                height={56}
-                className="size-12 md:size-14"
-                priority
-              />
-            </div>
+          <div className="flex items-center justify-center">
+            <Image
+              src="/logo/fanfic-lab-logo-green.svg"
+              alt="FanFic Lab"
+              width={56}
+              height={56}
+              className="size-12 md:size-14"
+              priority
+            />
           </div>
 
           {/* Main headline */}
