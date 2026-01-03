@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ClipboardList, Check, Pencil, RefreshCw, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -37,22 +36,26 @@ export function OutlineApprovalCard({
   const sections = outline.split(/\n(?=Chapter |Act |Scene |Part )/gi);
 
   return (
-    <Card className="border-accent/30 bg-ai-surface ai-glow">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-lg">
-          <span className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center size-8 rounded-2xl bg-accent/15 text-accent">
-              <ClipboardList className="size-4" />
-            </div>
-            <span className="font-display">Story Outline</span>
-          </span>
-          <Badge variant="secondary" className="text-xs gap-1">
-            <Sparkles className="size-3" />
-            AI Generated - Review before accepting
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center size-10 rounded-xl bg-emerald-500/10 text-emerald-500">
+          <ClipboardList className="size-5" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-display text-lg font-semibold text-foreground">Story Outline</h3>
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Sparkles className="size-3" />
+              AI Generated
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">Review and approve before continuing</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div>
         {isEditing ? (
           <div className="space-y-3">
             <Textarea
@@ -101,7 +104,8 @@ export function OutlineApprovalCard({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-3 border-t border-border">
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-4 border-t border-border/50">
               <Button
                 size="sm"
                 onClick={onApprove}
@@ -130,7 +134,7 @@ export function OutlineApprovalCard({
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

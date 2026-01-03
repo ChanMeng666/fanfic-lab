@@ -49,21 +49,22 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
   };
 
   return (
-    <div className="p-4 rounded-2xl bg-ai-surface border border-accent/30 ai-glow space-y-4">
+    <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
-          <Heart className="size-4" />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center size-10 rounded-xl bg-pink-500/10 text-pink-500">
+          <Heart className="size-5" />
         </div>
-        <span className="font-display text-lg">Define Ships & Pairings</span>
-        <Badge variant="secondary" className="ml-2">
-          {fandom}
-        </Badge>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-lg font-semibold text-foreground">Define Ships & Pairings</h3>
+            <Badge variant="secondary" className="text-xs">
+              {fandom}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">Select romantic pairings for your story</p>
+        </div>
       </div>
-
-      <p className="text-sm text-muted-foreground">
-        Ships are romantic pairings between characters. Select popular ships or add your own.
-      </p>
 
       {/* Suggested Ships */}
       {suggestedShips.length > 0 && (
@@ -79,7 +80,7 @@ export function ShipBuilder({ fandom, onSelect }: ShipBuilderProps) {
                 className={`cursor-pointer py-1.5 px-3 transition-colors gap-1 ${
                   selectedShips.includes(ship)
                     ? ""
-                    : "hover:bg-accent/10 hover:border-accent/30"
+                    : "hover:bg-primary/10 hover:border-primary/30"
                 }`}
                 onClick={() => toggleShip(ship)}
               >

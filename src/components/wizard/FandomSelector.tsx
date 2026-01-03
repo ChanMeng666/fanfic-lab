@@ -60,13 +60,16 @@ export function FandomSelector({ onSelect }: FandomSelectorProps) {
   };
 
   return (
-    <div className="p-4 rounded-2xl bg-ai-surface border border-accent/30 ai-glow space-y-4">
+    <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent">
-          <Library className="size-4" />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center size-10 rounded-xl bg-primary/10 text-primary">
+          <Library className="size-5" />
         </div>
-        <span className="font-display text-lg">Choose Your Fandom</span>
+        <div>
+          <h3 className="font-display text-lg font-semibold text-foreground">Choose Your Fandom</h3>
+          <p className="text-sm text-muted-foreground">Select a universe for your story</p>
+        </div>
       </div>
 
       {/* Search */}
