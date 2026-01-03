@@ -28,7 +28,15 @@
       "Bash(tree:*)",
       "Bash(ls:*)",
       "Skill(example-skills:frontend-design)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:docs.copilotkit.ai)",
+      "WebFetch(domain:langchain-ai.github.io)",
+      "WebFetch(domain:docs.langchain.com)",
+      "Bash(git push:*)",
+      "Bash(vercel:*)",
+      "Bash(git fetch:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
