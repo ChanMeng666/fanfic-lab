@@ -553,23 +553,16 @@
     color: var(--primary-foreground) !important;
   }
 
-  /* Wizard page: User message container - right aligned */
+  /* Wizard page: User message - right aligned with teal background */
   .wizard-chat-cream .copilotKitMessage.copilotKitUserMessage {
-    display: flex !important;
-    justify-content: flex-end !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0.5rem 0 !important;
-  }
-
-  /* Wizard page: User message bubble styling */
-  .wizard-chat-cream .copilotKitUserMessage > div:first-child {
     background: var(--primary) !important;
     color: var(--primary-foreground) !important;
     border-radius: 16px 4px 16px 16px !important;
     padding: 12px 16px !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
     max-width: 75% !important;
-    box-shadow: 0 1px 2px oklch(0 0 0 / 0.05) !important;
+    box-shadow: 0 2px 4px oklch(0 0 0 / 0.1) !important;
   }
 
   .wizard-chat-cream .copilotKitUserMessage * {
