@@ -6,11 +6,9 @@ import Image from "next/image";
 import { motion, stagger, useAnimate } from "motion/react";
 import {
   BookOpen,
-  Sparkles,
   PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
 
 // Literary themed images from Unsplash (known working URLs)
@@ -126,20 +124,11 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.2 }}
         >
-          {/* AI Badge */}
-          <Badge
-            variant="secondary"
-            className="gap-1.5 px-4 py-1.5 text-sm bg-surface/80 backdrop-blur-sm"
-          >
-            <Sparkles className="size-3.5 text-accent" />
-            AI-Powered Writing Partner
-          </Badge>
-
           {/* Logo and brand */}
           <div className="flex items-center justify-center gap-3">
             <div className="flex items-center justify-center size-12 md:size-14 rounded-2xl overflow-hidden shadow-lg">
               <Image
-                src="/logo/fanfic-lab-logo.svg"
+                src="/logo/fanfic-lab-logo-green.svg"
                 alt="FanFic Lab"
                 width={56}
                 height={56}
