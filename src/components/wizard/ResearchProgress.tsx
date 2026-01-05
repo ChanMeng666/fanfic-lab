@@ -8,6 +8,9 @@
  * 1. Check cache via /api/research-cache BEFORE triggering agent
  * 2. If cache hit, return immediately (saves API costs!)
  * 3. If cache miss, trigger agent, then save results to cache
+ *
+ * v4.0 - Fixed: Timer was being cancelled by React cleanup due to
+ *        dependency changes. Now using refs to store callbacks.
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -51,27 +54,51 @@ export function ResearchProgress({
   const [displayLogs, setDisplayLogs] = useState<AgentLog[]>([]);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [cacheHit, setCacheHit] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("v3.0 Initializing...");
+  const [debugInfo, setDebugInfo] = useState<string>("v4.0 Initializing...");
   const [hasTriggered, setHasTriggered] = useState(false);
+
+  // Use refs for values that shouldn't trigger effect re-runs
   const hasTriggeredRef = useRef(false);
   const hasCompletedRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   // Get agent state via useCoAgent for polling
   const { state: agentState, running } = useCoAgent<FanficAgentState>({
     name: "fanfic_agent",
   });
 
+  // Get CopilotChat to trigger research
+  const { appendMessage } = useCopilotChat();
+
+  // Store callbacks in refs to avoid effect dependency issues
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+  const appendMessageRef = useRef(appendMessage);
+
+  // Keep refs updated
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    appendMessageRef.current = appendMessage;
+  }, [appendMessage]);
+
   // Debug: Log component mount
   useEffect(() => {
     console.log("[ResearchProgress] 🎬 Component mounted!", { sourceName, sourceType });
-    setDebugInfo(`v3.0 Mounted: ${sourceName}`);
+    setDebugInfo(`v4.0 Mounted: ${sourceName}`);
   }, [sourceName, sourceType]);
 
   // Debug: Monitor agent running state
   useEffect(() => {
     console.log("[ResearchProgress] 📊 Agent running state changed:", running);
     if (running) {
-      setDebugInfo("v3.0 Agent IS RUNNING!");
+      setDebugInfo("v4.0 Agent IS RUNNING!");
     }
   }, [running]);
 
@@ -85,9 +112,6 @@ export function ResearchProgress({
       });
     }
   }, [agentState]);
-
-  // Get CopilotChat to trigger research
-  const { appendMessage } = useCopilotChat();
 
   // Save research to cache (Vercel-side)
   const saveToCache = useCallback(async (data: SourceResearchData) => {
@@ -133,54 +157,31 @@ export function ResearchProgress({
 
     // Small delay to show completion animation
     setTimeout(() => {
-      onComplete(data);
+      onCompleteRef.current(data);
     }, 1000);
-  }, [onComplete, saveToCache]);
+  }, [saveToCache]);
 
-  // Step 1: Check cache first (Vercel-side) with timeout protection
+  // Store completeResearch in ref for use in initialization effect
+  const completeResearchRef = useRef(completeResearch);
   useEffect(() => {
-    if (cacheChecked || !sourceName) return;
+    completeResearchRef.current = completeResearch;
+  }, [completeResearch]);
+
+  // MAIN INITIALIZATION EFFECT - runs once on mount
+  // Uses refs for callbacks to avoid cleanup clearing the timer
+  useEffect(() => {
+    // Strict one-time initialization check
+    if (hasInitializedRef.current || !sourceName) return;
+    hasInitializedRef.current = true;
     setCacheChecked(true);
 
-    console.log("[ResearchProgress] 🚀 Cache check effect starting...");
-    setDebugInfo("v3.0 Starting cache check...");
+    console.log("[ResearchProgress] 🚀 v4.0 Initialization starting...");
+    setDebugInfo("v4.0 Starting...");
 
-    // Trigger agent research (defined first so it's available to checkCache)
-    const triggerAgentResearch = async () => {
-      if (hasTriggeredRef.current) {
-        console.log("[ResearchProgress] Agent already triggered, skipping");
-        return;
-      }
-      hasTriggeredRef.current = true;
-      setHasTriggered(true);
-
-      const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
-
-      console.log("[ResearchProgress] 🚀 Triggering agent research...");
-      console.log("[ResearchProgress] Message:", messageContent);
-      setDebugInfo("v3.0 Triggering agent...");
-
-      try {
-        console.log("[ResearchProgress] 📤 Calling appendMessage...");
-        await appendMessage(
-          new TextMessage({
-            role: MessageRole.User,
-            content: messageContent,
-          })
-        );
-        console.log("[ResearchProgress] ✅ appendMessage completed!");
-        setDebugInfo("v3.0 Agent triggered! Waiting...");
-      } catch (error) {
-        console.error("[ResearchProgress] ❌ appendMessage FAILED:", error);
-        const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        setDebugInfo(`v3.0 ERROR: ${errorMsg.substring(0, 50)}`);
-        onError?.(`Failed to start research: ${errorMsg}`);
-      }
-    };
-
-    const checkCache = async () => {
+    // Define the async initialization function
+    const initialize = async () => {
       console.log("[ResearchProgress] 🔍 checkCache starting for:", sourceName);
-      setDebugInfo("v3.0 Checking cache...");
+      setDebugInfo("v4.0 Checking cache...");
       setDisplayLogs([{ message: "🔍 Checking research cache...", done: false }]);
       setOverallProgress(5);
 
@@ -211,7 +212,7 @@ export function ResearchProgress({
         if (result.cached && result.data) {
           // CACHE HIT!
           console.log("[ResearchProgress] ✅ CACHE HIT!");
-          setDebugInfo("v3.0 CACHE HIT!");
+          setDebugInfo("v4.0 CACHE HIT!");
           setCacheHit(true);
           setDisplayLogs([
             { message: "🔍 Checking research cache...", done: true },
@@ -219,13 +220,13 @@ export function ResearchProgress({
             { message: "📚 Loading research data...", done: true },
           ]);
           setOverallProgress(100);
-          completeResearch(result.data, true);
+          completeResearchRef.current(result.data, true);
         } else {
           // CACHE MISS - trigger agent research
-          console.log("[ResearchProgress] ❌ CACHE MISS - calling triggerAgentResearch");
-          setDebugInfo("v3.0 Cache miss, triggering...");
+          console.log("[ResearchProgress] ❌ CACHE MISS - triggering agent...");
+          setDebugInfo("v4.0 Cache miss, triggering agent...");
           setDisplayLogs([{ message: "🔍 No cache found, starting fresh research...", done: true }]);
-          triggerAgentResearch();
+          await triggerAgent();
         }
       } catch (error) {
         clearTimeout(timeoutId);
@@ -234,23 +235,63 @@ export function ResearchProgress({
 
         if (error instanceof Error && error.name === "AbortError") {
           console.warn("[ResearchProgress] Cache check timed out");
-          setDebugInfo("v3.0 Cache timeout, triggering...");
+          setDebugInfo("v4.0 Cache timeout, triggering agent...");
         } else {
-          setDebugInfo(`v3.0 Cache error: ${errorMsg.substring(0, 30)}`);
+          setDebugInfo(`v4.0 Cache error: ${errorMsg.substring(0, 30)}`);
         }
 
         // Always continue with agent research on any error
         console.log("[ResearchProgress] 🔄 Falling back to agent research");
         setDisplayLogs([{ message: "🔍 Cache unavailable, starting fresh research...", done: true }]);
-        triggerAgentResearch();
+        await triggerAgent();
       }
     };
 
-    // Small delay to ensure component is mounted
-    console.log("[ResearchProgress] ⏳ Scheduling cache check in 300ms...");
-    const timer = setTimeout(checkCache, 300);
-    return () => clearTimeout(timer);
-  }, [sourceName, sourceType, cacheChecked, appendMessage, onError, completeResearch]);
+    // Trigger agent research
+    const triggerAgent = async () => {
+      if (hasTriggeredRef.current) {
+        console.log("[ResearchProgress] Agent already triggered, skipping");
+        return;
+      }
+      hasTriggeredRef.current = true;
+      setHasTriggered(true);
+
+      const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
+
+      console.log("[ResearchProgress] 🚀 Triggering agent research...");
+      console.log("[ResearchProgress] Message:", messageContent);
+      setDebugInfo("v4.0 Triggering agent...");
+
+      try {
+        console.log("[ResearchProgress] 📤 Calling appendMessage...");
+        await appendMessageRef.current(
+          new TextMessage({
+            role: MessageRole.User,
+            content: messageContent,
+          })
+        );
+        console.log("[ResearchProgress] ✅ appendMessage completed!");
+        setDebugInfo("v4.0 Agent triggered! Waiting...");
+      } catch (error) {
+        console.error("[ResearchProgress] ❌ appendMessage FAILED:", error);
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        setDebugInfo(`v4.0 ERROR: ${errorMsg.substring(0, 50)}`);
+        onErrorRef.current?.(`Failed to start research: ${errorMsg}`);
+      }
+    };
+
+    // Start initialization after a small delay to ensure mount is complete
+    const timer = setTimeout(initialize, 100);
+
+    // No cleanup - we want the timer to complete even if dependencies change
+    // The hasInitializedRef prevents double execution
+    return () => {
+      // Only clear if not yet initialized (component unmounted before init)
+      if (!hasInitializedRef.current) {
+        clearTimeout(timer);
+      }
+    };
+  }, [sourceName, sourceType]); // Minimal dependencies - only source info
 
   // Animate progress steps for visual feedback (only when cache miss)
   useEffect(() => {
@@ -318,12 +359,13 @@ export function ResearchProgress({
     const timeout = setTimeout(() => {
       if (!hasCompletedRef.current) {
         console.log("[ResearchProgress] Research timeout");
-        onError?.("Research is taking longer than expected. The AI agent may be processing. Please wait or try again.");
+        setDebugInfo("v4.0 TIMEOUT - Agent not responding");
+        onErrorRef.current?.("Research is taking longer than expected. The AI agent may be unavailable. Please try again.");
       }
     }, 90000);
 
     return () => clearTimeout(timeout);
-  }, [onError, cacheHit]);
+  }, [cacheHit]);
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 space-y-8 animate-fade-slide-in">
