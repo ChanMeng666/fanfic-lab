@@ -2,7 +2,7 @@
 
 /**
  * Research Progress Component - Minimal Version
- * Displays a simple loading animation with status text
+ * Displays a Lottie animation with simple status text
  *
  * Cache Strategy (Vercel-side):
  * 1. Check cache via /api/research-cache BEFORE triggering agent
@@ -13,7 +13,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
-import { Sparkles } from "lucide-react";
+import Lottie from "lottie-react";
+import loadingAnimation from "@/../public/lottie/loading.json";
 import type { SourceType, SourceResearchData, FanficAgentState } from "@/lib/types/agent-state";
 
 interface ResearchProgressProps {
@@ -227,35 +228,18 @@ export function ResearchProgress({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-slide-in">
-      {/* Animated Loading Indicator */}
-      <div className="relative">
-        {/* Outer rotating ring */}
-        <div
-          className={`w-24 h-24 rounded-full border-4 border-accent/20 ${
-            isComplete ? "" : "animate-spin"
-          }`}
-          style={{
-            borderTopColor: isComplete ? "hsl(var(--accent))" : "hsl(var(--accent))",
-            animationDuration: "1.5s"
-          }}
+      {/* Lottie Animation */}
+      <div className="w-32 h-32">
+        <Lottie
+          animationData={loadingAnimation}
+          loop={!isComplete}
+          autoplay
+          style={{ width: "100%", height: "100%" }}
         />
-        {/* Inner pulsing circle */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            className={`w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center ${
-              isComplete ? "" : "animate-pulse"
-            }`}
-          >
-            <Sparkles
-              className={`size-8 text-accent ${isComplete ? "" : "animate-bounce"}`}
-              style={{ animationDuration: "2s" }}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Status Text */}
-      <p className="text-sm text-muted-foreground mt-6">
+      <p className="text-sm text-muted-foreground mt-4">
         {STATUS_MESSAGES[status]}
       </p>
     </div>
