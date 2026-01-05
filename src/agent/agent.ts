@@ -60,19 +60,17 @@ When researching a source, you MUST call the research tools in this order:
 2. Call research_source_materials with searchFocus="plot"
 3. Call research_source_materials with searchFocus="world"
 4. Call research_source_materials with searchFocus="ships"
-5. Call aggregate_research with ALL the results to compile into structured JSON
+5. Call aggregate_research with ALL the results to compile into structured data
 
-IMPORTANT: After calling aggregate_research, you MUST output the final research data as a valid JSON object with this exact structure:
-{
-  "originalPlot": "string",
-  "mainCharacters": [{"name": "string", "description": "string", "traits": ["array"], "relationships": ["array"]}],
-  "worldSettings": "string",
-  "popularShips": ["array of ship names"],
-  "canonRelationships": ["array"],
-  "searchSources": ["array of URLs"]
-}
+IMPORTANT: After aggregating research, you MUST call the frontend action "deliver_research_results" to send the data to the UI. This action accepts:
+- originalPlot: string (2-3 paragraph plot summary)
+- mainCharacters: array of {name, description, traits[], relationships[]}
+- worldSettings: string (world/setting description)
+- popularShips: string[] (popular ship names)
+- canonRelationships: string[] (canon relationships)
+- searchSources: string[] (source URLs)
 
-The frontend will parse this JSON to display the research results.`;
+The frontend is waiting for this action to display the research results.`;
 
   // Add story context if available
   if (state.storyContext) {

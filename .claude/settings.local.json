@@ -36,7 +36,10 @@
       "Bash(git push:*)",
       "Bash(vercel:*)",
       "Bash(git fetch:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(copy \"D:\\\\github_repository\\\\fanfic-lab\\\\public\\\\logo\\\\fanfic-lab-logo.svg\" \"D:\\\\github_repository\\\\fanfic-lab\\\\src\\\\app\\\\icon.svg\")",
+      "WebFetch(domain:js.langchain.com)",
+      "WebFetch(domain:docs.tavily.com)"
     ]
   }
 }
