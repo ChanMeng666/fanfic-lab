@@ -91,13 +91,21 @@ export function ResearchProgress({
 
   // Poll agent state for research completion
   useEffect(() => {
-    // Check if research data is available
-    if (
-      !hasCompletedRef.current &&
-      agentState?.wizardSession?.researchData?.mainCharacters?.length
-    ) {
-      console.log("[ResearchProgress] Research complete! Characters found:",
-        agentState.wizardSession.researchData.mainCharacters.length);
+    // Check if research data is available (check for researchData object, not just characters)
+    const researchData = agentState?.wizardSession?.researchData;
+    const hasResearchData = researchData && (
+      researchData.mainCharacters !== undefined ||
+      researchData.originalPlot !== undefined ||
+      researchData.worldSettings !== undefined
+    );
+
+    if (!hasCompletedRef.current && hasResearchData) {
+      console.log("[ResearchProgress] Research complete!", {
+        charactersFound: researchData.mainCharacters?.length || 0,
+        hasPlot: !!researchData.originalPlot,
+        hasWorldSettings: !!researchData.worldSettings,
+        shipsFound: researchData.popularShips?.length || 0,
+      });
 
       hasCompletedRef.current = true;
 
@@ -108,7 +116,7 @@ export function ResearchProgress({
 
       // Small delay to show completion animation
       setTimeout(() => {
-        onComplete(agentState.wizardSession!.researchData!);
+        onComplete(researchData);
       }, 1000);
     }
   }, [agentState, onComplete]);

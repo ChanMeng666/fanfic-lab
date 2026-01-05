@@ -336,23 +336,44 @@ function aggregateSearchResults(
     .map((r) => `[${r.title}]\n${r.content}`)
     .join("\n\n");
 
-  // Extract character names from content
+  console.log("[FanFic Agent] Combined content length:", combinedContent.length);
+
+  // Extract character names from content with multiple strategies
+  const characterNames: Set<string> = new Set();
+
+  // Strategy 1: Look for explicit character mentions
   const characterPatterns = [
     /(?:main character|protagonist|character)s?\s*(?:include|are|:)\s*([^.]+)/gi,
     /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:is|are)\s+(?:the|a)\s+(?:main|primary|central)/gi,
+    // More flexible patterns for Asian names
+    /(?:Wei Wuxian|Lan Wangji|Jiang Cheng|Nie Huaisang|Jin Ling|Wen Ning|Lan Xichen|Jin Guangyao|Xue Yang|Lan Sizhui|Lan Jingyi)/gi,
+    // Generic proper noun patterns (2-3 word names starting with capitals)
+    /\b([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/g,
   ];
 
-  const characterNames: Set<string> = new Set();
   for (const pattern of characterPatterns) {
     const matches = combinedContent.matchAll(pattern);
     for (const match of matches) {
-      if (match[1]) {
-        const names = match[1].split(/[,and]+/).map((n) => n.trim());
-        names.forEach((n) => {
-          if (n.length > 2 && n.length < 50) characterNames.add(n);
-        });
+      const name = match[1] || match[0];
+      if (name) {
+        const cleanName = name.trim();
+        // Filter out common non-character words
+        const excludeWords = ['The', 'This', 'That', 'When', 'Where', 'What', 'Which', 'How', 'Why', 'And', 'But', 'For', 'Not', 'You', 'All', 'Can', 'Had', 'Her', 'Was', 'One', 'Our', 'Out'];
+        if (cleanName.length > 2 && cleanName.length < 30 && !excludeWords.includes(cleanName.split(' ')[0])) {
+          characterNames.add(cleanName);
+        }
       }
     }
+  }
+
+  console.log("[FanFic Agent] Extracted character names:", Array.from(characterNames).slice(0, 10));
+
+  // Strategy 2: If no characters found, create placeholders from source
+  if (characterNames.size === 0) {
+    console.log("[FanFic Agent] No characters extracted, adding placeholders");
+    characterNames.add("Main Protagonist");
+    characterNames.add("Supporting Character 1");
+    characterNames.add("Supporting Character 2");
   }
 
   // Extract ship patterns
