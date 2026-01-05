@@ -51,16 +51,24 @@ export function ResearchProgress({
   useCoAgentStateRender<FanficAgentState>({
     name: "fanfic_agent",
     render: ({ state }) => {
+      console.log("[ResearchProgress] useCoAgentStateRender called");
+      console.log("[ResearchProgress] State logs:", state.logs?.length || 0);
+      console.log("[ResearchProgress] State wizardSession:", !!state.wizardSession);
+
       // Update logs from agent state
       if (state.logs && state.logs.length > 0) {
+        console.log("[ResearchProgress] Updating logs from state:", state.logs);
         setLogs(state.logs);
       }
 
       // Check if research is complete (all logs done)
       const allDone = state.logs?.length > 0 && state.logs.every((log) => log.done);
+      console.log("[ResearchProgress] All logs done:", allDone);
+
       if (allDone && !hasCompletedRef.current) {
         // Check if we have research data
         if (state.wizardSession?.researchData) {
+          console.log("[ResearchProgress] Research complete! Characters found:", state.wizardSession.researchData.mainCharacters?.length);
           hasCompletedRef.current = true;
           setIsComplete(true);
           // Small delay to show completion animation
@@ -92,20 +100,30 @@ export function ResearchProgress({
     hasTriggeredRef.current = true;
 
     const triggerResearch = async () => {
+      const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
+
+      console.log("[ResearchProgress] Triggering research...");
+      console.log("[ResearchProgress] Source:", sourceName, sourceType);
+      console.log("[ResearchProgress] Message:", messageContent);
+
       try {
+        console.log("[ResearchProgress] Calling appendMessage...");
         await appendMessage(
           new TextMessage({
             role: MessageRole.User,
-            content: `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`,
+            content: messageContent,
           })
         );
+        console.log("[ResearchProgress] appendMessage completed successfully");
       } catch (error) {
-        console.error("Failed to trigger research:", error);
+        console.error("[ResearchProgress] Failed to trigger research:", error);
+        console.error("[ResearchProgress] Error details:", error instanceof Error ? error.message : String(error));
         onError?.("Failed to start research. Please try again.");
       }
     };
 
     // Small delay to ensure component is mounted
+    console.log("[ResearchProgress] Setting up trigger timer...");
     const timer = setTimeout(triggerResearch, 500);
     return () => clearTimeout(timer);
   }, [sourceName, sourceType, appendMessage, onError]);

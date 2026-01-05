@@ -105,19 +105,45 @@ ${ws.outline ? `- Outline: Ready` : ""}`;
  * Check if the message is a research request
  */
 function isResearchRequest(state: FanficAgentState): boolean {
+  console.log("[FanFic Agent] isResearchRequest called");
+  console.log("[FanFic Agent] Total messages:", state.messages?.length || 0);
+
   const lastMessage = state.messages[state.messages.length - 1];
-  if (!lastMessage || lastMessage._getType() !== "human") return false;
+  if (!lastMessage) {
+    console.log("[FanFic Agent] No last message found");
+    return false;
+  }
+
+  const messageType = lastMessage._getType();
+  console.log("[FanFic Agent] Last message type:", messageType);
+
+  if (messageType !== "human") {
+    console.log("[FanFic Agent] Not a human message, skipping research check");
+    return false;
+  }
 
   const content = typeof lastMessage.content === "string"
     ? lastMessage.content.toLowerCase()
     : "";
 
-  return (
-    content.includes("research") &&
-    (content.includes("research_source_materials") ||
-     content.includes("for fanfiction") ||
-     content.includes("search for"))
-  );
+  console.log("[FanFic Agent] Message content (first 200 chars):", content.substring(0, 200));
+
+  const hasResearch = content.includes("research");
+  const hasResearchTool = content.includes("research_source_materials");
+  const hasForFanfiction = content.includes("for fanfiction");
+  const hasSearchFor = content.includes("search for");
+
+  console.log("[FanFic Agent] Pattern matches:", {
+    hasResearch,
+    hasResearchTool,
+    hasForFanfiction,
+    hasSearchFor,
+  });
+
+  const isResearch = hasResearch && (hasResearchTool || hasForFanfiction || hasSearchFor);
+  console.log("[FanFic Agent] isResearchRequest result:", isResearch);
+
+  return isResearch;
 }
 
 /**
@@ -154,8 +180,15 @@ async function researchNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
+  console.log("[FanFic Agent] ========== RESEARCH NODE STARTED ==========");
+  console.log("[FanFic Agent] TAVILY_API_KEY present:", !!process.env.TAVILY_API_KEY);
+  console.log("[FanFic Agent] TAVILY_API_KEY prefix:", process.env.TAVILY_API_KEY?.substring(0, 10) || "N/A");
+
   const sourceInfo = extractSourceInfo(state);
+  console.log("[FanFic Agent] Extracted source info:", sourceInfo);
+
   if (!sourceInfo) {
+    console.log("[FanFic Agent] ERROR: Could not extract source info");
     return {
       messages: [new AIMessage("I couldn't identify the source to research. Please specify the source name.")],
     };
@@ -182,19 +215,24 @@ async function researchNode(
   }
 
   // Emit initial state
+  console.log("[FanFic Agent] Emitting initial state with logs:", logs.length);
   await copilotkitEmitState(config, { logs, sources });
+  console.log("[FanFic Agent] Initial state emitted successfully");
 
   let allResults: Array<{ title: string; content: string; url: string; score: number }> = [];
 
   // Run searches sequentially and update progress
   for (let i = 0; i < searchQueries.length; i++) {
     const sq = searchQueries[i];
+    console.log(`[FanFic Agent] Starting search ${i + 1}/${searchQueries.length}: ${sq.focus}`);
 
     try {
+      console.log(`[FanFic Agent] Calling Tavily API for: ${sq.query.substring(0, 50)}...`);
       const response = await tavilyClient.search(sq.query, {
         maxResults: 5,
         searchDepth: "basic",
       });
+      console.log(`[FanFic Agent] Tavily returned ${response.results?.length || 0} results`);
 
       // Filter results by score
       const filteredResults = response.results
@@ -215,7 +253,8 @@ async function researchNode(
         }
       }
     } catch (error) {
-      console.error(`Search error for ${sq.focus}:`, error);
+      console.error(`[FanFic Agent] Search error for ${sq.focus}:`, error);
+      console.error(`[FanFic Agent] Error details:`, error instanceof Error ? error.message : String(error));
     }
 
     // Mark this log as done
@@ -346,6 +385,9 @@ async function chatNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
+  console.log("[FanFic Agent] ========== CHAT NODE STARTED ==========");
+  console.log("[FanFic Agent] Messages count:", state.messages?.length || 0);
+
   const model = new ChatOpenAI({
     temperature: 0.8,
     model: "gpt-4o",
@@ -424,10 +466,11 @@ async function toolNode(
  * Initial routing - check if this is a research request
  */
 function routeFromStart(state: FanficAgentState): string {
-  if (isResearchRequest(state)) {
-    return "research_node";
-  }
-  return "chat_node";
+  console.log("[FanFic Agent] ========== ROUTE FROM START ==========");
+  const isResearch = isResearchRequest(state);
+  const destination = isResearch ? "research_node" : "chat_node";
+  console.log("[FanFic Agent] Routing to:", destination);
+  return destination;
 }
 
 /**
