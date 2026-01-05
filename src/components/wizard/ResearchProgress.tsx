@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useCopilotAction } from "@copilotkit/react-core";
+import { useCopilotAction, useCopilotChat } from "@copilotkit/react-core";
+import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import {
   Search,
   Users,
@@ -51,6 +52,34 @@ export function ResearchProgress({
   const [isComplete, setIsComplete] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const hasReceivedDataRef = useRef(false);
+  const hasTriggeredRef = useRef(false);
+
+  // Get CopilotChat to trigger research
+  const { appendMessage } = useCopilotChat();
+
+  // Trigger agent to start research
+  useEffect(() => {
+    if (hasTriggeredRef.current || !sourceName) return;
+    hasTriggeredRef.current = true;
+
+    // Send message to trigger agent research
+    const triggerResearch = async () => {
+      try {
+        await appendMessage(
+          new TextMessage({
+            role: MessageRole.User,
+            content: `Please research "${sourceName}" (${sourceType}) for fanfiction writing. Use the research_source_materials tool for characters, plot, world, and ships. Then use aggregate_research to compile results, and finally call the deliver_research_results action to send the data to me.`,
+          })
+        );
+      } catch (error) {
+        console.error("Failed to trigger research:", error);
+      }
+    };
+
+    // Small delay to ensure component is mounted
+    const timer = setTimeout(triggerResearch, 500);
+    return () => clearTimeout(timer);
+  }, [sourceName, sourceType, appendMessage]);
 
   // Calculate progress
   useEffect(() => {
