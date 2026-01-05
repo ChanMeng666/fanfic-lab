@@ -6,40 +6,56 @@
  * - Normalize source names for consistent matching
  * - Cache valid for 30 days (configurable)
  * - Track usage count for analytics
+ *
+ * Note: This service gracefully degrades if Prisma is not available
+ * (e.g., on Railway where prisma generate may not have run)
  */
 
-import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
 import type { SourceResearchData } from "../../lib/types/agent-state";
 
 // Cache configuration
 const CACHE_MAX_AGE_DAYS = 30;
 
-// Initialize Prisma client for agent (Railway environment)
-function createPrismaClient() {
+// Prisma client type (dynamic import to handle missing module)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let PrismaClient: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let PrismaNeon: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let prisma: any = null;
+let prismaInitialized = false;
+let prismaAvailable = false;
+
+// Try to initialize Prisma (may fail if module not generated)
+async function initPrisma(): Promise<boolean> {
+  if (prismaInitialized) return prismaAvailable;
+  prismaInitialized = true;
+
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     console.warn("[ResearchCache] DATABASE_URL not set, cache disabled");
-    return null;
+    return false;
   }
 
   try {
+    // Dynamic imports to handle missing modules gracefully
+    const prismaClientModule = await import("@prisma/client");
+    const prismaNeonModule = await import("@prisma/adapter-neon");
+
+    PrismaClient = prismaClientModule.PrismaClient;
+    PrismaNeon = prismaNeonModule.PrismaNeon;
+
     const adapter = new PrismaNeon({ connectionString });
-    return new PrismaClient({ adapter });
+    prisma = new PrismaClient({ adapter });
+    prismaAvailable = true;
+    console.log("[ResearchCache] Prisma client initialized successfully");
+    return true;
   } catch (error) {
-    console.error("[ResearchCache] Failed to create Prisma client:", error);
-    return null;
+    console.warn("[ResearchCache] Prisma not available, cache disabled:",
+      error instanceof Error ? error.message : "Unknown error");
+    prismaAvailable = false;
+    return false;
   }
-}
-
-// Singleton prisma instance
-let prisma: PrismaClient | null = null;
-
-function getPrisma(): PrismaClient | null {
-  if (!prisma) {
-    prisma = createPrismaClient();
-  }
-  return prisma;
 }
 
 /**
@@ -53,20 +69,24 @@ export function normalizeSourceName(name: string): string {
 
 /**
  * Look up cached research data for a source
- * Returns null if not found or cache is stale
+ * Returns null if not found, cache is stale, or Prisma unavailable
  */
 export async function getCachedResearch(
   sourceName: string,
   sourceType: string
 ): Promise<SourceResearchData | null> {
-  const db = getPrisma();
-  if (!db) return null;
+  // Initialize Prisma (may fail gracefully)
+  const available = await initPrisma();
+  if (!available || !prisma) {
+    console.log("[ResearchCache] Cache lookup skipped (Prisma not available)");
+    return null;
+  }
 
   const normalizedName = normalizeSourceName(sourceName);
   console.log("[ResearchCache] Looking up cache for:", normalizedName);
 
   try {
-    const cached = await db.sourceResearchCache.findUnique({
+    const cached = await prisma.sourceResearchCache.findUnique({
       where: { normalizedName },
     });
 
@@ -85,7 +105,7 @@ export async function getCachedResearch(
     }
 
     // Update access stats
-    await db.sourceResearchCache.update({
+    await prisma.sourceResearchCache.update({
       where: { normalizedName },
       data: {
         searchCount: { increment: 1 },
@@ -103,20 +123,25 @@ export async function getCachedResearch(
 
 /**
  * Save research data to cache
+ * Returns false if Prisma unavailable (graceful degradation)
  */
 export async function saveResearchToCache(
   sourceName: string,
   sourceType: string,
   researchData: SourceResearchData
 ): Promise<boolean> {
-  const db = getPrisma();
-  if (!db) return false;
+  // Initialize Prisma (may fail gracefully)
+  const available = await initPrisma();
+  if (!available || !prisma) {
+    console.log("[ResearchCache] Cache save skipped (Prisma not available)");
+    return false;
+  }
 
   const normalizedName = normalizeSourceName(sourceName);
   console.log("[ResearchCache] Saving to cache:", normalizedName);
 
   try {
-    await db.sourceResearchCache.upsert({
+    await prisma.sourceResearchCache.upsert({
       where: { normalizedName },
       update: {
         sourceName, // Update to latest casing
@@ -152,16 +177,16 @@ export async function getCacheStats(): Promise<{
   totalSearches: number;
   topSources: Array<{ sourceName: string; searchCount: number }>;
 } | null> {
-  const db = getPrisma();
-  if (!db) return null;
+  const available = await initPrisma();
+  if (!available || !prisma) return null;
 
   try {
     const [count, sum, topSources] = await Promise.all([
-      db.sourceResearchCache.count(),
-      db.sourceResearchCache.aggregate({
+      prisma.sourceResearchCache.count(),
+      prisma.sourceResearchCache.aggregate({
         _sum: { searchCount: true },
       }),
-      db.sourceResearchCache.findMany({
+      prisma.sourceResearchCache.findMany({
         select: { sourceName: true, searchCount: true },
         orderBy: { searchCount: "desc" },
         take: 10,
