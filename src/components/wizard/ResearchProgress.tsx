@@ -18,7 +18,6 @@ import {
   Loader2,
   CheckCircle2,
   Sparkles,
-  Database,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -111,21 +110,64 @@ export function ResearchProgress({
     }, 1000);
   }, [onComplete, saveToCache]);
 
-  // Step 1: Check cache first (Vercel-side)
+  // Step 1: Check cache first (Vercel-side) with timeout protection
   useEffect(() => {
     if (cacheChecked || !sourceName) return;
     setCacheChecked(true);
 
+    // Trigger agent research (defined first so it's available to checkCache)
+    const triggerAgentResearch = async () => {
+      if (hasTriggeredRef.current) {
+        console.log("[ResearchProgress] Agent already triggered, skipping");
+        return;
+      }
+      hasTriggeredRef.current = true;
+
+      const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
+
+      console.log("[ResearchProgress] 🚀 Triggering agent research...");
+      console.log("[ResearchProgress] Message:", messageContent);
+
+      try {
+        await appendMessage(
+          new TextMessage({
+            role: MessageRole.User,
+            content: messageContent,
+          })
+        );
+        console.log("[ResearchProgress] ✅ appendMessage completed successfully");
+      } catch (error) {
+        console.error("[ResearchProgress] ❌ Failed to trigger research:", error);
+        onError?.("Failed to start research. Please try again.");
+      }
+    };
+
     const checkCache = async () => {
-      console.log("[ResearchProgress] Checking cache...");
+      console.log("[ResearchProgress] 🔍 Checking cache for:", sourceName);
       setDisplayLogs([{ message: "🔍 Checking research cache...", done: false }]);
       setOverallProgress(5);
 
+      // Create abort controller for fetch timeout (8 seconds max)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn("[ResearchProgress] Cache check timeout, aborting...");
+        controller.abort();
+      }, 8000);
+
       try {
         const response = await fetch(
-          `/api/research-cache?sourceName=${encodeURIComponent(sourceName)}&sourceType=${encodeURIComponent(sourceType)}`
+          `/api/research-cache?sourceName=${encodeURIComponent(sourceName)}&sourceType=${encodeURIComponent(sourceType)}`,
+          { signal: controller.signal }
         );
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.warn("[ResearchProgress] Cache API returned error:", response.status);
+          throw new Error(`Cache API error: ${response.status}`);
+        }
+
         const result = await response.json();
+        console.log("[ResearchProgress] Cache response:", { cached: result.cached, latency: result.latency });
 
         if (result.cached && result.data) {
           // CACHE HIT!
@@ -145,31 +187,16 @@ export function ResearchProgress({
           triggerAgentResearch();
         }
       } catch (error) {
-        console.error("[ResearchProgress] Cache check failed:", error);
-        // Continue with agent research on error
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === "AbortError") {
+          console.warn("[ResearchProgress] Cache check aborted (timeout)");
+        } else {
+          console.error("[ResearchProgress] Cache check failed:", error);
+        }
+        // Always continue with agent research on any error
+        console.log("[ResearchProgress] Falling back to agent research...");
+        setDisplayLogs([{ message: "🔍 Cache unavailable, starting fresh research...", done: true }]);
         triggerAgentResearch();
-      }
-    };
-
-    const triggerAgentResearch = async () => {
-      if (hasTriggeredRef.current) return;
-      hasTriggeredRef.current = true;
-
-      const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
-
-      console.log("[ResearchProgress] Triggering agent research...");
-
-      try {
-        await appendMessage(
-          new TextMessage({
-            role: MessageRole.User,
-            content: messageContent,
-          })
-        );
-        console.log("[ResearchProgress] appendMessage completed successfully");
-      } catch (error) {
-        console.error("[ResearchProgress] Failed to trigger research:", error);
-        onError?.("Failed to start research. Please try again.");
       }
     };
 

@@ -16,12 +16,33 @@ export const REDIS_CONFIG = {
   // Cache TTL in seconds (30 days)
   RESEARCH_CACHE_TTL: 30 * 24 * 60 * 60,
 
+  // Operation timeout in milliseconds (5 seconds)
+  OPERATION_TIMEOUT: 5000,
+
   // Key prefixes for namespacing
   KEY_PREFIX: {
     RESEARCH: "fanfic:research:",
     STATS: "fanfic:stats:",
   },
 } as const;
+
+/**
+ * Wrap a promise with a timeout
+ * Returns null if timeout is reached
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = REDIS_CONFIG.OPERATION_TIMEOUT
+): Promise<T | null> {
+  const timeoutPromise = new Promise<null>((resolve) => {
+    setTimeout(() => {
+      console.warn(`[Redis] Operation timed out after ${timeoutMs}ms`);
+      resolve(null);
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]);
+}
 
 // Global Redis instance (survives hot reloads in development)
 declare global {
@@ -111,17 +132,18 @@ export function getRedisClient(): Redis | null {
 
 /**
  * Redis cache helper functions
+ * All operations have built-in timeout protection
  */
 export const redisCache = {
   /**
-   * Get cached data by key
+   * Get cached data by key (with timeout)
    */
   async get<T>(key: string): Promise<T | null> {
     const client = getRedisClient();
     if (!client) return null;
 
     try {
-      const data = await client.get(key);
+      const data = await withTimeout(client.get(key));
       if (!data) return null;
       return JSON.parse(data) as T;
     } catch (error) {
@@ -131,7 +153,7 @@ export const redisCache = {
   },
 
   /**
-   * Set cached data with TTL
+   * Set cached data with TTL (with timeout)
    */
   async set(key: string, value: unknown, ttlSeconds?: number): Promise<boolean> {
     const client = getRedisClient();
@@ -139,12 +161,10 @@ export const redisCache = {
 
     try {
       const serialized = JSON.stringify(value);
-      if (ttlSeconds) {
-        await client.setex(key, ttlSeconds, serialized);
-      } else {
-        await client.set(key, serialized);
-      }
-      return true;
+      const result = ttlSeconds
+        ? await withTimeout(client.setex(key, ttlSeconds, serialized))
+        : await withTimeout(client.set(key, serialized));
+      return result !== null;
     } catch (error) {
       console.error("[Redis] Set error:", error);
       return false;
@@ -152,15 +172,15 @@ export const redisCache = {
   },
 
   /**
-   * Delete cached data
+   * Delete cached data (with timeout)
    */
   async delete(key: string): Promise<boolean> {
     const client = getRedisClient();
     if (!client) return false;
 
     try {
-      await client.del(key);
-      return true;
+      const result = await withTimeout(client.del(key));
+      return result !== null;
     } catch (error) {
       console.error("[Redis] Delete error:", error);
       return false;
@@ -168,14 +188,14 @@ export const redisCache = {
   },
 
   /**
-   * Check if key exists
+   * Check if key exists (with timeout)
    */
   async exists(key: string): Promise<boolean> {
     const client = getRedisClient();
     if (!client) return false;
 
     try {
-      const result = await client.exists(key);
+      const result = await withTimeout(client.exists(key));
       return result === 1;
     } catch (error) {
       console.error("[Redis] Exists error:", error);
@@ -184,14 +204,14 @@ export const redisCache = {
   },
 
   /**
-   * Increment a counter (for analytics)
+   * Increment a counter (with timeout, non-blocking)
    */
   async increment(key: string): Promise<number | null> {
     const client = getRedisClient();
     if (!client) return null;
 
     try {
-      return await client.incr(key);
+      return await withTimeout(client.incr(key));
     } catch (error) {
       console.error("[Redis] Increment error:", error);
       return null;
@@ -199,14 +219,14 @@ export const redisCache = {
   },
 
   /**
-   * Get TTL remaining for a key
+   * Get TTL remaining for a key (with timeout)
    */
   async ttl(key: string): Promise<number | null> {
     const client = getRedisClient();
     if (!client) return null;
 
     try {
-      return await client.ttl(key);
+      return await withTimeout(client.ttl(key));
     } catch (error) {
       console.error("[Redis] TTL error:", error);
       return null;
@@ -214,14 +234,14 @@ export const redisCache = {
   },
 
   /**
-   * Ping Redis server (health check)
+   * Ping Redis server (health check, with timeout)
    */
   async ping(): Promise<boolean> {
     const client = getRedisClient();
     if (!client) return false;
 
     try {
-      const result = await client.ping();
+      const result = await withTimeout(client.ping(), 3000); // 3s timeout for ping
       return result === "PONG";
     } catch (error) {
       console.error("[Redis] Ping error:", error);
