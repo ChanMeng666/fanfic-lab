@@ -51,20 +51,40 @@ export function ResearchProgress({
   const [displayLogs, setDisplayLogs] = useState<AgentLog[]>([]);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [cacheHit, setCacheHit] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("Initializing...");
+  const [debugInfo, setDebugInfo] = useState<string>("v3.0 Initializing...");
+  const [hasTriggered, setHasTriggered] = useState(false);
   const hasTriggeredRef = useRef(false);
   const hasCompletedRef = useRef(false);
-
-  // Debug: Log component mount
-  useEffect(() => {
-    console.log("[ResearchProgress] 🎬 Component mounted!", { sourceName, sourceType });
-    setDebugInfo(`Mounted: ${sourceName} (${sourceType})`);
-  }, [sourceName, sourceType]);
 
   // Get agent state via useCoAgent for polling
   const { state: agentState, running } = useCoAgent<FanficAgentState>({
     name: "fanfic_agent",
   });
+
+  // Debug: Log component mount
+  useEffect(() => {
+    console.log("[ResearchProgress] 🎬 Component mounted!", { sourceName, sourceType });
+    setDebugInfo(`v3.0 Mounted: ${sourceName}`);
+  }, [sourceName, sourceType]);
+
+  // Debug: Monitor agent running state
+  useEffect(() => {
+    console.log("[ResearchProgress] 📊 Agent running state changed:", running);
+    if (running) {
+      setDebugInfo("v3.0 Agent IS RUNNING!");
+    }
+  }, [running]);
+
+  // Debug: Monitor agent state updates
+  useEffect(() => {
+    if (agentState) {
+      console.log("[ResearchProgress] 📊 Agent state update:", {
+        hasWizardSession: !!agentState.wizardSession,
+        hasResearchData: !!agentState.wizardSession?.researchData,
+        logsCount: agentState.logs?.length || 0,
+      });
+    }
+  }, [agentState]);
 
   // Get CopilotChat to trigger research
   const { appendMessage } = useCopilotChat();
@@ -122,6 +142,9 @@ export function ResearchProgress({
     if (cacheChecked || !sourceName) return;
     setCacheChecked(true);
 
+    console.log("[ResearchProgress] 🚀 Cache check effect starting...");
+    setDebugInfo("v3.0 Starting cache check...");
+
     // Trigger agent research (defined first so it's available to checkCache)
     const triggerAgentResearch = async () => {
       if (hasTriggeredRef.current) {
@@ -129,60 +152,66 @@ export function ResearchProgress({
         return;
       }
       hasTriggeredRef.current = true;
+      setHasTriggered(true);
 
       const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
 
       console.log("[ResearchProgress] 🚀 Triggering agent research...");
       console.log("[ResearchProgress] Message:", messageContent);
-      setDebugInfo("Triggering agent research...");
+      setDebugInfo("v3.0 Triggering agent...");
 
       try {
+        console.log("[ResearchProgress] 📤 Calling appendMessage...");
         await appendMessage(
           new TextMessage({
             role: MessageRole.User,
             content: messageContent,
           })
         );
-        console.log("[ResearchProgress] ✅ appendMessage completed successfully");
-        setDebugInfo("Agent triggered! Waiting for response...");
+        console.log("[ResearchProgress] ✅ appendMessage completed!");
+        setDebugInfo("v3.0 Agent triggered! Waiting...");
       } catch (error) {
-        console.error("[ResearchProgress] ❌ Failed to trigger research:", error);
-        setDebugInfo(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-        onError?.("Failed to start research. Please try again.");
+        console.error("[ResearchProgress] ❌ appendMessage FAILED:", error);
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        setDebugInfo(`v3.0 ERROR: ${errorMsg.substring(0, 50)}`);
+        onError?.(`Failed to start research: ${errorMsg}`);
       }
     };
 
     const checkCache = async () => {
-      console.log("[ResearchProgress] 🔍 Checking cache for:", sourceName);
-      setDebugInfo(`Checking cache for: ${sourceName}`);
+      console.log("[ResearchProgress] 🔍 checkCache starting for:", sourceName);
+      setDebugInfo("v3.0 Checking cache...");
       setDisplayLogs([{ message: "🔍 Checking research cache...", done: false }]);
       setOverallProgress(5);
 
       // Create abort controller for fetch timeout (8 seconds max)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.warn("[ResearchProgress] Cache check timeout, aborting...");
+        console.warn("[ResearchProgress] ⏰ Cache check TIMEOUT!");
         controller.abort();
       }, 8000);
 
       try {
+        console.log("[ResearchProgress] 📡 Fetching cache API...");
         const response = await fetch(
           `/api/research-cache?sourceName=${encodeURIComponent(sourceName)}&sourceType=${encodeURIComponent(sourceType)}`,
           { signal: controller.signal }
         );
         clearTimeout(timeoutId);
+        console.log("[ResearchProgress] 📥 Cache API response status:", response.status);
 
         if (!response.ok) {
-          console.warn("[ResearchProgress] Cache API returned error:", response.status);
+          console.warn("[ResearchProgress] Cache API error:", response.status);
           throw new Error(`Cache API error: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log("[ResearchProgress] Cache response:", { cached: result.cached, latency: result.latency });
+        console.log("[ResearchProgress] 📊 Cache result:", { cached: result.cached, latency: result.latency });
 
         if (result.cached && result.data) {
           // CACHE HIT!
-          console.log("[ResearchProgress] ✅ CACHE HIT! searchCount:", result.searchCount);
+          console.log("[ResearchProgress] ✅ CACHE HIT!");
+          setDebugInfo("v3.0 CACHE HIT!");
           setCacheHit(true);
           setDisplayLogs([
             { message: "🔍 Checking research cache...", done: true },
@@ -193,25 +222,32 @@ export function ResearchProgress({
           completeResearch(result.data, true);
         } else {
           // CACHE MISS - trigger agent research
-          console.log("[ResearchProgress] ❌ Cache miss, triggering agent...");
+          console.log("[ResearchProgress] ❌ CACHE MISS - calling triggerAgentResearch");
+          setDebugInfo("v3.0 Cache miss, triggering...");
           setDisplayLogs([{ message: "🔍 No cache found, starting fresh research...", done: true }]);
           triggerAgentResearch();
         }
       } catch (error) {
         clearTimeout(timeoutId);
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        console.error("[ResearchProgress] ❌ Cache check error:", errorMsg);
+
         if (error instanceof Error && error.name === "AbortError") {
-          console.warn("[ResearchProgress] Cache check aborted (timeout)");
+          console.warn("[ResearchProgress] Cache check timed out");
+          setDebugInfo("v3.0 Cache timeout, triggering...");
         } else {
-          console.error("[ResearchProgress] Cache check failed:", error);
+          setDebugInfo(`v3.0 Cache error: ${errorMsg.substring(0, 30)}`);
         }
+
         // Always continue with agent research on any error
-        console.log("[ResearchProgress] Falling back to agent research...");
+        console.log("[ResearchProgress] 🔄 Falling back to agent research");
         setDisplayLogs([{ message: "🔍 Cache unavailable, starting fresh research...", done: true }]);
         triggerAgentResearch();
       }
     };
 
     // Small delay to ensure component is mounted
+    console.log("[ResearchProgress] ⏳ Scheduling cache check in 300ms...");
     const timer = setTimeout(checkCache, 300);
     return () => clearTimeout(timer);
   }, [sourceName, sourceType, cacheChecked, appendMessage, onError, completeResearch]);
@@ -421,9 +457,14 @@ export function ResearchProgress({
       )}
 
       {/* Debug Info - visible in production to diagnose issues */}
-      <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
+      <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border space-y-1">
         <p className="text-xs font-mono text-muted-foreground">
-          Debug: {debugInfo} | Running: {running ? "yes" : "no"} | v2.1
+          {debugInfo}
+        </p>
+        <p className="text-xs font-mono text-muted-foreground">
+          Agent: {running ? "🟢 Running" : "🔴 Not running"} |
+          Cache: {cacheHit ? "✅ Hit" : cacheChecked ? "❌ Miss" : "⏳ Checking"} |
+          Triggered: {hasTriggered ? "Yes" : "No"}
         </p>
       </div>
     </div>

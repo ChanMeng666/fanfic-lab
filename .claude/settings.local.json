@@ -39,7 +39,21 @@
       "Bash(findstr:*)",
       "Bash(copy \"D:\\\\github_repository\\\\fanfic-lab\\\\public\\\\logo\\\\fanfic-lab-logo.svg\" \"D:\\\\github_repository\\\\fanfic-lab\\\\src\\\\app\\\\icon.svg\")",
       "WebFetch(domain:js.langchain.com)",
-      "WebFetch(domain:docs.tavily.com)"
+      "WebFetch(domain:docs.tavily.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm view:*)",
+      "Bash(railway --version:*)",
+      "Bash(railway whoami:*)",
+      "Bash(railway login:*)",
+      "Bash(railway status:*)",
+      "Bash(railway link:*)",
+      "Bash(railway variables set:*)",
+      "Bash(railway variables --help:*)",
+      "Bash(railway variables --set:*)",
+      "Bash(railway variables:*)",
+      "Bash(git -C D:github_repositoryfanfic-lab log --oneline -5)",
+      "Bash(git -C \"D:\\\\github_repository\\\\fanfic-lab\" add -A)",
+      "Bash(git -C \"D:\\\\github_repository\\\\fanfic-lab\" commit -m \"$\\(cat <<''EOF''\ndebug: add comprehensive debug logging v3.0\n\n- Add version prefix to all debug messages\n- Track cache check, agent trigger, and running state separately\n- Add hasTriggered state for UI visibility\n- Monitor agent state and running state changes\n- Log each step of the cache check flow\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
