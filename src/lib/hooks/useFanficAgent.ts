@@ -11,6 +11,7 @@ import type {
   GeneratedImage,
   PendingContent,
   WizardSession,
+  AgentLog,
 } from "@/lib/types/agent-state";
 import { INITIAL_AGENT_STATE, INITIAL_WIZARD_SESSION } from "@/lib/types/agent-state";
 
@@ -64,18 +65,19 @@ export function useFanficAgent(options: UseFanficAgentOptions = {}) {
   const storyContext = state.storyContext || DEFAULT_STORY_CONTEXT;
   const wizardSession = state.wizardSession || DEFAULT_WIZARD_SESSION;
 
-  // Render agent state updates
+  // Render agent state updates (logs are handled by useCoAgentStateRender in wizard)
   useCoAgentStateRender({
     name: "fanfic_agent",
-    render: ({ state }) => {
+    render: ({ state: agentState }) => {
       // Handle state updates from the agent
-      if (state.oocCheckResults?.length && options.onOOCResults) {
-        options.onOOCResults(state.oocCheckResults);
+      if (agentState.oocCheckResults?.length && options.onOOCResults) {
+        options.onOOCResults(agentState.oocCheckResults);
       }
-      if (state.generatedImages?.length && options.onImageGenerated) {
-        const latestImage = state.generatedImages[state.generatedImages.length - 1];
+      if (agentState.generatedImages?.length && options.onImageGenerated) {
+        const latestImage = agentState.generatedImages[agentState.generatedImages.length - 1];
         options.onImageGenerated(latestImage);
       }
+      // Note: logs are rendered separately via useCoAgentStateRender in ResearchProgress
       return null;
     },
   });
@@ -199,6 +201,14 @@ export function useFanficAgent(options: UseFanficAgentOptions = {}) {
     );
   }, [storyContext.characters, storyContext.fandom]);
 
+  // Clear logs
+  const clearLogs = useCallback(() => {
+    setState({
+      ...state,
+      logs: [],
+    });
+  }, [state, setState]);
+
   return {
     // State
     state,
@@ -208,6 +218,8 @@ export function useFanficAgent(options: UseFanficAgentOptions = {}) {
     oocCheckResults: state.oocCheckResults || [],
     generatedImages: state.generatedImages || [],
     wizardSession,
+    logs: state.logs || [],
+    sources: state.sources || {},
 
     // Agent status
     isRunning: running,
@@ -224,6 +236,7 @@ export function useFanficAgent(options: UseFanficAgentOptions = {}) {
     removeCharacter,
     setPendingContent,
     clearOOCResults,
+    clearLogs,
 
     // Computed values
     fandomCharacters,

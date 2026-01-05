@@ -18,6 +18,14 @@ import type {
 import { CopilotKitStateAnnotation } from "@copilotkit/sdk-js/langgraph";
 
 /**
+ * Log entry for tracking agent progress (used by frontend via useCoAgentStateRender)
+ */
+export interface AgentLog {
+  message: string;
+  done: boolean;
+}
+
+/**
  * FanFic Agent State Annotation
  * Extends CopilotKitStateAnnotation to include CopilotKit integration
  */
@@ -59,6 +67,18 @@ export const FanficAgentStateAnnotation = Annotation.Root({
   generatedImages: Annotation<GeneratedImage[]>({
     reducer: (prev, update) => [...prev, ...update],
     default: () => [],
+  }),
+
+  // Agent progress logs (used by useCoAgentStateRender on frontend)
+  logs: Annotation<AgentLog[]>({
+    reducer: (_, update) => update,
+    default: () => [],
+  }),
+
+  // Research sources (URLs -> source data)
+  sources: Annotation<Record<string, { title: string; content: string; url: string; score?: number }>>({
+    reducer: (prev, update) => ({ ...prev, ...update }),
+    default: () => ({}),
   }),
 });
 

@@ -158,6 +158,20 @@ export interface GeneratedImage {
   prompt: string;
 }
 
+// Agent progress log entry (used by useCoAgentStateRender for progress display)
+export interface AgentLog {
+  message: string;
+  done: boolean;
+}
+
+// Research source from Tavily search
+export interface ResearchSource {
+  title: string;
+  content: string;
+  url: string;
+  score?: number;
+}
+
 // Main agent state - shared with frontend via useCoAgent
 export interface FanficAgentState {
   // Story context
@@ -177,6 +191,12 @@ export interface FanficAgentState {
 
   // Generated images
   generatedImages: GeneratedImage[];
+
+  // Agent progress logs (for useCoAgentStateRender display)
+  logs: AgentLog[];
+
+  // Research sources from Tavily search
+  sources: Record<string, ResearchSource>;
 }
 
 // Initial state for useCoAgent
@@ -187,6 +207,8 @@ export const INITIAL_AGENT_STATE: FanficAgentState = {
   pendingContent: null,
   oocCheckResults: [],
   generatedImages: [],
+  logs: [],
+  sources: {},
 };
 
 // Initial wizard session state

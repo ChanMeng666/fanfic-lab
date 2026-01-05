@@ -1,20 +1,33 @@
 /**
  * FanFic Lab LangGraph Agent
  * Main agent workflow for AI-powered fanfiction writing assistance
+ *
+ * Architecture based on open-research-ANA example:
+ * - Custom tool node for state injection and handling
+ * - copilotkitEmitState for real-time progress updates
+ * - Research tools return { state, message } for state sync
  */
 
 import { StateGraph, START, END, MemorySaver } from "@langchain/langgraph";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ChatOpenAI } from "@langchain/openai";
-import { SystemMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
+import { SystemMessage, AIMessage, ToolMessage, BaseMessage } from "@langchain/core/messages";
 import {
   convertActionsToDynamicStructuredTools,
   copilotkitEmitState,
+  copilotkitCustomizeConfig,
 } from "@copilotkit/sdk-js/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 import { FanficAgentStateAnnotation, FanficAgentState } from "./state";
-import { allBackendTools } from "./tools";
+import { allBackendTools, researchBackendTools } from "./tools";
+
+// Research tool names for special handling
+const researchToolNames = new Set(researchBackendTools.map((t) => t.name));
+const researchToolsByName = Object.fromEntries(researchBackendTools.map((t) => [t.name, t]));
+
+// Regular backend tool names
+const regularToolNames = new Set(allBackendTools.map((t) => t.name));
 
 /**
  * Build the system prompt based on current state
@@ -38,6 +51,15 @@ You can help users with:
 - Checking for out-of-character moments
 - Setting up new stories with the Creative Wizard
 
+## Research Tools
+When the user selects a source for fanfiction writing, use the research_source_materials tool to search the web for:
+- Character information (names, traits, relationships)
+- Plot summaries
+- World settings and lore
+- Popular ships and pairings
+
+The research tool will search Tavily and return structured data. The frontend will display progress via state.logs.
+
 ## Guidelines
 - Always respect the user's creative vision
 - Maintain consistent character voices
@@ -45,34 +67,14 @@ You can help users with:
 - Provide suggestions, not prescriptions
 - Be encouraging but also honest about potential issues
 
-## Story Wizard Flow (New 6-Step Process)
+## Story Wizard Flow
 When helping with the Story Wizard, follow this flow:
-1. SOURCE: User selects source (anime, manga, game, etc.) via UI component
-2. CONFIG: User configures ship type and story setting via UI component
-3. RESEARCH: Use research_source_materials tool to search for character info, plot, world settings, and popular ships. Then use aggregate_research to compile the results.
-4. CHARACTERS: User selects characters from research results via UI component
-5. OUTLINE: Use generate_outline tool to create story outline, then present for approval
-6. COMPLETE: Start writing mode after outline approval
-
-## Research Tools
-When asked to research a source for fanfiction writing, you should call the frontend action "deliver_research_results" directly with your knowledge about the source.
-
-DO NOT use backend tools like research_source_materials - they are currently disabled due to a compatibility issue.
-
-Instead, use your knowledge to provide research data by calling the "deliver_research_results" action with:
-- originalPlot: string (2-3 paragraph plot summary based on your knowledge)
-- mainCharacters: array of {name, description, traits[], relationships[]} (main characters you know)
-- worldSettings: string (world/setting description)
-- popularShips: string[] (popular ship names in the fandom)
-- canonRelationships: string[] (canon relationships)
-- searchSources: string[] (can be empty)
-
-Example for "Mo Dao Zu Shi":
-- Wei Wuxian, Lan Wangji, Jiang Cheng as main characters
-- Plot about cultivation, resurrection, mystery
-- Popular ships like "WangXian"
-
-The frontend is waiting for this action to display the research results.`;
+1. SOURCE: User selects source via UI
+2. CONFIG: User configures ship type and story setting
+3. RESEARCH: Call research_source_materials tool to search for info
+4. CHARACTERS: User selects characters from research results
+5. OUTLINE: Use generate_outline tool to create story outline
+6. COMPLETE: Start writing mode after outline approval`;
 
   // Add story context if available
   if (state.storyContext) {
@@ -127,11 +129,11 @@ async function chatNode(
     state.copilotkit?.actions ?? []
   );
 
-  // Combine frontend and backend tools
-  const allTools = [...frontendTools, ...allBackendTools];
+  // Combine frontend, backend, and research tools
+  const allTools = [...frontendTools, ...allBackendTools, ...researchBackendTools];
 
-  // Bind tools to the model
-  const modelWithTools = model.bindTools(allTools);
+  // Bind tools to the model (disable parallel tool calls for research)
+  const modelWithTools = model.bindTools(allTools, { parallel_tool_calls: false });
 
   // Build context-aware system prompt
   const systemPrompt = buildSystemPrompt(state);
@@ -148,8 +150,94 @@ async function chatNode(
   return { messages: [response] };
 }
 
-// Backend tool names for routing
-const backendToolNames = new Set(allBackendTools.map((t) => t.name));
+/**
+ * Custom tool node that handles research tools with state injection
+ * Based on open-research-ANA pattern
+ */
+async function customToolNode(
+  state: FanficAgentState,
+  config: RunnableConfig
+): Promise<Partial<FanficAgentState>> {
+  // Disable message emission for intermediate tool messages
+  const customConfig = copilotkitCustomizeConfig(config, { emitMessages: false });
+
+  const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
+  const toolCalls = lastMessage.tool_calls || [];
+
+  const toolMessages: ToolMessage[] = [];
+  let updatedState: Partial<FanficAgentState> = {};
+
+  for (const toolCall of toolCalls) {
+    const toolName = toolCall.name;
+
+    // Check if this is a research tool (needs special handling)
+    if (researchToolNames.has(toolName)) {
+      // Inject state into tool args
+      const argsWithState = {
+        ...toolCall.args,
+        state: {
+          logs: state.logs || [],
+          sources: state.sources || {},
+          wizardSession: state.wizardSession,
+        },
+      };
+
+      // Invoke research tool with state
+      const tool = researchToolsByName[toolName];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (tool as any).invoke(argsWithState, customConfig);
+
+      // Research tools return { state, message }
+      if (result && typeof result === "object" && "state" in result && "message" in result) {
+        const { state: newState, message } = result as { state: Partial<FanficAgentState>; message: string };
+
+        // Merge state updates
+        updatedState = {
+          ...updatedState,
+          logs: newState.logs || updatedState.logs,
+          sources: newState.sources || updatedState.sources,
+          wizardSession: newState.wizardSession || updatedState.wizardSession,
+        };
+
+        // Create tool message
+        toolMessages.push(new ToolMessage({
+          content: message,
+          name: toolName,
+          tool_call_id: toolCall.id!,
+        }));
+
+        // Emit updated state
+        await copilotkitEmitState(customConfig, updatedState);
+      }
+    } else if (regularToolNames.has(toolName)) {
+      // Regular backend tools - use standard invocation
+      const tool = allBackendTools.find((t) => t.name === toolName);
+      if (tool) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = await (tool as any).invoke(toolCall.args, customConfig);
+          toolMessages.push(new ToolMessage({
+            content: typeof result === "string" ? result : JSON.stringify(result),
+            name: toolName,
+            tool_call_id: toolCall.id!,
+          }));
+        } catch (error) {
+          console.error(`Tool ${toolName} error:`, error);
+          toolMessages.push(new ToolMessage({
+            content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+            name: toolName,
+            tool_call_id: toolCall.id!,
+          }));
+        }
+      }
+    }
+  }
+
+  return {
+    messages: toolMessages,
+    ...updatedState,
+  };
+}
 
 /**
  * Routing function to determine next node
@@ -157,11 +245,10 @@ const backendToolNames = new Set(allBackendTools.map((t) => t.name));
 function shouldContinue(state: FanficAgentState): string {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
 
-  // If there are tool calls, check if they're backend tools
+  // If there are tool calls, check if they're backend/research tools
   if (lastMessage.tool_calls?.length) {
-    // Check if any tool calls are for backend tools
-    const hasBackendToolCall = lastMessage.tool_calls.some((tc) =>
-      backendToolNames.has(tc.name)
+    const hasBackendToolCall = lastMessage.tool_calls.some(
+      (tc) => regularToolNames.has(tc.name) || researchToolNames.has(tc.name)
     );
 
     if (hasBackendToolCall) {
@@ -176,20 +263,16 @@ function shouldContinue(state: FanficAgentState): string {
 }
 
 /**
- * Route after tool execution
+ * Route after tool execution - always go back to chat
  */
-function afterToolExecution(state: FanficAgentState): string {
-  // Continue the conversation after tool execution
+function afterToolExecution(): string {
   return "chat_node";
 }
-
-// Create tool node for backend tool execution
-const toolNode = new ToolNode(allBackendTools);
 
 // Build the graph
 const workflow = new StateGraph(FanficAgentStateAnnotation)
   .addNode("chat_node", chatNode)
-  .addNode("tool_node", toolNode)
+  .addNode("tool_node", customToolNode)
   .addEdge(START, "chat_node")
   .addConditionalEdges("chat_node", shouldContinue)
   .addConditionalEdges("tool_node", afterToolExecution);

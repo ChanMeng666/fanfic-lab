@@ -1,14 +1,20 @@
 "use client";
 
+/**
+ * Research Progress Component
+ * Displays real-time progress from agent state via useCoAgentStateRender
+ *
+ * Pattern based on open-research-ANA example:
+ * - Uses useCoAgentStateRender to render logs from agent state
+ * - Uses useCopilotChat to trigger research via message
+ * - Agent updates state.logs during research, which triggers re-render
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useCopilotAction, useCopilotChat } from "@copilotkit/react-core";
+import { useCoAgentStateRender, useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import {
   Search,
-  Users,
-  BookOpen,
-  Globe,
-  Heart,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -16,7 +22,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { SourceType, SourceResearchData } from "@/lib/types/agent-state";
+import type { SourceType, SourceResearchData, FanficAgentState, AgentLog } from "@/lib/types/agent-state";
 
 interface ResearchProgressProps {
   sourceName: string;
@@ -25,200 +31,96 @@ interface ResearchProgressProps {
   onError?: (error: string) => void;
 }
 
-interface ResearchTask {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  status: "pending" | "loading" | "complete" | "error";
-}
-
-const RESEARCH_TASKS: Omit<ResearchTask, "status">[] = [
-  { id: "characters", label: "Finding Characters", icon: Users },
-  { id: "plot", label: "Analyzing Plot", icon: BookOpen },
-  { id: "world", label: "Exploring World", icon: Globe },
-  { id: "ships", label: "Discovering Ships", icon: Heart },
-];
-
 export function ResearchProgress({
   sourceName,
   sourceType,
   onComplete,
   onError,
 }: ResearchProgressProps) {
-  const [tasks, setTasks] = useState<ResearchTask[]>(
-    RESEARCH_TASKS.map((t) => ({ ...t, status: "pending" as const }))
-  );
   const [overallProgress, setOverallProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const hasReceivedDataRef = useRef(false);
+  const [logs, setLogs] = useState<AgentLog[]>([]);
   const hasTriggeredRef = useRef(false);
+  const hasCompletedRef = useRef(false);
 
   // Get CopilotChat to trigger research
   const { appendMessage } = useCopilotChat();
+
+  // Render agent logs via useCoAgentStateRender
+  // This is the key pattern from open-research-ANA
+  useCoAgentStateRender<FanficAgentState>({
+    name: "fanfic_agent",
+    render: ({ state }) => {
+      // Update logs from agent state
+      if (state.logs && state.logs.length > 0) {
+        setLogs(state.logs);
+      }
+
+      // Check if research is complete (all logs done)
+      const allDone = state.logs?.length > 0 && state.logs.every((log) => log.done);
+      if (allDone && !hasCompletedRef.current) {
+        // Check if we have research data
+        if (state.wizardSession?.researchData) {
+          hasCompletedRef.current = true;
+          setIsComplete(true);
+          // Small delay to show completion animation
+          setTimeout(() => {
+            onComplete(state.wizardSession!.researchData!);
+          }, 1000);
+        }
+      }
+
+      // Return null - we handle rendering ourselves
+      return null;
+    },
+  });
+
+  // Calculate progress from logs
+  useEffect(() => {
+    if (logs.length === 0) {
+      setOverallProgress(0);
+      return;
+    }
+    const completedCount = logs.filter((log) => log.done).length;
+    const progress = (completedCount / logs.length) * 100;
+    setOverallProgress(progress);
+  }, [logs]);
 
   // Trigger agent to start research
   useEffect(() => {
     if (hasTriggeredRef.current || !sourceName) return;
     hasTriggeredRef.current = true;
 
-    // Send message to trigger agent research
     const triggerResearch = async () => {
       try {
         await appendMessage(
           new TextMessage({
             role: MessageRole.User,
-            content: `Please research "${sourceName}" (${sourceType}) for fanfiction writing. Use the research_source_materials tool for characters, plot, world, and ships. Then use aggregate_research to compile results, and finally call the deliver_research_results action to send the data to me.`,
+            content: `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`,
           })
         );
       } catch (error) {
         console.error("Failed to trigger research:", error);
+        onError?.("Failed to start research. Please try again.");
       }
     };
 
     // Small delay to ensure component is mounted
     const timer = setTimeout(triggerResearch, 500);
     return () => clearTimeout(timer);
-  }, [sourceName, sourceType, appendMessage]);
+  }, [sourceName, sourceType, appendMessage, onError]);
 
-  // Calculate progress
-  useEffect(() => {
-    const completedTasks = tasks.filter((t) => t.status === "complete").length;
-    setOverallProgress((completedTasks / tasks.length) * 100);
-    setIsComplete(completedTasks === tasks.length);
-  }, [tasks]);
-
-  // Handle research completion from agent
-  const handleResearchData = useCallback((data: SourceResearchData) => {
-    if (hasReceivedDataRef.current) return;
-    hasReceivedDataRef.current = true;
-
-    // Mark all tasks as complete
-    setTasks((prev) =>
-      prev.map((t) => ({ ...t, status: "complete" as const }))
-    );
-
-    // Small delay to show completion animation
-    setTimeout(() => {
-      onComplete(data);
-    }, 1000);
-  }, [onComplete]);
-
-  // Register action to receive research results from agent
-  useCopilotAction({
-    name: "deliver_research_results",
-    description: "Deliver the compiled research results to the wizard UI",
-    parameters: [
-      {
-        name: "originalPlot",
-        type: "string",
-        description: "Summary of the original plot",
-        required: true,
-      },
-      {
-        name: "mainCharacters",
-        type: "object[]",
-        description: "Array of main characters with name, description, traits, relationships",
-        required: true,
-      },
-      {
-        name: "worldSettings",
-        type: "string",
-        description: "Description of the world and setting",
-        required: true,
-      },
-      {
-        name: "popularShips",
-        type: "string[]",
-        description: "Array of popular ship names",
-        required: true,
-      },
-      {
-        name: "canonRelationships",
-        type: "string[]",
-        description: "Array of canon relationships",
-        required: true,
-      },
-      {
-        name: "searchSources",
-        type: "string[]",
-        description: "Array of source URLs",
-        required: true,
-      },
-    ],
-    handler: async (args) => {
-      const researchData: SourceResearchData = {
-        originalPlot: args.originalPlot as string,
-        mainCharacters: (args.mainCharacters as Array<{
-          name: string;
-          description: string;
-          traits: string[];
-          relationships?: string[];
-        }>) || [],
-        worldSettings: args.worldSettings as string,
-        popularShips: (args.popularShips as string[]) || [],
-        canonRelationships: (args.canonRelationships as string[]) || [],
-        searchSources: (args.searchSources as string[]) || [],
-      };
-      handleResearchData(researchData);
-      return "Research results delivered successfully";
-    },
-  });
-
-  // Simulate progress for visual feedback
-  useEffect(() => {
-    if (isComplete || hasReceivedDataRef.current) return;
-
-    let currentIndex = 0;
-    const interval = setInterval(() => {
-      if (currentIndex >= tasks.length) {
-        clearInterval(interval);
-        return;
-      }
-
-      setTasks((prev) =>
-        prev.map((t, i) => {
-          if (i < currentIndex) return { ...t, status: "complete" as const };
-          if (i === currentIndex) return { ...t, status: "loading" as const };
-          return t;
-        })
-      );
-
-      currentIndex++;
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [tasks.length, isComplete]);
-
-  // Handle timeout - provide fallback data if agent doesn't respond
+  // Timeout fallback - if no response in 60 seconds
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!hasReceivedDataRef.current && !errorMessage) {
-        console.log("Research timeout - using fallback search approach");
-
-        // Provide fallback research data based on source name
-        const fallbackData: SourceResearchData = {
-          originalPlot: `Research data for ${sourceName} is being compiled. The AI searched for information about this ${sourceType} but couldn't retrieve complete results in time. You can proceed with the characters you know, or try regenerating the research.`,
-          mainCharacters: [
-            {
-              name: "Main Character",
-              description: `A primary character from ${sourceName}`,
-              traits: ["determined", "complex", "memorable"],
-              relationships: [],
-            },
-          ],
-          worldSettings: `The world of ${sourceName} - a ${sourceType} with its unique setting and atmosphere.`,
-          popularShips: [],
-          canonRelationships: [],
-          searchSources: [],
-        };
-
-        handleResearchData(fallbackData);
+      if (!hasCompletedRef.current && logs.length === 0) {
+        console.log("Research timeout - no logs received");
+        onError?.("Research timed out. The AI agent may be unavailable. Please try again.");
       }
-    }, 30000); // 30 second timeout
+    }, 60000);
 
     return () => clearTimeout(timeout);
-  }, [sourceName, sourceType, errorMessage, handleResearchData]);
+  }, [logs.length, onError]);
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 space-y-8 animate-fade-slide-in">
@@ -247,89 +149,87 @@ export function ResearchProgress({
         <Progress value={overallProgress} className="h-2" />
       </div>
 
-      {/* Task List */}
+      {/* Log List - Similar to open-research-ANA Progress component */}
       <div className="space-y-3">
-        {tasks.map((task) => {
-          const Icon = task.icon;
-          const taskIsLoading = task.status === "loading";
-          const taskIsComplete = task.status === "complete";
-          const isPending = task.status === "pending";
-          const isError = task.status === "error";
+        {logs.length === 0 ? (
+          // Initial loading state
+          <div className="flex items-center gap-4 p-4 rounded-xl border border-accent/30 bg-accent/5 ai-glow">
+            <div className="flex items-center justify-center size-10 rounded-lg bg-accent/15 text-accent">
+              <Loader2 className="size-5 animate-spin" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-accent">Starting Research...</p>
+              <p className="text-xs text-muted-foreground">
+                Connecting to Tavily AI search...
+              </p>
+            </div>
+          </div>
+        ) : (
+          logs.map((log, index) => {
+            const isDone = log.done;
+            const isActive = !isDone && index === logs.findIndex((l) => !l.done);
+            const isPending = !isDone && !isActive;
 
-          return (
-            <div
-              key={task.id}
-              className={cn(
-                "flex items-center gap-4 p-4 rounded-xl border transition-all",
-                taskIsComplete && "border-primary/30 bg-primary/5",
-                taskIsLoading && "border-accent/30 bg-accent/5 ai-glow",
-                isPending && "border-border bg-surface",
-                isError && "border-destructive/30 bg-destructive/5"
-              )}
-            >
-              {/* Status Icon */}
+            return (
               <div
+                key={index}
                 className={cn(
-                  "flex items-center justify-center size-10 rounded-lg",
-                  taskIsComplete && "bg-primary/15 text-primary",
-                  taskIsLoading && "bg-accent/15 text-accent",
-                  isPending && "bg-muted text-muted-foreground",
-                  isError && "bg-destructive/15 text-destructive"
+                  "flex items-center gap-4 p-4 rounded-xl border transition-all",
+                  isDone && "border-primary/30 bg-primary/5",
+                  isActive && "border-accent/30 bg-accent/5 ai-glow",
+                  isPending && "border-border bg-surface opacity-50"
                 )}
               >
-                {taskIsLoading ? (
-                  <Loader2 className="size-5 animate-spin" />
-                ) : taskIsComplete ? (
-                  <CheckCircle2 className="size-5" />
-                ) : isError ? (
-                  <AlertCircle className="size-5" />
-                ) : (
-                  <Icon className="size-5" />
-                )}
-              </div>
-
-              {/* Task Label */}
-              <div className="flex-1">
-                <p
+                {/* Status Icon */}
+                <div
                   className={cn(
-                    "font-medium",
-                    taskIsComplete && "text-foreground",
-                    taskIsLoading && "text-accent",
-                    isPending && "text-muted-foreground",
-                    isError && "text-destructive"
+                    "flex items-center justify-center size-10 rounded-lg",
+                    isDone && "bg-primary/15 text-primary",
+                    isActive && "bg-accent/15 text-accent",
+                    isPending && "bg-muted text-muted-foreground"
                   )}
                 >
-                  {task.label}
-                </p>
-                {taskIsLoading && (
-                  <p className="text-xs text-muted-foreground">
-                    Searching with Tavily AI...
-                  </p>
-                )}
-                {taskIsComplete && (
-                  <p className="text-xs text-muted-foreground">Complete</p>
-                )}
-              </div>
+                  {isActive ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : isDone ? (
+                    <CheckCircle2 className="size-5" />
+                  ) : (
+                    <div className="size-2 rounded-full bg-muted-foreground" />
+                  )}
+                </div>
 
-              {/* Status Badge */}
-              {taskIsComplete && (
-                <Sparkles className="size-4 text-accent" />
-              )}
-            </div>
-          );
-        })}
+                {/* Log Message */}
+                <div className="flex-1">
+                  <p
+                    className={cn(
+                      "font-medium",
+                      isDone && "text-foreground",
+                      isActive && "text-accent",
+                      isPending && "text-muted-foreground"
+                    )}
+                  >
+                    {log.message}
+                  </p>
+                  {isActive && (
+                    <p className="text-xs text-muted-foreground">
+                      Searching with Tavily AI...
+                    </p>
+                  )}
+                  {isDone && (
+                    <p className="text-xs text-muted-foreground">Complete</p>
+                  )}
+                </div>
+
+                {/* Status Badge */}
+                {isDone && <Sparkles className="size-4 text-accent" />}
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="text-center p-4 rounded-xl border border-destructive/30 bg-destructive/5">
-          <AlertCircle className="size-6 text-destructive mx-auto mb-2" />
-          <p className="font-medium text-destructive">{errorMessage}</p>
-        </div>
-      )}
-
       {/* Completion Message */}
-      {isComplete && !errorMessage && (
+      {isComplete && (
         <div className="text-center p-4 rounded-xl border border-accent/30 bg-accent/5 ai-glow">
           <Sparkles className="size-6 text-accent mx-auto mb-2" />
           <p className="font-medium text-foreground">Research Complete!</p>
@@ -340,7 +240,7 @@ export function ResearchProgress({
       )}
 
       {/* Help Text */}
-      {!isComplete && !errorMessage && (
+      {!isComplete && logs.length > 0 && (
         <p className="text-center text-xs text-muted-foreground">
           This may take a few moments. The AI is searching multiple sources for accurate information.
         </p>
