@@ -468,3 +468,129 @@ export async function getUserStats() {
     followers: stats[5],
   };
 }
+
+// ============================================
+// WIZARD PROGRESS ACTIONS
+// ============================================
+
+import type { WizardSession, WizardStep } from "@/lib/types/agent-state";
+
+/**
+ * Save wizard progress to a draft
+ * Creates a new draft if no draftId provided, updates existing otherwise
+ */
+export async function saveWizardProgress(input: {
+  draftId?: string;
+  step: WizardStep;
+  sessionData: Partial<WizardSession>;
+}) {
+  const user = await getCurrentUser();
+
+  // Serialize to plain JSON object for Prisma
+  const aiContext = JSON.parse(JSON.stringify({
+    wizardStep: input.step,
+    wizardSession: input.sessionData,
+    savedAt: new Date().toISOString(),
+  }));
+
+  const title = input.sessionData.sourceName
+    ? `${input.sessionData.sourceName} Story`
+    : "New Story";
+
+  if (input.draftId) {
+    // Update existing draft
+    const draft = await prisma.draft.update({
+      where: { id: input.draftId },
+      data: {
+        title,
+        fandom: input.sessionData.sourceName || undefined,
+        ships: input.sessionData.ships || [],
+        tags: input.sessionData.additionalTags || [],
+        aiContext,
+      },
+    });
+    return draft;
+  } else {
+    // Create new draft
+    const draft = await prisma.draft.create({
+      data: {
+        title,
+        content: "",
+        fandom: input.sessionData.sourceName || null,
+        ships: input.sessionData.ships || [],
+        tags: input.sessionData.additionalTags || [],
+        aiContext,
+        userId: user.id,
+      },
+    });
+    return draft;
+  }
+}
+
+/**
+ * Load wizard progress from a draft
+ * Returns the wizard session if found, null otherwise
+ */
+export async function loadWizardProgress(
+  draftId: string
+): Promise<WizardSession | null> {
+  const user = await getCurrentUser();
+
+  const draft = await prisma.draft.findFirst({
+    where: {
+      id: draftId,
+      userId: user.id,
+    },
+  });
+
+  if (!draft || !draft.aiContext) {
+    return null;
+  }
+
+  // Extract wizard session from aiContext
+  const aiContext = draft.aiContext as {
+    wizardStep?: WizardStep;
+    wizardSession?: Partial<WizardSession>;
+  };
+
+  if (!aiContext.wizardSession) {
+    return null;
+  }
+
+  // Reconstruct the wizard session
+  return {
+    step: aiContext.wizardStep || "source",
+    sourceType: null,
+    sourceName: null,
+    shipType: null,
+    setting: null,
+    additionalTags: [],
+    researchData: null,
+    characters: [],
+    outline: "",
+    userPreferences: {},
+    draftId: draft.id,
+    ...aiContext.wizardSession,
+  } as WizardSession;
+}
+
+/**
+ * Get all wizard drafts (drafts with wizard session data)
+ */
+export async function getWizardDrafts() {
+  const user = await getCurrentUser();
+
+  const drafts = await prisma.draft.findMany({
+    where: {
+      userId: user.id,
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  // Filter to only include drafts with wizard session data
+  return drafts.filter((draft) => {
+    if (!draft.aiContext) return false;
+    const aiContext = draft.aiContext as { wizardSession?: object };
+    return aiContext?.wizardSession !== undefined;
+  });
+}

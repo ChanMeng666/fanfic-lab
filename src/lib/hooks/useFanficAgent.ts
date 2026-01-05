@@ -12,7 +12,7 @@ import type {
   PendingContent,
   WizardSession,
 } from "@/lib/types/agent-state";
-import { INITIAL_AGENT_STATE } from "@/lib/types/agent-state";
+import { INITIAL_AGENT_STATE, INITIAL_WIZARD_SESSION } from "@/lib/types/agent-state";
 
 // Default story context
 const DEFAULT_STORY_CONTEXT: StoryContext = {
@@ -25,13 +25,8 @@ const DEFAULT_STORY_CONTEXT: StoryContext = {
   tone: "neutral",
 };
 
-// Default wizard session
-const DEFAULT_WIZARD_SESSION: WizardSession = {
-  step: "fandom",
-  characters: [],
-  plotIdeas: [],
-  userPreferences: {},
-};
+// Default wizard session - use the one from agent-state
+const DEFAULT_WIZARD_SESSION: WizardSession = INITIAL_WIZARD_SESSION;
 
 interface UseFanficAgentOptions {
   storyContext?: Partial<StoryContext>;
@@ -261,38 +256,40 @@ export function useWizardAgent() {
     [state, setState, wizardSession]
   );
 
-  const setWizardFandom = useCallback(
-    (fandom: string) => {
+  const setWizardSource = useCallback(
+    (sourceName: string, sourceType: WizardSession["sourceType"]) => {
       setState({
         ...state,
         wizardSession: {
           ...wizardSession,
-          fandom,
-          step: "ship",
+          sourceName,
+          sourceType,
+          step: "config",
         },
         storyContext: {
           ...storyContext,
-          fandom,
+          fandom: sourceName,
         },
       });
     },
     [state, setState, wizardSession, storyContext]
   );
 
-  const setWizardShip = useCallback(
-    (ship: { character1: string; character2: string } | null) => {
-      const shipStr = ship ? `${ship.character1}/${ship.character2}` : undefined;
-      const ships = ship ? [shipStr!] : [];
+  const setWizardConfig = useCallback(
+    (shipType: WizardSession["shipType"], setting: WizardSession["setting"], additionalTags: string[]) => {
       setState({
         ...state,
         wizardSession: {
           ...wizardSession,
-          ship: shipStr,
-          step: "characters",
+          shipType,
+          setting,
+          additionalTags,
+          step: "research",
         },
         storyContext: {
           ...storyContext,
-          ships,
+          ships: shipType ? [shipType] : [],
+          tags: additionalTags,
         },
       });
     },
@@ -327,8 +324,8 @@ export function useWizardAgent() {
     wizardSession,
     storyContext,
     updateWizardStep,
-    setWizardFandom,
-    setWizardShip,
+    setWizardSource,
+    setWizardConfig,
     addWizardCharacter,
     completeWizard,
     updateStoryContext,

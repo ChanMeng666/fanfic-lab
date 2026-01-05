@@ -1,17 +1,34 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CopilotChat, CopilotPopup } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
-import { Sparkles } from "lucide-react";
-import { FandomSelector } from "@/components/wizard/FandomSelector";
-import { ShipBuilder } from "@/components/wizard/ShipBuilder";
-import { CharacterSetup } from "@/components/wizard/CharacterSetup";
+import { Sparkles, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// Wizard components
+import { WizardProgress } from "@/components/wizard/WizardProgress";
+import { SourceSelector } from "@/components/wizard/SourceSelector";
+import { StoryConfigurator } from "@/components/wizard/StoryConfigurator";
+import { ResearchProgress } from "@/components/wizard/ResearchProgress";
+import { ResearchResultsCard } from "@/components/wizard/ResearchResultsCard";
+import { CharacterSetupV2 } from "@/components/wizard/CharacterSetupV2";
 import { OutlineApprovalCard } from "@/components/hitl/OutlineApprovalCard";
 import { InlineWritingArea } from "@/components/wizard/InlineWritingArea";
-import type { StoryCharacter } from "@/lib/types/agent-state";
-import { saveDraft } from "@/lib/actions/user";
+
+// Types and actions
+import type {
+  WizardSession,
+  WizardStep,
+  SourceType,
+  ShipType,
+  StorySetting,
+  SourceResearchData,
+  StoryCharacter,
+} from "@/lib/types/agent-state";
+import { INITIAL_WIZARD_SESSION } from "@/lib/types/agent-state";
+import { saveDraft, saveWizardProgress } from "@/lib/actions/user";
 
 // Custom AI thinking animation - three bouncing dots
 const ThinkingDots = (
@@ -22,51 +39,61 @@ const ThinkingDots = (
   </div>
 );
 
-interface WizardSession {
-  step: "fandom" | "ship" | "characters" | "outline" | "complete";
-  fandom: string;
-  ships: string[];
-  characters: StoryCharacter[];
-  tags: string[];
-  tone: string;
-  outline: string;
-}
-
-const INITIAL_SESSION: WizardSession = {
-  step: "fandom",
-  fandom: "",
-  ships: [],
-  characters: [],
-  tags: [],
-  tone: "neutral",
-  outline: "",
-};
-
 export default function WizardPage() {
   const router = useRouter();
-  const [session, setSession] = useState<WizardSession>(INITIAL_SESSION);
-  const [mode, setMode] = useState<"setup" | "writing">("setup");
+  const [session, setSession] = useState<WizardSession>(INITIAL_WIZARD_SESSION);
+  const [mode, setMode] = useState<"setup" | "research" | "writing">("setup");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Handle content save
-  const handleSaveContent = useCallback(async (newContent: string) => {
-    if (!draftId) return;
-    setIsSaving(true);
-    try {
-      await saveDraft({
-        id: draftId,
-        content: newContent,
-      });
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error("Failed to save draft:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [draftId]);
+  // Research state
+  const [isResearching, setIsResearching] = useState(false);
+  const [researchComplete, setResearchComplete] = useState(false);
+
+  // Auto-save wizard progress
+  const saveProgress = useCallback(
+    async (step: WizardStep, sessionData: Partial<WizardSession>) => {
+      setIsSaving(true);
+      try {
+        const draft = await saveWizardProgress({
+          draftId: draftId || undefined,
+          step,
+          sessionData: { ...session, ...sessionData },
+        });
+        if (!draftId) {
+          setDraftId(draft.id);
+        }
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error("Failed to save wizard progress:", error);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [draftId, session]
+  );
+
+  // Handle content save in writing mode
+  const handleSaveContent = useCallback(
+    async (newContent: string) => {
+      if (!draftId) return;
+      setIsSaving(true);
+      try {
+        await saveDraft({
+          id: draftId,
+          content: newContent,
+        });
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error("Failed to save draft:", error);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [draftId]
+  );
 
   // Share wizard state with AI
   useCopilotReadable({
@@ -74,75 +101,130 @@ export default function WizardPage() {
     value: session,
   });
 
-  // HITL: Gather fandom information
-  useCopilotAction({
-    name: "gather_fandom_info",
-    description: "Ask user to select a fandom for their story",
-    parameters: [],
-    renderAndWaitForResponse: ({ respond }) => (
-      <FandomSelector
-        onSelect={(fandom) => {
-          setSession((prev) => ({ ...prev, fandom, step: "ship" }));
-          respond?.({ fandom });
-        }}
-      />
-    ),
-  });
+  // Step 1: Source Selection Handler
+  const handleSourceComplete = async (data: { sourceType: SourceType; sourceName: string }) => {
+    const newSession = {
+      ...session,
+      sourceType: data.sourceType,
+      sourceName: data.sourceName,
+      step: "config" as WizardStep,
+    };
+    setSession(newSession);
+    await saveProgress("config", { sourceType: data.sourceType, sourceName: data.sourceName });
+  };
 
-  // HITL: Select ships
-  useCopilotAction({
-    name: "select_ships",
-    description: "Ask user to define romantic pairings for their story",
-    parameters: [
-      {
-        name: "fandom",
-        type: "string",
-        description: "The fandom context",
-        required: true,
-      },
-    ],
-    renderAndWaitForResponse: ({ args, respond }) => (
-      <ShipBuilder
-        fandom={args.fandom || session.fandom}
-        onSelect={(ships) => {
-          setSession((prev) => ({ ...prev, ships, step: "characters" }));
-          respond?.({ ships });
-        }}
-      />
-    ),
-  });
+  // Step 2: Story Configuration Handler
+  const handleConfigComplete = async (data: {
+    shipType: ShipType;
+    setting: StorySetting;
+    additionalTags: string[];
+  }) => {
+    const newSession = {
+      ...session,
+      shipType: data.shipType,
+      setting: data.setting,
+      additionalTags: data.additionalTags,
+      step: "research" as WizardStep,
+    };
+    setSession(newSession);
+    setIsResearching(true);
+    setMode("research");
+    await saveProgress("research", {
+      shipType: data.shipType,
+      setting: data.setting,
+      additionalTags: data.additionalTags
+    });
+  };
 
-  // HITL: Setup characters
-  useCopilotAction({
-    name: "setup_characters",
-    description: "Ask user to define main characters for their story",
-    parameters: [
-      {
-        name: "fandom",
-        type: "string",
-        description: "The fandom context",
-        required: true,
-      },
-      {
-        name: "suggestedCharacters",
-        type: "string[]",
-        description: "AI suggested characters based on fandom and ships",
-        required: false,
-      },
-    ],
-    renderAndWaitForResponse: ({ args, respond }) => (
-      <CharacterSetup
-        fandom={args.fandom || session.fandom}
-        suggestedCharacters={args.suggestedCharacters}
-        onComplete={(characters) => {
-          setSession((prev) => ({ ...prev, characters, step: "outline" }));
-          respond?.({ characters });
-        }}
-      />
-    ),
-  });
+  // Step 3: Research Complete Handler
+  const handleResearchComplete = (data: SourceResearchData) => {
+    setSession((prev) => ({
+      ...prev,
+      researchData: data,
+    }));
+    setIsResearching(false);
+    setResearchComplete(true);
+  };
 
-  // HITL: Approve outline with auto-save
+  // Step 3: Research Approved Handler
+  const handleResearchApproved = async () => {
+    const newSession = {
+      ...session,
+      step: "characters" as WizardStep,
+    };
+    setSession(newSession);
+    setResearchComplete(false);
+    setMode("setup");
+    await saveProgress("characters", { researchData: session.researchData });
+  };
+
+  // Step 3: Research Regenerate Handler
+  const handleResearchRegenerate = () => {
+    setResearchComplete(false);
+    setIsResearching(true);
+  };
+
+  // Step 4: Characters Complete Handler
+  const handleCharactersComplete = async (characters: StoryCharacter[]) => {
+    const newSession = {
+      ...session,
+      characters,
+      step: "outline" as WizardStep,
+    };
+    setSession(newSession);
+    await saveProgress("outline", { characters });
+  };
+
+  // Step 5: Outline Approved Handler
+  const handleOutlineApproved = async (finalOutline: string) => {
+    setSession((prev) => ({
+      ...prev,
+      outline: finalOutline,
+      step: "complete" as WizardStep,
+    }));
+
+    try {
+      // Save final draft
+      const draft = await saveDraft({
+        id: draftId || undefined,
+        title: `${session.sourceName} Story`,
+        content: "",
+        fandom: session.sourceName || undefined,
+        ships: session.shipType ? [session.shipType] : [],
+        tags: session.additionalTags,
+        aiContext: {
+          characters: session.characters,
+          outline: finalOutline,
+          setting: session.setting,
+          researchData: session.researchData,
+        },
+      });
+
+      setDraftId(draft.id);
+      setLastSaved(new Date());
+      setMode("writing");
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    }
+  };
+
+  // Back navigation handler
+  const handleBack = () => {
+    const stepOrder: WizardStep[] = ["source", "config", "research", "characters", "outline", "complete"];
+    const currentIndex = stepOrder.indexOf(session.step);
+    if (currentIndex > 0) {
+      const prevStep = stepOrder[currentIndex - 1];
+      setSession((prev) => ({ ...prev, step: prevStep }));
+      if (prevStep === "research") {
+        setMode("research");
+        setResearchComplete(true);
+      } else {
+        setMode("setup");
+      }
+    }
+  };
+
+  // HITL: Present outline for approval
   useCopilotAction({
     name: "present_outline",
     description: "Present the generated story outline for approval",
@@ -154,148 +236,261 @@ export default function WizardPage() {
         required: true,
       },
     ],
-    renderAndWaitForResponse: ({ args, respond }) => {
-      const handleApprove = async (finalOutline: string) => {
-        // Update local state
-        setSession((prev) => ({
-          ...prev,
-          outline: finalOutline,
-          step: "complete",
-        }));
-
-        try {
-          // Auto-save to database
-          const draft = await saveDraft({
-            title: `${session.fandom} Story`,
-            content: "",
-            fandom: session.fandom,
-            ships: session.ships,
-            tags: session.tags,
-            aiContext: {
-              characters: session.characters,
-              outline: finalOutline,
-              tone: session.tone,
-            },
+    renderAndWaitForResponse: ({ args, respond }) => (
+      <OutlineApprovalCard
+        outline={args.outline || ""}
+        onApprove={() => {
+          handleOutlineApproved(args.outline || "");
+          respond?.({ approved: true, outline: args.outline });
+        }}
+        onReject={() => {
+          respond?.({
+            approved: false,
+            feedback: "Please regenerate with different ideas",
           });
-
-          setDraftId(draft.id);
-          setLastSaved(new Date());
-          setMode("writing");
-        } catch (error) {
-          console.error("Failed to save draft:", error);
-        }
-
-        respond?.({ approved: true, outline: finalOutline });
-      };
-
-      return (
-        <OutlineApprovalCard
-          outline={args.outline || ""}
-          onApprove={() => handleApprove(args.outline || "")}
-          onReject={() => {
-            respond?.({
-              approved: false,
-              feedback: "Please regenerate with different ideas",
-            });
-          }}
-          onEdit={(editedOutline) => handleApprove(editedOutline)}
-        />
-      );
-    },
+        }}
+        onEdit={(editedOutline) => {
+          handleOutlineApproved(editedOutline);
+          respond?.({ approved: true, outline: editedOutline });
+        }}
+      />
+    ),
   });
 
-  // Action to continue to writing (legacy support)
+  // HITL: Start writing action
   useCopilotAction({
     name: "start_writing",
     description: "User is ready to start writing their story",
     parameters: [],
     handler: async () => {
-      // Just switch to writing mode if not already
       if (mode !== "writing") {
         setMode("writing");
       }
     },
     render: () => (
-      <div className="flex items-center gap-2 p-4 bg-success/10 border border-success/30 rounded-xl">
-        <Sparkles className="size-4 text-success" />
-        <span className="text-success font-medium">
+      <div className="flex items-center gap-2 p-4 bg-primary/10 border border-primary/30 rounded-xl">
+        <Sparkles className="size-4 text-primary" />
+        <span className="text-primary font-medium">
           Ready to start writing! Your draft has been saved.
         </span>
       </div>
     ),
   });
 
-  // Full-screen layout
-  return (
-    <div className="h-screen flex flex-col">
-      {/* Main Content */}
-      {mode === "setup" ? (
-        /* Setup Mode: Full-screen Chat with cream background */
-        <div className="flex-1 overflow-hidden wizard-chat-cream bg-background">
-          <CopilotChat
-            labels={{
-              title: "Story Wizard",
-              initial:
-                "Hi! I'm your creative writing assistant. Let's create an amazing fanfiction together!\n\nFirst, tell me which fandom you'd like to write in, or just say 'help me choose' if you're not sure.",
-            }}
-            icons={{
-              activityIcon: ThinkingDots,
-            }}
-            className="h-full"
+  // Render step content
+  const renderStepContent = () => {
+    switch (session.step) {
+      case "source":
+        return <SourceSelector onComplete={handleSourceComplete} />;
+
+      case "config":
+        return (
+          <StoryConfigurator
+            sourceName={session.sourceName || ""}
+            sourceType={session.sourceType || "anime"}
+            onComplete={handleConfigComplete}
+            onBack={handleBack}
           />
-        </div>
-      ) : (
-        /* Writing Mode: Editor with AI Popup */
-        <div className="flex-1 overflow-hidden relative flex flex-col bg-background">
-          {/* Writing Mode Header */}
-          <header className="h-12 border-b border-border/50 flex items-center px-4 gap-3 flex-shrink-0 bg-surface/80 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium text-foreground">{session.fandom}</span>
-              {session.ships.length > 0 && (
-                <>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-muted-foreground">{session.ships.join(", ")}</span>
-                </>
-              )}
-            </div>
+        );
 
-            <div className="ml-auto text-xs text-muted-foreground">
-              {isSaving ? (
-                <span className="flex items-center gap-1.5">
-                  <div className="animate-spin size-3 border-2 border-primary border-t-transparent rounded-full" />
-                  Saving...
-                </span>
-              ) : lastSaved ? (
-                <span>Saved {lastSaved.toLocaleTimeString()}</span>
-              ) : null}
-            </div>
-          </header>
+      case "research":
+        if (isResearching) {
+          return (
+            <ResearchProgress
+              sourceName={session.sourceName || ""}
+              sourceType={session.sourceType || "anime"}
+              onComplete={handleResearchComplete}
+            />
+          );
+        }
+        if (researchComplete && session.researchData) {
+          return (
+            <ResearchResultsCard
+              sourceName={session.sourceName || ""}
+              data={session.researchData}
+              onApprove={handleResearchApproved}
+              onRegenerate={handleResearchRegenerate}
+            />
+          );
+        }
+        return null;
 
-          <div className="flex-1 overflow-hidden">
-            <InlineWritingArea
-              draftId={draftId}
-              storyContext={{
-                fandom: session.fandom,
-                ships: session.ships,
-                characters: session.characters,
-                tone: session.tone,
-                outline: session.outline,
+      case "characters":
+        if (!session.researchData) {
+          // Fallback if no research data
+          return (
+            <div className="text-center p-8">
+              <p className="text-muted-foreground">No research data available.</p>
+              <Button onClick={handleBack} className="mt-4">
+                Go Back
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <CharacterSetupV2
+            sourceName={session.sourceName || ""}
+            researchData={session.researchData}
+            onComplete={handleCharactersComplete}
+            onBack={handleBack}
+          />
+        );
+
+      case "outline":
+        // Outline step uses CopilotChat for AI generation
+        return (
+          <div className="flex-1 overflow-hidden wizard-chat-cream bg-background">
+            <CopilotChat
+              labels={{
+                title: "Story Outline",
+                initial: `Great! Now let's create an outline for your ${session.sourceName} ${session.shipType?.toUpperCase() || ""} story set in a ${session.setting} setting.\n\nI'll generate a story outline based on:\n- Characters: ${session.characters.map((c) => c.name).join(", ")}\n- Tags: ${session.additionalTags.join(", ") || "None"}\n\nLet me create something special for you...`,
               }}
-              content={content}
-              onContentChange={(newContent) => {
-                setContent(newContent);
-                handleSaveContent(newContent);
+              icons={{
+                activityIcon: ThinkingDots,
               }}
+              className="h-full"
             />
           </div>
+        );
 
-          {/* AI Assistant Popup */}
-          <CopilotPopup
-            labels={{
-              title: "Writing Assistant",
-              initial: "Need help with your story? I can help you continue writing, expand scenes, or polish your prose.",
+      case "complete":
+        // Should transition to writing mode
+        return null;
+
+      default:
+        return null;
+    }
+  };
+
+  // Writing mode layout
+  if (mode === "writing") {
+    return (
+      <div className="h-screen flex flex-col">
+        {/* Writing Mode Header */}
+        <header className="h-12 border-b border-border/50 flex items-center px-4 gap-3 flex-shrink-0 bg-surface/80 backdrop-blur-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/dashboard")}
+            className="gap-1.5"
+          >
+            <ArrowLeft className="size-4" />
+            Dashboard
+          </Button>
+
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-foreground">{session.sourceName}</span>
+            {session.shipType && (
+              <>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-muted-foreground uppercase">{session.shipType}</span>
+              </>
+            )}
+            {session.setting && (
+              <>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-muted-foreground">{session.setting}</span>
+              </>
+            )}
+          </div>
+
+          <div className="ml-auto text-xs text-muted-foreground">
+            {isSaving ? (
+              <span className="flex items-center gap-1.5">
+                <div className="animate-spin size-3 border-2 border-primary border-t-transparent rounded-full" />
+                Saving...
+              </span>
+            ) : lastSaved ? (
+              <span>Saved {lastSaved.toLocaleTimeString()}</span>
+            ) : null}
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-hidden">
+          <InlineWritingArea
+            draftId={draftId}
+            storyContext={{
+              fandom: session.sourceName || "",
+              ships: session.shipType ? [session.shipType] : [],
+              characters: session.characters,
+              tone: session.setting || "modern",
+              outline: session.outline,
+            }}
+            content={content}
+            onContentChange={(newContent) => {
+              setContent(newContent);
+              handleSaveContent(newContent);
             }}
           />
+        </div>
+
+        {/* AI Assistant Popup */}
+        <CopilotPopup
+          labels={{
+            title: "Writing Assistant",
+            initial:
+              "Need help with your story? I can help you continue writing, expand scenes, or polish your prose.",
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Research mode with progress display
+  if (mode === "research") {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        {/* Progress indicator */}
+        <div className="border-b border-border bg-surface/80 backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <WizardProgress currentStep={session.step} />
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          {renderStepContent()}
+        </div>
+
+        {/* Save indicator */}
+        {lastSaved && (
+          <div className="fixed bottom-4 right-4 text-xs text-muted-foreground bg-surface/90 px-3 py-2 rounded-lg border border-border backdrop-blur-sm">
+            {isSaving ? "Saving..." : `Saved ${lastSaved.toLocaleTimeString()}`}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Setup mode with step-based wizard
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Progress indicator - only show after first step */}
+      {session.step !== "source" && (
+        <div className="border-b border-border bg-surface/80 backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <WizardProgress currentStep={session.step} />
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex-1 flex">
+        {session.step === "outline" ? (
+          // Full-screen chat for outline generation
+          renderStepContent()
+        ) : (
+          // Centered content for other steps
+          <div className="flex-1 flex items-center justify-center p-4">
+            {renderStepContent()}
+          </div>
+        )}
+      </div>
+
+      {/* Save indicator */}
+      {lastSaved && session.step !== "source" && (
+        <div className="fixed bottom-4 right-4 text-xs text-muted-foreground bg-surface/90 px-3 py-2 rounded-lg border border-border backdrop-blur-sm">
+          {isSaving ? "Saving..." : `Saved ${lastSaved.toLocaleTimeString()}`}
         </div>
       )}
     </div>

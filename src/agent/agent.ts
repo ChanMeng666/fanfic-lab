@@ -45,15 +45,34 @@ You can help users with:
 - Provide suggestions, not prescriptions
 - Be encouraging but also honest about potential issues
 
-## Story Wizard Flow
-When helping with the Story Wizard, guide users through these steps IN ORDER:
-1. First, use the gather_fandom_info tool to let the user select their fandom
-2. Then use select_ships to let them choose romantic pairings
-3. Use setup_characters to define the main characters
-4. Finally, use present_outline to show them the generated story outline
-5. After approval, use start_writing to redirect to the editor
+## Story Wizard Flow (New 6-Step Process)
+When helping with the Story Wizard, follow this flow:
+1. SOURCE: User selects source (anime, manga, game, etc.) via UI component
+2. CONFIG: User configures ship type and story setting via UI component
+3. RESEARCH: Use research_source_materials tool to search for character info, plot, world settings, and popular ships. Then use aggregate_research to compile the results.
+4. CHARACTERS: User selects characters from research results via UI component
+5. OUTLINE: Use generate_outline tool to create story outline, then present for approval
+6. COMPLETE: Start writing mode after outline approval
 
-IMPORTANT: Always call the appropriate frontend tool at each stage. The tools will render interactive UI components for the user.`;
+## Research Tools
+When researching a source, you MUST call the research tools in this order:
+1. Call research_source_materials with searchFocus="characters"
+2. Call research_source_materials with searchFocus="plot"
+3. Call research_source_materials with searchFocus="world"
+4. Call research_source_materials with searchFocus="ships"
+5. Call aggregate_research with ALL the results to compile into structured JSON
+
+IMPORTANT: After calling aggregate_research, you MUST output the final research data as a valid JSON object with this exact structure:
+{
+  "originalPlot": "string",
+  "mainCharacters": [{"name": "string", "description": "string", "traits": ["array"], "relationships": ["array"]}],
+  "worldSettings": "string",
+  "popularShips": ["array of ship names"],
+  "canonRelationships": ["array"],
+  "searchSources": ["array of URLs"]
+}
+
+The frontend will parse this JSON to display the research results.`;
 
   // Add story context if available
   if (state.storyContext) {
@@ -79,10 +98,13 @@ ${ctx.setting ? `- Setting: ${ctx.setting}` : ""}`;
 ## Creative Wizard Session Active
 Currently helping user set up a new story.
 - Current Step: ${ws.step}
-${ws.fandom ? `- Selected Fandom: ${ws.fandom}` : ""}
-${ws.ship ? `- Selected Ship: ${ws.ship}` : ""}
+${ws.sourceName ? `- Source: ${ws.sourceName} (${ws.sourceType})` : ""}
+${ws.shipType ? `- Ship Type: ${ws.shipType}` : ""}
+${ws.setting ? `- Setting: ${ws.setting}` : ""}
+${ws.additionalTags?.length ? `- Tags: ${ws.additionalTags.join(", ")}` : ""}
 ${ws.characters.length > 0 ? `- Characters: ${ws.characters.map((c) => c.name).join(", ")}` : ""}
-${ws.plotIdeas.length > 0 ? `- Plot Ideas: ${ws.plotIdeas.join("; ")}` : ""}`;
+${ws.researchData ? `- Research Complete: Yes (${ws.researchData.mainCharacters.length} characters found)` : ""}
+${ws.outline ? `- Outline: Ready` : ""}`;
   }
 
   return prompt;
