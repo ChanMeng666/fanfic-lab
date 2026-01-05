@@ -20,7 +20,8 @@ import { tavily } from "@tavily/core";
 import { FanficAgentStateAnnotation, FanficAgentState, AgentLog } from "./state";
 import { allBackendTools } from "./tools";
 import type { SourceResearchData } from "../lib/types/agent-state";
-import { getCachedResearch, saveResearchToCache } from "./services/research-cache";
+// Note: Cache is now handled on Vercel side via /api/research-cache
+// This eliminates Prisma dependency on Railway
 
 // Initialize Tavily client
 const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY || "" });
@@ -177,10 +178,10 @@ function extractSourceInfo(state: FanficAgentState): { sourceName: string; sourc
  * Research Node - Performs Tavily search without tool calling
  * This bypasses the CopilotKit ToolMessage format issue
  *
- * Includes caching to save API costs:
- * - First checks database cache for existing research
- * - If cache hit, returns cached data immediately (saves Tavily + OpenAI costs)
- * - If cache miss, performs full research and saves to cache
+ * Note: Cache is now handled on Vercel side via /api/research-cache
+ * - ResearchProgress component checks cache BEFORE triggering agent
+ * - ResearchProgress saves results to cache AFTER agent completes
+ * - This eliminates Prisma dependency on Railway
  */
 async function researchNode(
   state: FanficAgentState,
@@ -202,64 +203,7 @@ async function researchNode(
   const logs: AgentLog[] = [];
   const sources: Record<string, { title: string; content: string; url: string; score?: number }> = {};
 
-  // ========== STEP 1: Check Cache First ==========
-  logs.push({
-    message: `🔍 Checking research cache for "${sourceName}"...`,
-    done: false,
-  });
-  await copilotkitEmitState(config, { logs, sources });
-
-  const cachedResearch = await getCachedResearch(sourceName, sourceType);
-
-  if (cachedResearch) {
-    // CACHE HIT - Return cached data immediately (saves API costs!)
-    console.log("[FanFic Agent] ✅ CACHE HIT! Using cached research data");
-    logs[0].done = true;
-    logs[0].message = `✅ Found cached research for "${sourceName}"!`;
-
-    logs.push({
-      message: "📚 Loading previously researched data...",
-      done: true,
-    });
-
-    await copilotkitEmitState(config, { logs, sources });
-
-    // Build wizard session with cached data
-    const updatedWizardSession = state.wizardSession ? {
-      ...state.wizardSession,
-      researchData: cachedResearch,
-      step: "characters" as const,
-    } : {
-      step: "characters" as const,
-      sourceType: sourceType as "anime" | "manga" | "novel" | "game" | "movie" | "tv" | "other",
-      sourceName,
-      shipType: null,
-      setting: null,
-      additionalTags: [],
-      researchData: cachedResearch,
-      characters: [],
-      outline: "",
-      userPreferences: {},
-    };
-
-    await copilotkitEmitState(config, {
-      logs,
-      sources,
-      wizardSession: updatedWizardSession,
-    });
-
-    return {
-      logs,
-      sources,
-      wizardSession: updatedWizardSession,
-      messages: [new AIMessage(`Found cached research for "${sourceName}"! ${cachedResearch.mainCharacters.length} characters and research data loaded from previous searches.`)],
-    };
-  }
-
-  // ========== STEP 2: Cache Miss - Perform Full Research ==========
-  console.log("[FanFic Agent] ❌ CACHE MISS - Performing full research");
-  logs[0].done = true;
-  logs[0].message = `🔍 No cache found, starting fresh research...`;
+  // Start research (cache is checked by Vercel frontend before calling agent)
 
   console.log("[FanFic Agent] TAVILY_API_KEY present:", !!process.env.TAVILY_API_KEY);
 
@@ -319,8 +263,8 @@ async function researchNode(
       console.error(`[FanFic Agent] Error details:`, error instanceof Error ? error.message : String(error));
     }
 
-    // Mark this log as done (offset by 1 for cache check log)
-    logs[i + 1].done = true;
+    // Mark this log as done
+    logs[i].done = true;
     await copilotkitEmitState(config, { logs, sources });
   }
 
@@ -334,21 +278,9 @@ async function researchNode(
   // Aggregate results into structured format using LLM
   const researchData = await aggregateSearchResultsWithLLM(sourceName, sourceType, allResults);
 
-  // ========== STEP 3: Save to Cache ==========
-  logs.push({
-    message: "💾 Saving research to cache for future users...",
-    done: false,
-  });
-  await copilotkitEmitState(config, { logs, sources });
-
-  const cacheSaved = await saveResearchToCache(sourceName, sourceType, researchData);
-  logs[logs.length - 1].done = true;
-  logs[logs.length - 1].message = cacheSaved
-    ? "💾 Research cached successfully!"
-    : "💾 Cache save skipped (database not available)";
-
   // Mark aggregation as done
   logs[logs.length - 1].done = true;
+  // Note: Cache save is handled by Vercel frontend after receiving results
 
   // Update wizard session with research data
   // Create a new session if one doesn't exist (important for state detection)

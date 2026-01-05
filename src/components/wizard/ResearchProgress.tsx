@@ -4,12 +4,13 @@
  * Research Progress Component
  * Displays progress and polls agent state for completion
  *
- * Note: Due to langgraphjs dev background mode limitations,
- * real-time state streaming via copilotkitEmitState doesn't work.
- * Instead, we poll the agent state via useCoAgent to detect completion.
+ * Cache Strategy (Vercel-side):
+ * 1. Check cache via /api/research-cache BEFORE triggering agent
+ * 2. If cache hit, return immediately (saves API costs!)
+ * 3. If cache miss, trigger agent, then save results to cache
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import {
@@ -17,6 +18,7 @@ import {
   Loader2,
   CheckCircle2,
   Sparkles,
+  Database,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -29,7 +31,7 @@ interface ResearchProgressProps {
   onError?: (error: string) => void;
 }
 
-// Static progress steps for visual feedback
+// Static progress steps for visual feedback (used when cache miss)
 const RESEARCH_STEPS = [
   { message: "🌐 Searching for characters and personalities...", delay: 0 },
   { message: "📚 Researching plot and story elements...", delay: 2000 },
@@ -48,7 +50,8 @@ export function ResearchProgress({
   const [overallProgress, setOverallProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [displayLogs, setDisplayLogs] = useState<AgentLog[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [cacheChecked, setCacheChecked] = useState(false);
+  const [cacheHit, setCacheHit] = useState(false);
   const hasTriggeredRef = useRef(false);
   const hasCompletedRef = useRef(false);
 
@@ -60,91 +63,101 @@ export function ResearchProgress({
   // Get CopilotChat to trigger research
   const { appendMessage } = useCopilotChat();
 
-  // Animate progress steps for visual feedback
-  useEffect(() => {
+  // Save research to cache (Vercel-side)
+  const saveToCache = useCallback(async (data: SourceResearchData) => {
+    try {
+      console.log("[ResearchProgress] Saving to cache...");
+      await fetch("/api/research-cache", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceName,
+          sourceType,
+          researchData: data,
+        }),
+      });
+      console.log("[ResearchProgress] Saved to cache successfully");
+    } catch (error) {
+      console.error("[ResearchProgress] Failed to save to cache:", error);
+    }
+  }, [sourceName, sourceType]);
+
+  // Complete research with data
+  const completeResearch = useCallback((data: SourceResearchData, fromCache: boolean) => {
     if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
 
-    const timers: NodeJS.Timeout[] = [];
-
-    RESEARCH_STEPS.forEach((step, index) => {
-      const timer = setTimeout(() => {
-        if (hasCompletedRef.current) return;
-
-        setDisplayLogs((prev) => {
-          // Don't add if already exists
-          if (prev.some((log) => log.message === step.message)) return prev;
-
-          // Mark previous steps as done
-          const updated = prev.map((log) => ({ ...log, done: true }));
-          return [...updated, { message: step.message, done: false }];
-        });
-
-        setCurrentStep(index);
-        // Progress from 10% to 80% during steps
-        setOverallProgress(10 + (index / RESEARCH_STEPS.length) * 70);
-      }, step.delay);
-
-      timers.push(timer);
+    console.log("[ResearchProgress] Research complete!", {
+      fromCache,
+      charactersFound: data.mainCharacters?.length || 0,
+      hasPlot: !!data.originalPlot,
+      hasWorldSettings: !!data.worldSettings,
+      shipsFound: data.popularShips?.length || 0,
     });
 
-    return () => timers.forEach((timer) => clearTimeout(timer));
-  }, []);
+    // Mark all steps as complete
+    setDisplayLogs((prev) => prev.map((log) => ({ ...log, done: true })));
+    setOverallProgress(100);
+    setIsComplete(true);
 
-  // Poll agent state for research completion
-  useEffect(() => {
-    // Check if research data is available (check for researchData object, not just characters)
-    const researchData = agentState?.wizardSession?.researchData;
-    const hasResearchData = researchData && (
-      researchData.mainCharacters !== undefined ||
-      researchData.originalPlot !== undefined ||
-      researchData.worldSettings !== undefined
-    );
-
-    if (!hasCompletedRef.current && hasResearchData) {
-      console.log("[ResearchProgress] Research complete!", {
-        charactersFound: researchData.mainCharacters?.length || 0,
-        hasPlot: !!researchData.originalPlot,
-        hasWorldSettings: !!researchData.worldSettings,
-        shipsFound: researchData.popularShips?.length || 0,
-      });
-
-      hasCompletedRef.current = true;
-
-      // Mark all steps as complete
-      setDisplayLogs((prev) => prev.map((log) => ({ ...log, done: true })));
-      setOverallProgress(100);
-      setIsComplete(true);
-
-      // Small delay to show completion animation
-      setTimeout(() => {
-        onComplete(researchData);
-      }, 1000);
+    // Save to cache if not from cache
+    if (!fromCache) {
+      saveToCache(data);
     }
-  }, [agentState, onComplete]);
 
-  // Also check agent logs if streaming works
+    // Small delay to show completion animation
+    setTimeout(() => {
+      onComplete(data);
+    }, 1000);
+  }, [onComplete, saveToCache]);
+
+  // Step 1: Check cache first (Vercel-side)
   useEffect(() => {
-    if (agentState?.logs?.length && !hasCompletedRef.current) {
-      console.log("[ResearchProgress] Received logs from agent:", agentState.logs.length);
-      // Use actual logs if available (in case streaming starts working)
-      if (agentState.logs.length > displayLogs.length) {
-        setDisplayLogs(agentState.logs);
-        const completedCount = agentState.logs.filter((log) => log.done).length;
-        setOverallProgress((completedCount / agentState.logs.length) * 100);
+    if (cacheChecked || !sourceName) return;
+    setCacheChecked(true);
+
+    const checkCache = async () => {
+      console.log("[ResearchProgress] Checking cache...");
+      setDisplayLogs([{ message: "🔍 Checking research cache...", done: false }]);
+      setOverallProgress(5);
+
+      try {
+        const response = await fetch(
+          `/api/research-cache?sourceName=${encodeURIComponent(sourceName)}&sourceType=${encodeURIComponent(sourceType)}`
+        );
+        const result = await response.json();
+
+        if (result.cached && result.data) {
+          // CACHE HIT!
+          console.log("[ResearchProgress] ✅ CACHE HIT! searchCount:", result.searchCount);
+          setCacheHit(true);
+          setDisplayLogs([
+            { message: "🔍 Checking research cache...", done: true },
+            { message: `✅ Found cached research! (used ${result.searchCount} times)`, done: true },
+            { message: "📚 Loading research data...", done: true },
+          ]);
+          setOverallProgress(100);
+          completeResearch(result.data, true);
+        } else {
+          // CACHE MISS - trigger agent research
+          console.log("[ResearchProgress] ❌ Cache miss, triggering agent...");
+          setDisplayLogs([{ message: "🔍 No cache found, starting fresh research...", done: true }]);
+          triggerAgentResearch();
+        }
+      } catch (error) {
+        console.error("[ResearchProgress] Cache check failed:", error);
+        // Continue with agent research on error
+        triggerAgentResearch();
       }
-    }
-  }, [agentState?.logs, displayLogs.length]);
+    };
 
-  // Trigger agent to start research
-  useEffect(() => {
-    if (hasTriggeredRef.current || !sourceName) return;
-    hasTriggeredRef.current = true;
+    const triggerAgentResearch = async () => {
+      if (hasTriggeredRef.current) return;
+      hasTriggeredRef.current = true;
 
-    const triggerResearch = async () => {
       const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
 
-      console.log("[ResearchProgress] Triggering research...");
-      console.log("[ResearchProgress] Source:", sourceName, sourceType);
+      console.log("[ResearchProgress] Triggering agent research...");
 
       try {
         await appendMessage(
@@ -161,12 +174,73 @@ export function ResearchProgress({
     };
 
     // Small delay to ensure component is mounted
-    const timer = setTimeout(triggerResearch, 500);
+    const timer = setTimeout(checkCache, 300);
     return () => clearTimeout(timer);
-  }, [sourceName, sourceType, appendMessage, onError]);
+  }, [sourceName, sourceType, cacheChecked, appendMessage, onError, completeResearch]);
 
-  // Timeout fallback - if no response in 90 seconds
+  // Animate progress steps for visual feedback (only when cache miss)
   useEffect(() => {
+    if (hasCompletedRef.current || cacheHit || !cacheChecked) return;
+
+    const timers: NodeJS.Timeout[] = [];
+
+    RESEARCH_STEPS.forEach((step, index) => {
+      const timer = setTimeout(() => {
+        if (hasCompletedRef.current) return;
+
+        setDisplayLogs((prev) => {
+          // Don't add if already exists
+          if (prev.some((log) => log.message === step.message)) return prev;
+
+          // Mark previous steps as done
+          const updated = prev.map((log) => ({ ...log, done: true }));
+          return [...updated, { message: step.message, done: false }];
+        });
+
+        // Progress from 10% to 80% during steps
+        setOverallProgress(10 + (index / RESEARCH_STEPS.length) * 70);
+      }, step.delay + 500); // Add 500ms offset for cache check
+
+      timers.push(timer);
+    });
+
+    return () => timers.forEach((timer) => clearTimeout(timer));
+  }, [cacheChecked, cacheHit]);
+
+  // Poll agent state for research completion (only when cache miss)
+  useEffect(() => {
+    if (cacheHit) return; // Skip if cache hit
+
+    const researchData = agentState?.wizardSession?.researchData;
+    const hasResearchData = researchData && (
+      researchData.mainCharacters !== undefined ||
+      researchData.originalPlot !== undefined ||
+      researchData.worldSettings !== undefined
+    );
+
+    if (!hasCompletedRef.current && hasResearchData) {
+      completeResearch(researchData, false);
+    }
+  }, [agentState, cacheHit, completeResearch]);
+
+  // Also check agent logs if streaming works
+  useEffect(() => {
+    if (cacheHit) return; // Skip if cache hit
+
+    if (agentState?.logs?.length && !hasCompletedRef.current) {
+      console.log("[ResearchProgress] Received logs from agent:", agentState.logs.length);
+      if (agentState.logs.length > displayLogs.length) {
+        setDisplayLogs(agentState.logs);
+        const completedCount = agentState.logs.filter((log) => log.done).length;
+        setOverallProgress((completedCount / agentState.logs.length) * 100);
+      }
+    }
+  }, [agentState?.logs, displayLogs.length, cacheHit]);
+
+  // Timeout fallback - if no response in 90 seconds (only for cache miss)
+  useEffect(() => {
+    if (cacheHit) return; // No timeout needed for cache hit
+
     const timeout = setTimeout(() => {
       if (!hasCompletedRef.current) {
         console.log("[ResearchProgress] Research timeout");
@@ -175,7 +249,7 @@ export function ResearchProgress({
     }, 90000);
 
     return () => clearTimeout(timeout);
-  }, [onError]);
+  }, [onError, cacheHit]);
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 space-y-8 animate-fade-slide-in">
