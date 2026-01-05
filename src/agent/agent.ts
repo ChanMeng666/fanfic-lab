@@ -276,17 +276,44 @@ async function researchNode(
   logs[logs.length - 1].done = true;
 
   // Update wizard session with research data
+  // Create a new session if one doesn't exist (important for state detection)
   const updatedWizardSession = state.wizardSession ? {
     ...state.wizardSession,
     researchData,
     step: "characters" as const,
-  } : null;
+  } : {
+    // Create new wizard session with research data
+    step: "characters" as const,
+    sourceType: sourceType as "anime" | "manga" | "novel" | "game" | "movie" | "tv" | "other",
+    sourceName,
+    shipType: null,
+    setting: null,
+    additionalTags: [],
+    researchData,
+    characters: [],
+    outline: "",
+    userPreferences: {},
+  };
+
+  console.log("[FanFic Agent] Research data created:", {
+    charactersFound: researchData.mainCharacters.length,
+    shipsFound: researchData.popularShips.length,
+    sourcesFound: Object.keys(sources).length,
+  });
+  console.log("[FanFic Agent] Updated wizardSession:", {
+    step: updatedWizardSession.step,
+    sourceName: updatedWizardSession.sourceName,
+    hasResearchData: !!updatedWizardSession.researchData,
+    mainCharactersCount: updatedWizardSession.researchData?.mainCharacters?.length || 0,
+  });
 
   await copilotkitEmitState(config, {
     logs,
     sources,
     wizardSession: updatedWizardSession,
   });
+
+  console.log("[FanFic Agent] Final state emitted with wizardSession");
 
   return {
     logs,
