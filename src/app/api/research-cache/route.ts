@@ -1,20 +1,28 @@
 /**
- * Research Cache API Route
- * Handles caching of Tavily + LLM research results on Vercel
+ * Research Cache API Route (Redis-based)
+ *
+ * High-performance caching for Tavily + LLM research results
  *
  * GET: Check if cached research exists for a source
  * POST: Save research results to cache
  *
- * This runs on Vercel where Prisma is properly configured,
- * avoiding the need to debug Prisma on Railway.
+ * Best practices:
+ * - Uses Redis for fast read/write (memory-based)
+ * - Automatic TTL expiration (30 days)
+ * - Separate counter for analytics
+ * - Graceful degradation if Redis unavailable
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import { redisCache, REDIS_CONFIG } from "@/lib/redis";
 import type { SourceResearchData } from "@/lib/types/agent-state";
 
-// Cache configuration
-const CACHE_MAX_AGE_DAYS = 30;
+// Key generators
+const getResearchKey = (normalizedName: string) =>
+  `${REDIS_CONFIG.KEY_PREFIX.RESEARCH}${normalizedName}`;
+
+const getStatsKey = (normalizedName: string) =>
+  `${REDIS_CONFIG.KEY_PREFIX.STATS}${normalizedName}:count`;
 
 /**
  * Normalize source name for cache key matching
@@ -25,10 +33,22 @@ function normalizeSourceName(name: string): string {
 }
 
 /**
+ * Cached research data structure (includes metadata)
+ */
+interface CachedResearchData {
+  sourceName: string;
+  sourceType: string;
+  researchData: SourceResearchData;
+  cachedAt: string; // ISO date string
+}
+
+/**
  * GET /api/research-cache?sourceName=xxx&sourceType=xxx
  * Check if cached research exists
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const sourceName = searchParams.get("sourceName");
@@ -42,46 +62,50 @@ export async function GET(request: NextRequest) {
     }
 
     const normalizedName = normalizeSourceName(sourceName);
-    console.log("[ResearchCache API] Looking up cache for:", normalizedName);
+    const cacheKey = getResearchKey(normalizedName);
+    const statsKey = getStatsKey(normalizedName);
 
-    const cached = await prisma.sourceResearchCache.findUnique({
-      where: { normalizedName },
-    });
+    console.log("[ResearchCache] GET request for:", normalizedName);
+
+    // Fetch from Redis
+    const cached = await redisCache.get<CachedResearchData>(cacheKey);
 
     if (!cached) {
-      console.log("[ResearchCache API] Cache miss");
-      return NextResponse.json({ cached: false });
+      console.log("[ResearchCache] Cache MISS");
+      return NextResponse.json({
+        cached: false,
+        latency: Date.now() - startTime,
+      });
     }
 
-    // Check if cache is stale (older than CACHE_MAX_AGE_DAYS)
-    const ageInDays =
-      (Date.now() - cached.updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+    // Cache hit - increment access counter
+    const searchCount = await redisCache.increment(statsKey) || 1;
 
-    if (ageInDays > CACHE_MAX_AGE_DAYS) {
-      console.log("[ResearchCache API] Cache stale (age:", ageInDays.toFixed(1), "days)");
-      return NextResponse.json({ cached: false, stale: true });
-    }
+    // Get remaining TTL for info
+    const ttlRemaining = await redisCache.ttl(cacheKey);
 
-    // Update access stats
-    await prisma.sourceResearchCache.update({
-      where: { normalizedName },
-      data: {
-        searchCount: { increment: 1 },
-        lastAccessedAt: new Date(),
-      },
+    console.log("[ResearchCache] Cache HIT!", {
+      searchCount,
+      ttlRemaining: ttlRemaining ? `${Math.round(ttlRemaining / 86400)} days` : "unknown",
+      latency: `${Date.now() - startTime}ms`,
     });
-
-    console.log("[ResearchCache API] Cache hit! searchCount:", cached.searchCount + 1);
 
     return NextResponse.json({
       cached: true,
-      data: cached.researchData as unknown as SourceResearchData,
-      searchCount: cached.searchCount + 1,
+      data: cached.researchData,
+      searchCount,
+      cachedAt: cached.cachedAt,
+      ttlRemaining,
+      latency: Date.now() - startTime,
     });
   } catch (error) {
-    console.error("[ResearchCache API] GET error:", error);
+    console.error("[ResearchCache] GET error:", error);
     return NextResponse.json(
-      { error: "Failed to check cache", cached: false },
+      {
+        error: "Failed to check cache",
+        cached: false,
+        latency: Date.now() - startTime,
+      },
       { status: 500 }
     );
   }
@@ -92,6 +116,8 @@ export async function GET(request: NextRequest) {
  * Save research results to cache
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body = await request.json();
     const { sourceName, sourceType, researchData } = body;
@@ -104,35 +130,98 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedName = normalizeSourceName(sourceName);
-    console.log("[ResearchCache API] Saving to cache:", normalizedName);
+    const cacheKey = getResearchKey(normalizedName);
+    const statsKey = getStatsKey(normalizedName);
 
-    await prisma.sourceResearchCache.upsert({
-      where: { normalizedName },
-      update: {
-        sourceName,
-        sourceType: sourceType || "unknown",
-        researchData: researchData as object,
-        searchCount: { increment: 1 },
-        lastAccessedAt: new Date(),
-        updatedAt: new Date(),
-      },
-      create: {
-        sourceName,
-        sourceType: sourceType || "unknown",
-        normalizedName,
-        researchData: researchData as object,
-        searchCount: 1,
-        lastAccessedAt: new Date(),
-      },
+    console.log("[ResearchCache] POST request for:", normalizedName);
+
+    // Prepare cache data with metadata
+    const cacheData: CachedResearchData = {
+      sourceName,
+      sourceType: sourceType || "unknown",
+      researchData,
+      cachedAt: new Date().toISOString(),
+    };
+
+    // Save to Redis with TTL
+    const success = await redisCache.set(
+      cacheKey,
+      cacheData,
+      REDIS_CONFIG.RESEARCH_CACHE_TTL
+    );
+
+    if (!success) {
+      console.error("[ResearchCache] Failed to save to Redis");
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Redis unavailable",
+          latency: Date.now() - startTime,
+        },
+        { status: 503 }
+      );
+    }
+
+    // Initialize or increment counter
+    const searchCount = await redisCache.increment(statsKey) || 1;
+
+    console.log("[ResearchCache] Successfully cached!", {
+      normalizedName,
+      searchCount,
+      ttl: `${REDIS_CONFIG.RESEARCH_CACHE_TTL / 86400} days`,
+      latency: `${Date.now() - startTime}ms`,
     });
 
-    console.log("[ResearchCache API] Successfully saved to cache");
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      searchCount,
+      ttl: REDIS_CONFIG.RESEARCH_CACHE_TTL,
+      latency: Date.now() - startTime,
+    });
   } catch (error) {
-    console.error("[ResearchCache API] POST error:", error);
+    console.error("[ResearchCache] POST error:", error);
     return NextResponse.json(
-      { error: "Failed to save to cache" },
+      {
+        success: false,
+        error: "Failed to save to cache",
+        latency: Date.now() - startTime,
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/research-cache?sourceName=xxx
+ * Clear cached research (for admin/debugging)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const sourceName = searchParams.get("sourceName");
+
+    if (!sourceName) {
+      return NextResponse.json(
+        { error: "sourceName is required" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedName = normalizeSourceName(sourceName);
+    const cacheKey = getResearchKey(normalizedName);
+
+    console.log("[ResearchCache] DELETE request for:", normalizedName);
+
+    const deleted = await redisCache.delete(cacheKey);
+
+    return NextResponse.json({
+      success: deleted,
+      message: deleted ? "Cache cleared" : "Cache key not found or Redis unavailable",
+    });
+  } catch (error) {
+    console.error("[ResearchCache] DELETE error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete cache" },
       { status: 500 }
     );
   }
