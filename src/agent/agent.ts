@@ -264,13 +264,13 @@ async function researchNode(
 
   // Add aggregation log
   logs.push({
-    message: "✨ Compiling research results...",
+    message: "✨ AI is summarizing research results...",
     done: false,
   });
   await copilotkitEmitState(config, { logs, sources });
 
-  // Aggregate results into structured format
-  const researchData = aggregateSearchResults(sourceName, sourceType, allResults);
+  // Aggregate results into structured format using LLM
+  const researchData = await aggregateSearchResultsWithLLM(sourceName, sourceType, allResults);
 
   // Mark aggregation as done
   logs[logs.length - 1].done = true;
@@ -324,101 +324,161 @@ async function researchNode(
 }
 
 /**
- * Aggregate search results into structured SourceResearchData
+ * Aggregate search results into structured SourceResearchData using LLM
+ * Uses GPT to intelligently summarize and extract meaningful information
  */
-function aggregateSearchResults(
+async function aggregateSearchResultsWithLLM(
+  sourceName: string,
+  sourceType: string,
+  results: Array<{ title: string; content: string; url: string; score: number }>
+): Promise<SourceResearchData> {
+  console.log("[FanFic Agent] Starting LLM-based aggregation for:", sourceName);
+
+  // Combine all content for LLM analysis
+  const combinedContent = results
+    .map((r) => `### ${r.title}\n${r.content}`)
+    .join("\n\n---\n\n");
+
+  console.log("[FanFic Agent] Combined content length:", combinedContent.length);
+
+  // Initialize LLM for summarization
+  const summarizer = new ChatOpenAI({
+    temperature: 0.3,
+    model: "gpt-4o-mini", // Use mini for cost efficiency
+  });
+
+  const extractionPrompt = `You are an expert in analyzing source materials for fanfiction writing. Analyze the following search results about "${sourceName}" (${sourceType}) and extract structured information.
+
+## Search Results:
+${combinedContent.slice(0, 12000)} // Limit to avoid token overflow
+
+## Instructions:
+Extract and summarize the following information in JSON format. Be specific, accurate, and helpful for fanfiction writers.
+
+Return ONLY valid JSON in this exact format:
+{
+  "plotSummary": "A 2-3 paragraph summary of the main plot, themes, and story arcs. Include key events and conflicts.",
+  "worldSettings": "A detailed description of the world/setting including: time period, locations, magic systems or technology, social structures, and any unique worldbuilding elements.",
+  "characters": [
+    {
+      "name": "Character Full Name",
+      "description": "2-3 sentences describing who they are, their role in the story, and their background",
+      "traits": ["trait1", "trait2", "trait3", "trait4"],
+      "relationships": ["relationship description 1", "relationship description 2"]
+    }
+  ],
+  "popularShips": ["Character A x Character B", "Character C x Character D"],
+  "canonRelationships": ["Description of canon relationship 1", "Description of canon relationship 2"],
+  "fanficTips": "Brief tips for writing fanfiction in this fandom, including common tropes and what fans enjoy"
+}
+
+Important guidelines:
+- For characters: Include 5-10 main characters with REAL descriptions and personality traits
+- For ships: Use the format "Character A x Character B" - include both canon and popular fan pairings
+- For world settings: Be detailed about the setting, time period, and any special systems (magic, cultivation, etc.)
+- All information should be factually accurate based on the search results
+- If information is not available in the search results, make reasonable inferences but note uncertainty`;
+
+  try {
+    const response = await summarizer.invoke([
+      new SystemMessage("You are a helpful assistant that extracts and summarizes information about fictional works for fanfiction writers. Always respond with valid JSON only."),
+      new HumanMessage(extractionPrompt),
+    ]);
+
+    const responseText = typeof response.content === "string"
+      ? response.content
+      : JSON.stringify(response.content);
+
+    console.log("[FanFic Agent] LLM response length:", responseText.length);
+
+    // Parse JSON from response (handle potential markdown code blocks)
+    let jsonStr = responseText;
+    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    console.log("[FanFic Agent] Successfully parsed LLM response");
+
+    // Build structured data from LLM response
+    return {
+      originalPlot: parsed.plotSummary || `${sourceName} is a ${sourceType} with a rich narrative.`,
+
+      mainCharacters: (parsed.characters || []).slice(0, 10).map((char: {
+        name: string;
+        description?: string;
+        traits?: string[];
+        relationships?: string[];
+      }) => ({
+        name: char.name,
+        description: char.description || `A character from ${sourceName}`,
+        traits: char.traits || ["complex", "memorable"],
+        relationships: char.relationships || [],
+      })),
+
+      worldSettings: parsed.worldSettings || `The world of ${sourceName} - a unique ${sourceType} setting.`,
+
+      popularShips: parsed.popularShips || [],
+
+      canonRelationships: parsed.canonRelationships || [],
+
+      searchSources: results.slice(0, 5).map((r) => r.url),
+    };
+  } catch (error) {
+    console.error("[FanFic Agent] LLM aggregation failed:", error);
+    console.log("[FanFic Agent] Falling back to basic extraction");
+
+    // Fallback to basic extraction if LLM fails
+    return fallbackAggregation(sourceName, sourceType, results);
+  }
+}
+
+/**
+ * Fallback aggregation using basic text extraction (used if LLM fails)
+ */
+function fallbackAggregation(
   sourceName: string,
   sourceType: string,
   results: Array<{ title: string; content: string; url: string; score: number }>
 ): SourceResearchData {
-  // Combine all content for analysis
-  const combinedContent = results
-    .map((r) => `[${r.title}]\n${r.content}`)
-    .join("\n\n");
+  console.log("[FanFic Agent] Using fallback aggregation");
 
-  console.log("[FanFic Agent] Combined content length:", combinedContent.length);
+  const combinedContent = results.map((r) => r.content).join(" ");
 
-  // Extract character names from content with multiple strategies
+  // Basic character extraction
   const characterNames: Set<string> = new Set();
-
-  // Strategy 1: Look for explicit character mentions
-  const characterPatterns = [
-    /(?:main character|protagonist|character)s?\s*(?:include|are|:)\s*([^.]+)/gi,
-    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:is|are)\s+(?:the|a)\s+(?:main|primary|central)/gi,
-    // More flexible patterns for Asian names
-    /(?:Wei Wuxian|Lan Wangji|Jiang Cheng|Nie Huaisang|Jin Ling|Wen Ning|Lan Xichen|Jin Guangyao|Xue Yang|Lan Sizhui|Lan Jingyi)/gi,
-    // Generic proper noun patterns (2-3 word names starting with capitals)
-    /\b([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/g,
+  const namePatterns = [
+    /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g,
   ];
 
-  for (const pattern of characterPatterns) {
+  for (const pattern of namePatterns) {
     const matches = combinedContent.matchAll(pattern);
     for (const match of matches) {
-      const name = match[1] || match[0];
-      if (name) {
-        const cleanName = name.trim();
-        // Filter out common non-character words
-        const excludeWords = ['The', 'This', 'That', 'When', 'Where', 'What', 'Which', 'How', 'Why', 'And', 'But', 'For', 'Not', 'You', 'All', 'Can', 'Had', 'Her', 'Was', 'One', 'Our', 'Out'];
-        if (cleanName.length > 2 && cleanName.length < 30 && !excludeWords.includes(cleanName.split(' ')[0])) {
-          characterNames.add(cleanName);
-        }
+      const name = match[1]?.trim();
+      const excludeWords = ['The', 'This', 'That', 'When', 'Where', 'What', 'Which'];
+      if (name && name.length > 4 && name.length < 30 && !excludeWords.includes(name.split(' ')[0])) {
+        characterNames.add(name);
       }
     }
   }
 
-  console.log("[FanFic Agent] Extracted character names:", Array.from(characterNames).slice(0, 10));
-
-  // Strategy 2: If no characters found, create placeholders from source
-  if (characterNames.size === 0) {
-    console.log("[FanFic Agent] No characters extracted, adding placeholders");
-    characterNames.add("Main Protagonist");
-    characterNames.add("Supporting Character 1");
-    characterNames.add("Supporting Character 2");
-  }
-
-  // Extract ship patterns
-  const shipPatterns = [
-    /(?:ship|pairing|couple)s?\s*(?:include|are|:)\s*([^.]+)/gi,
-    /([A-Z][a-z]+)\s*[x×\/]\s*([A-Z][a-z]+)/g,
-  ];
-
-  const ships: Set<string> = new Set();
-  for (const pattern of shipPatterns) {
-    const matches = combinedContent.matchAll(pattern);
-    for (const match of matches) {
-      if (match[1] && match[2]) {
-        ships.add(`${match[1]} x ${match[2]}`);
-      } else if (match[1]) {
-        const shipNames = match[1].split(/[,and]+/).map((n) => n.trim());
-        shipNames.forEach((n) => {
-          if (n.length > 2 && n.length < 50) ships.add(n);
-        });
-      }
-    }
-  }
-
-  // Build structured data
   return {
     originalPlot: results
-      .filter((r) => r.title.toLowerCase().includes("plot") || r.content.toLowerCase().includes("story"))
       .slice(0, 2)
       .map((r) => r.content)
       .join("\n\n") || `${sourceName} is a ${sourceType} with a rich narrative.`,
 
-    mainCharacters: Array.from(characterNames).slice(0, 10).map((name) => ({
+    mainCharacters: Array.from(characterNames).slice(0, 8).map((name) => ({
       name,
-      description: `A character from ${sourceName}`,
-      traits: ["complex", "memorable"],
+      description: `A character from ${sourceName}. More details will be available after manual review.`,
+      traits: ["to be determined"],
       relationships: [],
     })),
 
-    worldSettings: results
-      .filter((r) => r.title.toLowerCase().includes("world") || r.content.toLowerCase().includes("setting"))
-      .slice(0, 1)
-      .map((r) => r.content)
-      .join("\n") || `The world of ${sourceName} - a unique ${sourceType} setting.`,
+    worldSettings: `The setting of ${sourceName}. Please review the source material for detailed worldbuilding information.`,
 
-    popularShips: Array.from(ships).slice(0, 10),
+    popularShips: [],
 
     canonRelationships: [],
 

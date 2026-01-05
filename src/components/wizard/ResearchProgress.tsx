@@ -35,7 +35,8 @@ const RESEARCH_STEPS = [
   { message: "📚 Researching plot and story elements...", delay: 2000 },
   { message: "🌍 Exploring world settings and lore...", delay: 4000 },
   { message: "💕 Finding popular ships and relationships...", delay: 6000 },
-  { message: "✨ Compiling research results...", delay: 8000 },
+  { message: "🤖 AI is analyzing and summarizing results...", delay: 8000 },
+  { message: "✨ Formatting research data...", delay: 12000 },
 ];
 
 export function ResearchProgress({
