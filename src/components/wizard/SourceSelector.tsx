@@ -100,9 +100,6 @@ export function SourceSelector({ onComplete }: SourceSelectorProps) {
         <h2 className="font-display text-2xl font-semibold text-foreground">
           Choose Your Source
         </h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Select the anime, game, novel, or other media that inspires your fanfiction
-        </p>
       </div>
 
       {/* Category Tabs */}
@@ -133,7 +130,7 @@ export function SourceSelector({ onComplete }: SourceSelectorProps) {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search for a fandom..."
+            placeholder="Search..."
             className="pl-9 h-11 bg-background"
           />
         </div>
@@ -194,15 +191,13 @@ export function SourceSelector({ onComplete }: SourceSelectorProps) {
 
       {/* Custom Source Input */}
       <div className="pt-4 border-t border-border">
-        <p className="text-sm text-muted-foreground mb-3">
-          Can&apos;t find your fandom? Enter it manually:
-        </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Or enter manually:</span>
           <Input
             value={customSource}
             onChange={(e) => setCustomSource(e.target.value)}
-            placeholder="Enter fandom name (e.g., 'Genshin Impact', 'Naruto')"
-            className="flex-1 h-11"
+            placeholder="Enter fandom name..."
+            className="flex-1 h-10"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 handleCustomSubmit();
@@ -212,19 +207,13 @@ export function SourceSelector({ onComplete }: SourceSelectorProps) {
           <Button
             onClick={handleCustomSubmit}
             disabled={!customSource.trim()}
-            className="h-11 gap-2"
+            size="sm"
+            className="gap-1.5"
           >
             Continue
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-3.5" />
           </Button>
         </div>
-      </div>
-
-      {/* Help Text */}
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground">
-          This will help our AI understand the characters and world of your story
-        </p>
       </div>
     </div>
   );

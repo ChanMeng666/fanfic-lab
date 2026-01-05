@@ -79,9 +79,6 @@ export function StoryConfigurator({
         <h2 className="font-display text-2xl font-semibold text-foreground">
           Configure Your Story
         </h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Set the tone and setting for your <span className="text-primary font-medium">{sourceName}</span> fanfiction
-        </p>
       </div>
 
       {/* Ship/Relationship Type Section */}
@@ -92,15 +89,16 @@ export function StoryConfigurator({
             Relationship Type
           </h3>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {SHIP_TYPE_OPTIONS.map((option) => {
             const isSelected = selectedShipType === option.id;
             return (
               <button
                 key={option.id}
                 onClick={() => setSelectedShipType(option.id)}
+                title={option.description}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-4 rounded-xl border text-center transition-all hover-lift",
+                  "flex items-center justify-center p-3 rounded-xl border text-center transition-all hover-lift",
                   isSelected
                     ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                     : "border-border bg-surface hover:border-primary/50"
@@ -108,9 +106,6 @@ export function StoryConfigurator({
               >
                 <span className="font-medium text-sm text-foreground">
                   {option.label}
-                </span>
-                <span className="text-xs text-muted-foreground line-clamp-2">
-                  {option.description}
                 </span>
               </button>
             );
@@ -126,15 +121,16 @@ export function StoryConfigurator({
             Story Setting
           </h3>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
           {STORY_SETTING_OPTIONS.map((option) => {
             const isSelected = selectedSetting === option.id;
             return (
               <button
                 key={option.id}
                 onClick={() => setSelectedSetting(option.id)}
+                title={option.description}
                 className={cn(
-                  "flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-all hover-lift",
+                  "flex items-center justify-center p-3 rounded-xl border text-center transition-all hover-lift",
                   isSelected
                     ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                     : "border-border bg-surface hover:border-primary/50"
@@ -143,9 +139,6 @@ export function StoryConfigurator({
                 <span className="font-medium text-sm text-foreground">
                   {option.label}
                 </span>
-                <span className="text-xs text-muted-foreground line-clamp-2">
-                  {option.description}
-                </span>
               </button>
             );
           })}
@@ -153,21 +146,21 @@ export function StoryConfigurator({
       </div>
 
       {/* Additional Tags Section */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Tags className="size-5 text-primary" />
-          <h3 className="font-display text-lg font-medium text-foreground">
-            Additional Tags
+          <Tags className="size-4 text-primary" />
+          <h3 className="font-medium text-sm text-foreground">
+            Tags
           </h3>
-          <span className="text-xs text-muted-foreground">(Optional)</span>
+          <span className="text-xs text-muted-foreground">(optional)</span>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="flex gap-2">
             <Input
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
-              placeholder="Add a tag (e.g., 'slow burn', 'enemies to lovers')"
-              className="flex-1 h-10"
+              placeholder="Add tag..."
+              className="flex-1 h-9"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -181,32 +174,27 @@ export function StoryConfigurator({
               size="icon"
               onClick={handleAddTag}
               disabled={!tagInput.trim()}
-              className="h-10 w-10"
+              className="h-9 w-9"
             >
               <Plus className="size-4" />
             </Button>
           </div>
-          {additionalTags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {additionalTags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="gap-1.5 px-3 py-1"
+          <div className="flex flex-wrap items-center gap-2">
+            {additionalTags.map((tag) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="gap-1 px-2 py-0.5 text-xs"
+              >
+                {tag}
+                <button
+                  onClick={() => handleRemoveTag(tag)}
+                  className="hover:text-destructive transition-colors"
                 >
-                  {tag}
-                  <button
-                    onClick={() => handleRemoveTag(tag)}
-                    className="hover:text-destructive transition-colors"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-muted-foreground mr-2">Suggestions:</span>
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
             {["slow burn", "fluff", "angst", "hurt/comfort", "enemies to lovers", "friends to lovers"].map(
               (suggestion) =>
                 !additionalTags.includes(suggestion) && (
@@ -237,17 +225,10 @@ export function StoryConfigurator({
           disabled={!isComplete}
           className="gap-2"
         >
-          Continue to AI Research
+          Continue
           <ArrowRight className="size-4" />
         </Button>
       </div>
-
-      {/* Help Text */}
-      {!isComplete && (
-        <p className="text-center text-xs text-muted-foreground">
-          Please select both a relationship type and story setting to continue
-        </p>
-      )}
     </div>
   );
 }
