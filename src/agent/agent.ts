@@ -55,20 +55,22 @@ When helping with the Story Wizard, follow this flow:
 6. COMPLETE: Start writing mode after outline approval
 
 ## Research Tools
-When researching a source, you MUST call the research tools in this order:
-1. Call research_source_materials with searchFocus="characters"
-2. Call research_source_materials with searchFocus="plot"
-3. Call research_source_materials with searchFocus="world"
-4. Call research_source_materials with searchFocus="ships"
-5. Call aggregate_research with ALL the results to compile into structured data
+When asked to research a source for fanfiction writing, you should call the frontend action "deliver_research_results" directly with your knowledge about the source.
 
-IMPORTANT: After aggregating research, you MUST call the frontend action "deliver_research_results" to send the data to the UI. This action accepts:
-- originalPlot: string (2-3 paragraph plot summary)
-- mainCharacters: array of {name, description, traits[], relationships[]}
+DO NOT use backend tools like research_source_materials - they are currently disabled due to a compatibility issue.
+
+Instead, use your knowledge to provide research data by calling the "deliver_research_results" action with:
+- originalPlot: string (2-3 paragraph plot summary based on your knowledge)
+- mainCharacters: array of {name, description, traits[], relationships[]} (main characters you know)
 - worldSettings: string (world/setting description)
-- popularShips: string[] (popular ship names)
+- popularShips: string[] (popular ship names in the fandom)
 - canonRelationships: string[] (canon relationships)
-- searchSources: string[] (source URLs)
+- searchSources: string[] (can be empty)
+
+Example for "Mo Dao Zu Shi":
+- Wei Wuxian, Lan Wangji, Jiang Cheng as main characters
+- Plot about cultivation, resurrection, mystery
+- Popular ships like "WangXian"
 
 The frontend is waiting for this action to display the research results.`;
 
