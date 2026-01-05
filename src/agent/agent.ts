@@ -20,6 +20,7 @@ import { tavily } from "@tavily/core";
 import { FanficAgentStateAnnotation, FanficAgentState, AgentLog } from "./state";
 import { allBackendTools } from "./tools";
 import type { SourceResearchData } from "../lib/types/agent-state";
+import { getCachedResearch, saveResearchToCache } from "./services/research-cache";
 
 // Initialize Tavily client
 const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY || "" });
@@ -175,14 +176,17 @@ function extractSourceInfo(state: FanficAgentState): { sourceName: string; sourc
 /**
  * Research Node - Performs Tavily search without tool calling
  * This bypasses the CopilotKit ToolMessage format issue
+ *
+ * Includes caching to save API costs:
+ * - First checks database cache for existing research
+ * - If cache hit, returns cached data immediately (saves Tavily + OpenAI costs)
+ * - If cache miss, performs full research and saves to cache
  */
 async function researchNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
   console.log("[FanFic Agent] ========== RESEARCH NODE STARTED ==========");
-  console.log("[FanFic Agent] TAVILY_API_KEY present:", !!process.env.TAVILY_API_KEY);
-  console.log("[FanFic Agent] TAVILY_API_KEY prefix:", process.env.TAVILY_API_KEY?.substring(0, 10) || "N/A");
 
   const sourceInfo = extractSourceInfo(state);
   console.log("[FanFic Agent] Extracted source info:", sourceInfo);
@@ -198,6 +202,67 @@ async function researchNode(
   const logs: AgentLog[] = [];
   const sources: Record<string, { title: string; content: string; url: string; score?: number }> = {};
 
+  // ========== STEP 1: Check Cache First ==========
+  logs.push({
+    message: `🔍 Checking research cache for "${sourceName}"...`,
+    done: false,
+  });
+  await copilotkitEmitState(config, { logs, sources });
+
+  const cachedResearch = await getCachedResearch(sourceName, sourceType);
+
+  if (cachedResearch) {
+    // CACHE HIT - Return cached data immediately (saves API costs!)
+    console.log("[FanFic Agent] ✅ CACHE HIT! Using cached research data");
+    logs[0].done = true;
+    logs[0].message = `✅ Found cached research for "${sourceName}"!`;
+
+    logs.push({
+      message: "📚 Loading previously researched data...",
+      done: true,
+    });
+
+    await copilotkitEmitState(config, { logs, sources });
+
+    // Build wizard session with cached data
+    const updatedWizardSession = state.wizardSession ? {
+      ...state.wizardSession,
+      researchData: cachedResearch,
+      step: "characters" as const,
+    } : {
+      step: "characters" as const,
+      sourceType: sourceType as "anime" | "manga" | "novel" | "game" | "movie" | "tv" | "other",
+      sourceName,
+      shipType: null,
+      setting: null,
+      additionalTags: [],
+      researchData: cachedResearch,
+      characters: [],
+      outline: "",
+      userPreferences: {},
+    };
+
+    await copilotkitEmitState(config, {
+      logs,
+      sources,
+      wizardSession: updatedWizardSession,
+    });
+
+    return {
+      logs,
+      sources,
+      wizardSession: updatedWizardSession,
+      messages: [new AIMessage(`Found cached research for "${sourceName}"! ${cachedResearch.mainCharacters.length} characters and research data loaded from previous searches.`)],
+    };
+  }
+
+  // ========== STEP 2: Cache Miss - Perform Full Research ==========
+  console.log("[FanFic Agent] ❌ CACHE MISS - Performing full research");
+  logs[0].done = true;
+  logs[0].message = `🔍 No cache found, starting fresh research...`;
+
+  console.log("[FanFic Agent] TAVILY_API_KEY present:", !!process.env.TAVILY_API_KEY);
+
   // Define search queries
   const searchQueries = [
     { focus: "characters", query: `${sourceName} main characters personality traits description wiki` },
@@ -206,7 +271,7 @@ async function researchNode(
     { focus: "ships", query: `${sourceName} popular ships pairings fanfiction relationships` },
   ];
 
-  // Add initial logs
+  // Add search logs
   for (const sq of searchQueries) {
     logs.push({
       message: `🌐 Searching: ${sq.focus} for "${sourceName}"`,
@@ -214,10 +279,7 @@ async function researchNode(
     });
   }
 
-  // Emit initial state
-  console.log("[FanFic Agent] Emitting initial state with logs:", logs.length);
   await copilotkitEmitState(config, { logs, sources });
-  console.log("[FanFic Agent] Initial state emitted successfully");
 
   let allResults: Array<{ title: string; content: string; url: string; score: number }> = [];
 
@@ -257,20 +319,33 @@ async function researchNode(
       console.error(`[FanFic Agent] Error details:`, error instanceof Error ? error.message : String(error));
     }
 
-    // Mark this log as done
-    logs[i].done = true;
+    // Mark this log as done (offset by 1 for cache check log)
+    logs[i + 1].done = true;
     await copilotkitEmitState(config, { logs, sources });
   }
 
   // Add aggregation log
   logs.push({
-    message: "✨ AI is summarizing research results...",
+    message: "🤖 AI is summarizing research results...",
     done: false,
   });
   await copilotkitEmitState(config, { logs, sources });
 
   // Aggregate results into structured format using LLM
   const researchData = await aggregateSearchResultsWithLLM(sourceName, sourceType, allResults);
+
+  // ========== STEP 3: Save to Cache ==========
+  logs.push({
+    message: "💾 Saving research to cache for future users...",
+    done: false,
+  });
+  await copilotkitEmitState(config, { logs, sources });
+
+  const cacheSaved = await saveResearchToCache(sourceName, sourceType, researchData);
+  logs[logs.length - 1].done = true;
+  logs[logs.length - 1].message = cacheSaved
+    ? "💾 Research cached successfully!"
+    : "💾 Cache save skipped (database not available)";
 
   // Mark aggregation as done
   logs[logs.length - 1].done = true;

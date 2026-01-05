@@ -298,3 +298,31 @@ model Tag {
   @@index([category])
   @@index([usageCount])
 }
+
+// ============================================
+// RESEARCH CACHE (Cost optimization)
+// ============================================
+
+// Caches Tavily search + LLM summarization results
+// to avoid repeated API calls for popular sources
+model SourceResearchCache {
+  id             String   @id @default(cuid())
+  sourceName     String   // Original name: "Mo Dao Zu Shi"
+  sourceType     String   // "novel", "anime", "manga", "game", etc.
+  normalizedName String   @unique // Lowercase, trimmed: "mo dao zu shi"
+
+  // Full research data as JSON (SourceResearchData type)
+  researchData Json
+
+  // Metadata for cache management
+  searchCount    Int      @default(1) // Usage analytics
+  lastAccessedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Cache expiry: research older than 30 days may be refreshed
+  @@index([normalizedName])
+  @@index([sourceType])
+  @@index([lastAccessedAt])
+  @@index([searchCount])
+}
