@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useCopilotChat } from "@copilotkit/react-core";
+import { TextMessage, Role, MessageRole } from "@copilotkit/runtime-client-gql";
 import {
   Search,
   Users,
@@ -87,11 +88,13 @@ After gathering all results, use the aggregate_research tool to compile everythi
 
 This is for the Creative Wizard - I need comprehensive research data to help write a fanfiction story.`;
 
-    appendMessage({
-      id: `research-${Date.now()}`,
-      role: "user",
-      content: researchPrompt,
-    });
+    appendMessage(
+      new TextMessage({
+        id: `research-${Date.now()}`,
+        role: Role.User,
+        content: researchPrompt,
+      })
+    );
   }, [sourceName, sourceType, appendMessage]);
 
   // Monitor agent messages for research progress
@@ -100,9 +103,12 @@ This is for the Creative Wizard - I need comprehensive research data to help wri
 
     const lastMessage = visibleMessages[visibleMessages.length - 1];
 
-    // Check if this is an assistant message with research results
-    if (lastMessage.role === "assistant" && typeof lastMessage.content === "string") {
-      const content = lastMessage.content.toLowerCase();
+    // Check if this is a TextMessage from assistant with research results
+    if (lastMessage instanceof TextMessage && lastMessage.role === MessageRole.Assistant) {
+      const messageContent = lastMessage.content;
+      if (typeof messageContent !== "string") return;
+
+      const content = messageContent.toLowerCase();
 
       // Update task status based on message content
       if (content.includes("character") || content.includes("找到角色") || content.includes("characters found")) {
@@ -140,7 +146,7 @@ This is for the Creative Wizard - I need comprehensive research data to help wri
       // Try to parse research data from the message
       try {
         // Look for JSON in the message
-        const jsonMatch = lastMessage.content.match(/\{[\s\S]*"originalPlot"[\s\S]*\}/);
+        const jsonMatch = messageContent.match(/\{[\s\S]*"originalPlot"[\s\S]*\}/);
         if (jsonMatch) {
           const researchData = JSON.parse(jsonMatch[0]) as SourceResearchData;
 
@@ -163,7 +169,7 @@ This is for the Creative Wizard - I need comprehensive research data to help wri
           (content.includes("maincharacters") && content.includes("originalplot"))
         ) {
           // Try to extract research data from the full message
-          const extractedData = extractResearchData(lastMessage.content, sourceName);
+          const extractedData = extractResearchData(messageContent, sourceName);
           if (extractedData) {
             setTasks((prev) =>
               prev.map((t) => ({ ...t, status: "complete" as const }))
