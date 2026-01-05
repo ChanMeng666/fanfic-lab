@@ -2,31 +2,29 @@
  * FanFic Lab LangGraph Agent
  * Main agent workflow for AI-powered fanfiction writing assistance
  *
- * Architecture based on open-research-ANA example:
- * - Custom tool node for state injection and handling
- * - copilotkitEmitState for real-time progress updates
- * - Research tools return { state, message } for state sync
+ * Architecture: Research is handled as a dedicated node (not a tool)
+ * to avoid CopilotKit/LangGraph.js ToolMessage format issues (bug #2897)
  */
 
 import { StateGraph, START, END, MemorySaver } from "@langchain/langgraph";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ChatOpenAI } from "@langchain/openai";
-import { SystemMessage, AIMessage, ToolMessage, BaseMessage } from "@langchain/core/messages";
+import { SystemMessage, AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import {
   convertActionsToDynamicStructuredTools,
   copilotkitEmitState,
   copilotkitCustomizeConfig,
 } from "@copilotkit/sdk-js/langgraph";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { tavily } from "@tavily/core";
 
-import { FanficAgentStateAnnotation, FanficAgentState } from "./state";
-import { allBackendTools, researchBackendTools } from "./tools";
+import { FanficAgentStateAnnotation, FanficAgentState, AgentLog } from "./state";
+import { allBackendTools } from "./tools";
+import type { SourceResearchData } from "../lib/types/agent-state";
 
-// Research tool names for special handling
-const researchToolNames = new Set(researchBackendTools.map((t) => t.name));
-const researchToolsByName = Object.fromEntries(researchBackendTools.map((t) => [t.name, t]));
+// Initialize Tavily client
+const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY || "" });
 
-// Regular backend tool names
+// Regular backend tool names (excluding research - handled separately)
 const regularToolNames = new Set(allBackendTools.map((t) => t.name));
 
 /**
@@ -51,15 +49,6 @@ You can help users with:
 - Checking for out-of-character moments
 - Setting up new stories with the Creative Wizard
 
-## Research Tools
-When the user selects a source for fanfiction writing, use the research_source_materials tool to search the web for:
-- Character information (names, traits, relationships)
-- Plot summaries
-- World settings and lore
-- Popular ships and pairings
-
-The research tool will search Tavily and return structured data. The frontend will display progress via state.logs.
-
 ## Guidelines
 - Always respect the user's creative vision
 - Maintain consistent character voices
@@ -68,10 +57,10 @@ The research tool will search Tavily and return structured data. The frontend wi
 - Be encouraging but also honest about potential issues
 
 ## Story Wizard Flow
-When helping with the Story Wizard, follow this flow:
+When helping with the Story Wizard:
 1. SOURCE: User selects source via UI
 2. CONFIG: User configures ship type and story setting
-3. RESEARCH: Call research_source_materials tool to search for info
+3. RESEARCH: System automatically researches the source (handled internally)
 4. CHARACTERS: User selects characters from research results
 5. OUTLINE: Use generate_outline tool to create story outline
 6. COMPLETE: Start writing mode after outline approval`;
@@ -113,6 +102,244 @@ ${ws.outline ? `- Outline: Ready` : ""}`;
 }
 
 /**
+ * Check if the message is a research request
+ */
+function isResearchRequest(state: FanficAgentState): boolean {
+  const lastMessage = state.messages[state.messages.length - 1];
+  if (!lastMessage || lastMessage._getType() !== "human") return false;
+
+  const content = typeof lastMessage.content === "string"
+    ? lastMessage.content.toLowerCase()
+    : "";
+
+  return (
+    content.includes("research") &&
+    (content.includes("research_source_materials") ||
+     content.includes("for fanfiction") ||
+     content.includes("search for"))
+  );
+}
+
+/**
+ * Extract source info from research request
+ */
+function extractSourceInfo(state: FanficAgentState): { sourceName: string; sourceType: string } | null {
+  const lastMessage = state.messages[state.messages.length - 1];
+  if (!lastMessage) return null;
+
+  const content = typeof lastMessage.content === "string" ? lastMessage.content : "";
+
+  // Pattern: research "Source Name" (type)
+  const match = content.match(/research\s+"([^"]+)"\s*\((\w+)\)/i);
+  if (match) {
+    return { sourceName: match[1], sourceType: match[2] };
+  }
+
+  // Fallback: check wizard session
+  if (state.wizardSession?.sourceName && state.wizardSession?.sourceType) {
+    return {
+      sourceName: state.wizardSession.sourceName,
+      sourceType: state.wizardSession.sourceType,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Research Node - Performs Tavily search without tool calling
+ * This bypasses the CopilotKit ToolMessage format issue
+ */
+async function researchNode(
+  state: FanficAgentState,
+  config: RunnableConfig
+): Promise<Partial<FanficAgentState>> {
+  const sourceInfo = extractSourceInfo(state);
+  if (!sourceInfo) {
+    return {
+      messages: [new AIMessage("I couldn't identify the source to research. Please specify the source name.")],
+    };
+  }
+
+  const { sourceName, sourceType } = sourceInfo;
+  const logs: AgentLog[] = [];
+  const sources: Record<string, { title: string; content: string; url: string; score?: number }> = {};
+
+  // Define search queries
+  const searchQueries = [
+    { focus: "characters", query: `${sourceName} main characters personality traits description wiki` },
+    { focus: "plot", query: `${sourceName} plot summary story synopsis overview` },
+    { focus: "world", query: `${sourceName} world setting lore background universe` },
+    { focus: "ships", query: `${sourceName} popular ships pairings fanfiction relationships` },
+  ];
+
+  // Add initial logs
+  for (const sq of searchQueries) {
+    logs.push({
+      message: `🌐 Searching: ${sq.focus} for "${sourceName}"`,
+      done: false,
+    });
+  }
+
+  // Emit initial state
+  await copilotkitEmitState(config, { logs, sources });
+
+  let allResults: Array<{ title: string; content: string; url: string; score: number }> = [];
+
+  // Run searches sequentially and update progress
+  for (let i = 0; i < searchQueries.length; i++) {
+    const sq = searchQueries[i];
+
+    try {
+      const response = await tavilyClient.search(sq.query, {
+        maxResults: 5,
+        searchDepth: "basic",
+      });
+
+      // Filter results by score
+      const filteredResults = response.results
+        .filter((r) => r.score > 0.4)
+        .map((r) => ({
+          title: r.title,
+          content: r.content,
+          url: r.url,
+          score: r.score,
+        }));
+
+      allResults = [...allResults, ...filteredResults];
+
+      // Update sources
+      for (const result of filteredResults) {
+        if (!sources[result.url]) {
+          sources[result.url] = result;
+        }
+      }
+    } catch (error) {
+      console.error(`Search error for ${sq.focus}:`, error);
+    }
+
+    // Mark this log as done
+    logs[i].done = true;
+    await copilotkitEmitState(config, { logs, sources });
+  }
+
+  // Add aggregation log
+  logs.push({
+    message: "✨ Compiling research results...",
+    done: false,
+  });
+  await copilotkitEmitState(config, { logs, sources });
+
+  // Aggregate results into structured format
+  const researchData = aggregateSearchResults(sourceName, sourceType, allResults);
+
+  // Mark aggregation as done
+  logs[logs.length - 1].done = true;
+
+  // Update wizard session with research data
+  const updatedWizardSession = state.wizardSession ? {
+    ...state.wizardSession,
+    researchData,
+    step: "characters" as const,
+  } : null;
+
+  await copilotkitEmitState(config, {
+    logs,
+    sources,
+    wizardSession: updatedWizardSession,
+  });
+
+  return {
+    logs,
+    sources,
+    wizardSession: updatedWizardSession,
+    messages: [new AIMessage(`Research complete for "${sourceName}"! Found ${researchData.mainCharacters.length} characters and ${Object.keys(sources).length} sources. The research results are ready for review.`)],
+  };
+}
+
+/**
+ * Aggregate search results into structured SourceResearchData
+ */
+function aggregateSearchResults(
+  sourceName: string,
+  sourceType: string,
+  results: Array<{ title: string; content: string; url: string; score: number }>
+): SourceResearchData {
+  // Combine all content for analysis
+  const combinedContent = results
+    .map((r) => `[${r.title}]\n${r.content}`)
+    .join("\n\n");
+
+  // Extract character names from content
+  const characterPatterns = [
+    /(?:main character|protagonist|character)s?\s*(?:include|are|:)\s*([^.]+)/gi,
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:is|are)\s+(?:the|a)\s+(?:main|primary|central)/gi,
+  ];
+
+  const characterNames: Set<string> = new Set();
+  for (const pattern of characterPatterns) {
+    const matches = combinedContent.matchAll(pattern);
+    for (const match of matches) {
+      if (match[1]) {
+        const names = match[1].split(/[,and]+/).map((n) => n.trim());
+        names.forEach((n) => {
+          if (n.length > 2 && n.length < 50) characterNames.add(n);
+        });
+      }
+    }
+  }
+
+  // Extract ship patterns
+  const shipPatterns = [
+    /(?:ship|pairing|couple)s?\s*(?:include|are|:)\s*([^.]+)/gi,
+    /([A-Z][a-z]+)\s*[x×\/]\s*([A-Z][a-z]+)/g,
+  ];
+
+  const ships: Set<string> = new Set();
+  for (const pattern of shipPatterns) {
+    const matches = combinedContent.matchAll(pattern);
+    for (const match of matches) {
+      if (match[1] && match[2]) {
+        ships.add(`${match[1]} x ${match[2]}`);
+      } else if (match[1]) {
+        const shipNames = match[1].split(/[,and]+/).map((n) => n.trim());
+        shipNames.forEach((n) => {
+          if (n.length > 2 && n.length < 50) ships.add(n);
+        });
+      }
+    }
+  }
+
+  // Build structured data
+  return {
+    originalPlot: results
+      .filter((r) => r.title.toLowerCase().includes("plot") || r.content.toLowerCase().includes("story"))
+      .slice(0, 2)
+      .map((r) => r.content)
+      .join("\n\n") || `${sourceName} is a ${sourceType} with a rich narrative.`,
+
+    mainCharacters: Array.from(characterNames).slice(0, 10).map((name) => ({
+      name,
+      description: `A character from ${sourceName}`,
+      traits: ["complex", "memorable"],
+      relationships: [],
+    })),
+
+    worldSettings: results
+      .filter((r) => r.title.toLowerCase().includes("world") || r.content.toLowerCase().includes("setting"))
+      .slice(0, 1)
+      .map((r) => r.content)
+      .join("\n") || `The world of ${sourceName} - a unique ${sourceType} setting.`,
+
+    popularShips: Array.from(ships).slice(0, 10),
+
+    canonRelationships: [],
+
+    searchSources: results.slice(0, 5).map((r) => r.url),
+  };
+}
+
+/**
  * Main chat node - handles conversation with the user
  */
 async function chatNode(
@@ -120,7 +347,7 @@ async function chatNode(
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
   const model = new ChatOpenAI({
-    temperature: 0.8, // Higher temperature for creative writing
+    temperature: 0.8,
     model: "gpt-4o",
   });
 
@@ -129,16 +356,16 @@ async function chatNode(
     state.copilotkit?.actions ?? []
   );
 
-  // Combine frontend, backend, and research tools
-  const allTools = [...frontendTools, ...allBackendTools, ...researchBackendTools];
+  // Combine frontend and backend tools (research is handled separately)
+  const allTools = [...frontendTools, ...allBackendTools];
 
-  // Bind tools to the model (disable parallel tool calls for research)
+  // Bind tools to the model
   const modelWithTools = model.bindTools(allTools, { parallel_tool_calls: false });
 
   // Build context-aware system prompt
   const systemPrompt = buildSystemPrompt(state);
 
-  // Emit state to frontend for progress updates
+  // Emit state to frontend
   await copilotkitEmitState(config, state);
 
   // Invoke the model
@@ -151,66 +378,23 @@ async function chatNode(
 }
 
 /**
- * Custom tool node that handles research tools with state injection
- * Based on open-research-ANA pattern
+ * Tool node for backend tools (non-research)
  */
-async function customToolNode(
+async function toolNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
-  // Disable message emission for intermediate tool messages
   const customConfig = copilotkitCustomizeConfig(config, { emitMessages: false });
 
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
 
   const toolMessages: ToolMessage[] = [];
-  let updatedState: Partial<FanficAgentState> = {};
 
   for (const toolCall of toolCalls) {
     const toolName = toolCall.name;
 
-    // Check if this is a research tool (needs special handling)
-    if (researchToolNames.has(toolName)) {
-      // Inject state into tool args
-      const argsWithState = {
-        ...toolCall.args,
-        state: {
-          logs: state.logs || [],
-          sources: state.sources || {},
-          wizardSession: state.wizardSession,
-        },
-      };
-
-      // Invoke research tool with state
-      const tool = researchToolsByName[toolName];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (tool as any).invoke(argsWithState, customConfig);
-
-      // Research tools return { state, message }
-      if (result && typeof result === "object" && "state" in result && "message" in result) {
-        const { state: newState, message } = result as { state: Partial<FanficAgentState>; message: string };
-
-        // Merge state updates
-        updatedState = {
-          ...updatedState,
-          logs: newState.logs || updatedState.logs,
-          sources: newState.sources || updatedState.sources,
-          wizardSession: newState.wizardSession || updatedState.wizardSession,
-        };
-
-        // Create tool message
-        toolMessages.push(new ToolMessage({
-          content: message,
-          name: toolName,
-          tool_call_id: toolCall.id!,
-        }));
-
-        // Emit updated state
-        await copilotkitEmitState(customConfig, updatedState);
-      }
-    } else if (regularToolNames.has(toolName)) {
-      // Regular backend tools - use standard invocation
+    if (regularToolNames.has(toolName)) {
       const tool = allBackendTools.find((t) => t.name === toolName);
       if (tool) {
         try {
@@ -233,22 +417,28 @@ async function customToolNode(
     }
   }
 
-  return {
-    messages: toolMessages,
-    ...updatedState,
-  };
+  return { messages: toolMessages };
 }
 
 /**
- * Routing function to determine next node
+ * Initial routing - check if this is a research request
  */
-function shouldContinue(state: FanficAgentState): string {
+function routeFromStart(state: FanficAgentState): string {
+  if (isResearchRequest(state)) {
+    return "research_node";
+  }
+  return "chat_node";
+}
+
+/**
+ * Routing after chat node
+ */
+function routeAfterChat(state: FanficAgentState): string {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
 
-  // If there are tool calls, check if they're backend/research tools
   if (lastMessage.tool_calls?.length) {
     const hasBackendToolCall = lastMessage.tool_calls.some(
-      (tc) => regularToolNames.has(tc.name) || researchToolNames.has(tc.name)
+      (tc) => regularToolNames.has(tc.name)
     );
 
     if (hasBackendToolCall) {
@@ -263,19 +453,28 @@ function shouldContinue(state: FanficAgentState): string {
 }
 
 /**
- * Route after tool execution - always go back to chat
+ * Route after tool execution
  */
-function afterToolExecution(): string {
+function routeAfterTool(): string {
   return "chat_node";
+}
+
+/**
+ * Route after research
+ */
+function routeAfterResearch(): string {
+  return END;
 }
 
 // Build the graph
 const workflow = new StateGraph(FanficAgentStateAnnotation)
   .addNode("chat_node", chatNode)
-  .addNode("tool_node", customToolNode)
-  .addEdge(START, "chat_node")
-  .addConditionalEdges("chat_node", shouldContinue)
-  .addConditionalEdges("tool_node", afterToolExecution);
+  .addNode("tool_node", toolNode)
+  .addNode("research_node", researchNode)
+  .addConditionalEdges(START, routeFromStart)
+  .addConditionalEdges("chat_node", routeAfterChat)
+  .addConditionalEdges("tool_node", routeAfterTool)
+  .addConditionalEdges("research_node", routeAfterResearch);
 
 // Create memory saver for state persistence
 const memory = new MemorySaver();
