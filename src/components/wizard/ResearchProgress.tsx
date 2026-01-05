@@ -2,22 +2,20 @@
 
 /**
  * Research Progress Component
- * Displays real-time progress from agent state via useCoAgentStateRender
+ * Displays progress and polls agent state for completion
  *
- * Pattern based on open-research-ANA example:
- * - Uses useCoAgentStateRender to render logs from agent state
- * - Uses useCopilotChat to trigger research via message
- * - Agent updates state.logs during research, which triggers re-render
+ * Note: Due to langgraphjs dev background mode limitations,
+ * real-time state streaming via copilotkitEmitState doesn't work.
+ * Instead, we poll the agent state via useCoAgent to detect completion.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useCoAgentStateRender, useCopilotChat } from "@copilotkit/react-core";
+import { useState, useEffect, useRef } from "react";
+import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import {
   Search,
   Loader2,
   CheckCircle2,
-  AlertCircle,
   Sparkles,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -31,6 +29,15 @@ interface ResearchProgressProps {
   onError?: (error: string) => void;
 }
 
+// Static progress steps for visual feedback
+const RESEARCH_STEPS = [
+  { message: "🌐 Searching for characters and personalities...", delay: 0 },
+  { message: "📚 Researching plot and story elements...", delay: 2000 },
+  { message: "🌍 Exploring world settings and lore...", delay: 4000 },
+  { message: "💕 Finding popular ships and relationships...", delay: 6000 },
+  { message: "✨ Compiling research results...", delay: 8000 },
+];
+
 export function ResearchProgress({
   sourceName,
   sourceType,
@@ -39,60 +46,85 @@ export function ResearchProgress({
 }: ResearchProgressProps) {
   const [overallProgress, setOverallProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [displayLogs, setDisplayLogs] = useState<AgentLog[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
   const hasTriggeredRef = useRef(false);
   const hasCompletedRef = useRef(false);
+
+  // Get agent state via useCoAgent for polling
+  const { state: agentState, running } = useCoAgent<FanficAgentState>({
+    name: "fanfic_agent",
+  });
 
   // Get CopilotChat to trigger research
   const { appendMessage } = useCopilotChat();
 
-  // Render agent logs via useCoAgentStateRender
-  // This is the key pattern from open-research-ANA
-  useCoAgentStateRender<FanficAgentState>({
-    name: "fanfic_agent",
-    render: ({ state }) => {
-      console.log("[ResearchProgress] useCoAgentStateRender called");
-      console.log("[ResearchProgress] State logs:", state.logs?.length || 0);
-      console.log("[ResearchProgress] State wizardSession:", !!state.wizardSession);
-
-      // Update logs from agent state
-      if (state.logs && state.logs.length > 0) {
-        console.log("[ResearchProgress] Updating logs from state:", state.logs);
-        setLogs(state.logs);
-      }
-
-      // Check if research is complete (all logs done)
-      const allDone = state.logs?.length > 0 && state.logs.every((log) => log.done);
-      console.log("[ResearchProgress] All logs done:", allDone);
-
-      if (allDone && !hasCompletedRef.current) {
-        // Check if we have research data
-        if (state.wizardSession?.researchData) {
-          console.log("[ResearchProgress] Research complete! Characters found:", state.wizardSession.researchData.mainCharacters?.length);
-          hasCompletedRef.current = true;
-          setIsComplete(true);
-          // Small delay to show completion animation
-          setTimeout(() => {
-            onComplete(state.wizardSession!.researchData!);
-          }, 1000);
-        }
-      }
-
-      // Return null - we handle rendering ourselves
-      return null;
-    },
-  });
-
-  // Calculate progress from logs
+  // Animate progress steps for visual feedback
   useEffect(() => {
-    if (logs.length === 0) {
-      setOverallProgress(0);
-      return;
+    if (hasCompletedRef.current) return;
+
+    const timers: NodeJS.Timeout[] = [];
+
+    RESEARCH_STEPS.forEach((step, index) => {
+      const timer = setTimeout(() => {
+        if (hasCompletedRef.current) return;
+
+        setDisplayLogs((prev) => {
+          // Don't add if already exists
+          if (prev.some((log) => log.message === step.message)) return prev;
+
+          // Mark previous steps as done
+          const updated = prev.map((log) => ({ ...log, done: true }));
+          return [...updated, { message: step.message, done: false }];
+        });
+
+        setCurrentStep(index);
+        // Progress from 10% to 80% during steps
+        setOverallProgress(10 + (index / RESEARCH_STEPS.length) * 70);
+      }, step.delay);
+
+      timers.push(timer);
+    });
+
+    return () => timers.forEach((timer) => clearTimeout(timer));
+  }, []);
+
+  // Poll agent state for research completion
+  useEffect(() => {
+    // Check if research data is available
+    if (
+      !hasCompletedRef.current &&
+      agentState?.wizardSession?.researchData?.mainCharacters?.length
+    ) {
+      console.log("[ResearchProgress] Research complete! Characters found:",
+        agentState.wizardSession.researchData.mainCharacters.length);
+
+      hasCompletedRef.current = true;
+
+      // Mark all steps as complete
+      setDisplayLogs((prev) => prev.map((log) => ({ ...log, done: true })));
+      setOverallProgress(100);
+      setIsComplete(true);
+
+      // Small delay to show completion animation
+      setTimeout(() => {
+        onComplete(agentState.wizardSession!.researchData!);
+      }, 1000);
     }
-    const completedCount = logs.filter((log) => log.done).length;
-    const progress = (completedCount / logs.length) * 100;
-    setOverallProgress(progress);
-  }, [logs]);
+  }, [agentState, onComplete]);
+
+  // Also check agent logs if streaming works
+  useEffect(() => {
+    if (agentState?.logs?.length && !hasCompletedRef.current) {
+      console.log("[ResearchProgress] Received logs from agent:", agentState.logs.length);
+      // Use actual logs if available (in case streaming starts working)
+      if (agentState.logs.length > displayLogs.length) {
+        setDisplayLogs(agentState.logs);
+        const completedCount = agentState.logs.filter((log) => log.done).length;
+        setOverallProgress((completedCount / agentState.logs.length) * 100);
+      }
+    }
+  }, [agentState?.logs, displayLogs.length]);
 
   // Trigger agent to start research
   useEffect(() => {
@@ -104,10 +136,8 @@ export function ResearchProgress({
 
       console.log("[ResearchProgress] Triggering research...");
       console.log("[ResearchProgress] Source:", sourceName, sourceType);
-      console.log("[ResearchProgress] Message:", messageContent);
 
       try {
-        console.log("[ResearchProgress] Calling appendMessage...");
         await appendMessage(
           new TextMessage({
             role: MessageRole.User,
@@ -117,28 +147,26 @@ export function ResearchProgress({
         console.log("[ResearchProgress] appendMessage completed successfully");
       } catch (error) {
         console.error("[ResearchProgress] Failed to trigger research:", error);
-        console.error("[ResearchProgress] Error details:", error instanceof Error ? error.message : String(error));
         onError?.("Failed to start research. Please try again.");
       }
     };
 
     // Small delay to ensure component is mounted
-    console.log("[ResearchProgress] Setting up trigger timer...");
     const timer = setTimeout(triggerResearch, 500);
     return () => clearTimeout(timer);
   }, [sourceName, sourceType, appendMessage, onError]);
 
-  // Timeout fallback - if no response in 60 seconds
+  // Timeout fallback - if no response in 90 seconds
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!hasCompletedRef.current && logs.length === 0) {
-        console.log("Research timeout - no logs received");
-        onError?.("Research timed out. The AI agent may be unavailable. Please try again.");
+      if (!hasCompletedRef.current) {
+        console.log("[ResearchProgress] Research timeout");
+        onError?.("Research is taking longer than expected. The AI agent may be processing. Please wait or try again.");
       }
-    }, 60000);
+    }, 90000);
 
     return () => clearTimeout(timeout);
-  }, [logs.length, onError]);
+  }, [onError]);
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 space-y-8 animate-fade-slide-in">
@@ -167,9 +195,9 @@ export function ResearchProgress({
         <Progress value={overallProgress} className="h-2" />
       </div>
 
-      {/* Log List - Similar to open-research-ANA Progress component */}
+      {/* Log List - Animated progress steps */}
       <div className="space-y-3">
-        {logs.length === 0 ? (
+        {displayLogs.length === 0 ? (
           // Initial loading state
           <div className="flex items-center gap-4 p-4 rounded-xl border border-accent/30 bg-accent/5 ai-glow">
             <div className="flex items-center justify-center size-10 rounded-lg bg-accent/15 text-accent">
@@ -183,9 +211,9 @@ export function ResearchProgress({
             </div>
           </div>
         ) : (
-          logs.map((log, index) => {
+          displayLogs.map((log, index) => {
             const isDone = log.done;
-            const isActive = !isDone && index === logs.findIndex((l) => !l.done);
+            const isActive = !isDone && index === displayLogs.findIndex((l) => !l.done);
             const isPending = !isDone && !isActive;
 
             return (
@@ -258,9 +286,16 @@ export function ResearchProgress({
       )}
 
       {/* Help Text */}
-      {!isComplete && logs.length > 0 && (
+      {!isComplete && displayLogs.length > 0 && (
         <p className="text-center text-xs text-muted-foreground">
           This may take a few moments. The AI is searching multiple sources for accurate information.
+        </p>
+      )}
+
+      {/* Agent running indicator */}
+      {running && !isComplete && (
+        <p className="text-center text-xs text-accent animate-pulse">
+          Agent is processing your request...
         </p>
       )}
     </div>
