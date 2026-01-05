@@ -51,8 +51,15 @@ export function ResearchProgress({
   const [displayLogs, setDisplayLogs] = useState<AgentLog[]>([]);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [cacheHit, setCacheHit] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>("Initializing...");
   const hasTriggeredRef = useRef(false);
   const hasCompletedRef = useRef(false);
+
+  // Debug: Log component mount
+  useEffect(() => {
+    console.log("[ResearchProgress] 🎬 Component mounted!", { sourceName, sourceType });
+    setDebugInfo(`Mounted: ${sourceName} (${sourceType})`);
+  }, [sourceName, sourceType]);
 
   // Get agent state via useCoAgent for polling
   const { state: agentState, running } = useCoAgent<FanficAgentState>({
@@ -127,6 +134,7 @@ export function ResearchProgress({
 
       console.log("[ResearchProgress] 🚀 Triggering agent research...");
       console.log("[ResearchProgress] Message:", messageContent);
+      setDebugInfo("Triggering agent research...");
 
       try {
         await appendMessage(
@@ -136,14 +144,17 @@ export function ResearchProgress({
           })
         );
         console.log("[ResearchProgress] ✅ appendMessage completed successfully");
+        setDebugInfo("Agent triggered! Waiting for response...");
       } catch (error) {
         console.error("[ResearchProgress] ❌ Failed to trigger research:", error);
+        setDebugInfo(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
         onError?.("Failed to start research. Please try again.");
       }
     };
 
     const checkCache = async () => {
       console.log("[ResearchProgress] 🔍 Checking cache for:", sourceName);
+      setDebugInfo(`Checking cache for: ${sourceName}`);
       setDisplayLogs([{ message: "🔍 Checking research cache...", done: false }]);
       setOverallProgress(5);
 
@@ -408,6 +419,13 @@ export function ResearchProgress({
           Agent is processing your request...
         </p>
       )}
+
+      {/* Debug Info - visible in production to diagnose issues */}
+      <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
+        <p className="text-xs font-mono text-muted-foreground">
+          Debug: {debugInfo} | Running: {running ? "yes" : "no"} | v2.1
+        </p>
+      </div>
     </div>
   );
 }
