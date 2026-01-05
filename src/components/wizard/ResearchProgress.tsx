@@ -2,7 +2,7 @@
 
 /**
  * Research Progress Component - Minimal Version
- * Displays a Lottie animation with simple status text
+ * Displays a simple loading animation with status text
  *
  * Cache Strategy (Vercel-side):
  * 1. Check cache via /api/research-cache BEFORE triggering agent
@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { Sparkles } from "lucide-react";
 import type { SourceType, SourceResearchData, FanficAgentState } from "@/lib/types/agent-state";
 
 interface ResearchProgressProps {
@@ -223,15 +223,39 @@ export function ResearchProgress({
     return () => clearTimeout(timeout);
   }, [status]);
 
+  const isComplete = status === "complete";
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-slide-in">
-      <DotLottieReact
-        src="/lottie/loading.lottie"
-        loop={status !== "complete"}
-        autoplay
-        style={{ width: 200, height: 200 }}
-      />
-      <p className="text-xs text-muted-foreground mt-4">
+      {/* Animated Loading Indicator */}
+      <div className="relative">
+        {/* Outer rotating ring */}
+        <div
+          className={`w-24 h-24 rounded-full border-4 border-accent/20 ${
+            isComplete ? "" : "animate-spin"
+          }`}
+          style={{
+            borderTopColor: isComplete ? "hsl(var(--accent))" : "hsl(var(--accent))",
+            animationDuration: "1.5s"
+          }}
+        />
+        {/* Inner pulsing circle */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            className={`w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center ${
+              isComplete ? "" : "animate-pulse"
+            }`}
+          >
+            <Sparkles
+              className={`size-8 text-accent ${isComplete ? "" : "animate-bounce"}`}
+              style={{ animationDuration: "2s" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Status Text */}
+      <p className="text-sm text-muted-foreground mt-6">
         {STATUS_MESSAGES[status]}
       </p>
     </div>
