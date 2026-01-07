@@ -12,7 +12,6 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -184,15 +183,6 @@ export function ResearchResultsCard({
           </div>
         </ScrollArea>
 
-        {/* Sources */}
-        {data.searchSources.length > 0 && (
-          <div className="px-4 py-2 border-t border-border bg-muted/30">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ExternalLink className="size-3" />
-              <span>Sources: {data.searchSources.slice(0, 3).join(", ")}</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}
