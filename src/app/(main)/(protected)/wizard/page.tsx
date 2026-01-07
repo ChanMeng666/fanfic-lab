@@ -243,10 +243,10 @@ export default function WizardPage() {
           handleOutlineApproved(args.outline || "");
           respond?.({ approved: true, outline: args.outline });
         }}
-        onReject={() => {
+        onReject={(feedback?: string) => {
           respond?.({
             approved: false,
-            feedback: "Please regenerate with different ideas",
+            feedback: feedback || "Please regenerate with different ideas",
           });
         }}
         onEdit={(editedOutline) => {

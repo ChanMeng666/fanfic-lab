@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "example", "open-research-ANA"]
+  "exclude": ["node_modules", "example", "example-textarea", "open-research-ANA"]
 }
