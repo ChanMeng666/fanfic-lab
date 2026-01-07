@@ -198,15 +198,19 @@ export function InlineWritingArea({
           <CopilotTextarea
             value={localContent}
             onValueChange={handleChange}
-            placeholder="Start writing your story here... The AI assistant will help you as you write."
+            placeholder="Start writing your story here... Press Tab to accept AI suggestions as you type."
             className="min-h-[400px] w-full resize-none rounded-xl border border-border bg-surface p-4 font-prose text-base leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             autosuggestionsConfig={{
-              textareaPurpose: `Write a ${storyContext.fandom} fanfiction featuring ${storyContext.ships.join(", ")}. Tone: ${storyContext.tone}. Characters: ${storyContext.characters.map(c => c.name).join(", ")}.`,
-              chatApiConfigs: {
-                suggestionsApiConfig: {
-                  maxTokens: 150,
-                },
-              },
+              textareaPurpose: `Help me write a ${storyContext.fandom} fanfiction story.
+Story context:
+- Fandom: ${storyContext.fandom}
+- Ships/Pairings: ${storyContext.ships.join(", ") || "None specified"}
+- Tone/Setting: ${storyContext.tone}
+- Characters: ${storyContext.characters.map(c => c.name).join(", ") || "None specified"}
+${storyContext.outline ? `- Story Outline: ${storyContext.outline.slice(0, 500)}` : ""}
+
+Continue the story naturally, maintaining character voices and the established tone. Write engaging prose that matches the style of fanfiction.`,
+              chatApiConfigs: {},
             }}
           />
 
