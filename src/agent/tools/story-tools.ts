@@ -17,7 +17,7 @@ export const continueStoryTool = tool(
   async ({ storyContext, currentContent, targetLength }) => {
     const model = new ChatOpenAI({
       temperature: 0.85,
-      model: "gpt-4o",
+      model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
     });
 
     const systemPrompt = `You are an expert fanfiction writer continuing a story.
@@ -83,7 +83,7 @@ export const expandSceneTool = tool(
   async ({ storyContext, selectedText, expansionFocus }) => {
     const model = new ChatOpenAI({
       temperature: 0.8,
-      model: "gpt-4o",
+      model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
     });
 
     const systemPrompt = `You are an expert fanfiction writer expanding a scene.
@@ -144,7 +144,7 @@ export const polishProseTool = tool(
   async ({ selectedText, polishLevel, storyTone }) => {
     const model = new ChatOpenAI({
       temperature: 0.6,
-      model: "gpt-4o",
+      model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
     });
 
     const instructions =
@@ -196,7 +196,7 @@ export const generateOutlineTool = tool(
   async ({ fandom, ship, characters, plotIdeas, chapterCount }) => {
     const model = new ChatOpenAI({
       temperature: 0.9,
-      model: "gpt-4o",
+      model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
     });
 
     const systemPrompt = `You are a creative fanfiction planner creating an engaging story outline.

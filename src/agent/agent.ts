@@ -505,7 +505,7 @@ async function chatNode(
 
   const model = new ChatOpenAI({
     temperature: 0.8,
-    model: "gpt-4o",
+    model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
   });
 
   // Get frontend tools from CopilotKit
@@ -612,9 +612,31 @@ function routeAfterChat(state: FanficAgentState): string {
 
 /**
  * Route after tool execution
+ * Self-contained tools (that return complete responses) go directly to END
+ * to avoid unnecessary second chat_node call and reduce execution time
  */
-function routeAfterTool(): string {
-  return "chat_node";
+function routeAfterTool(state: FanficAgentState): string {
+  // Tools that return complete, user-facing responses
+  const selfContainedTools = new Set([
+    "generate_outline",
+    "continue_story",
+    "expand_scene",
+    "polish_prose"
+  ]);
+
+  // Find the AI message that triggered the tool call
+  const aiMessageIndex = state.messages.length - 2;
+  if (aiMessageIndex >= 0) {
+    const prevAiMessage = state.messages[aiMessageIndex] as AIMessage;
+    const toolCall = prevAiMessage?.tool_calls?.[0];
+
+    if (toolCall && selfContainedTools.has(toolCall.name)) {
+      console.log(`[FanFic Agent] Self-contained tool "${toolCall.name}" completed, routing to END`);
+      return END;  // Skip second chat_node call
+    }
+  }
+
+  return "chat_node";  // Other tools need LLM to process result
 }
 
 /**
