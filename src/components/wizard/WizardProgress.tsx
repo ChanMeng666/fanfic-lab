@@ -50,7 +50,7 @@ export function WizardProgress({ currentStep, className }: WizardProgressProps) 
   const currentIndex = getStepIndex(currentStep);
 
   return (
-    <div className={cn("w-full px-4 py-3 bg-surface/50 border-b border-border", className)}>
+    <div className={cn("w-full px-4 py-3 bg-background", className)}>
       <div className="max-w-4xl mx-auto">
         {/* Desktop view */}
         <div className="hidden md:flex items-center justify-between">

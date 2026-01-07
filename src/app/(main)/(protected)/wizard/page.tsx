@@ -441,7 +441,7 @@ export default function WizardPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         {/* Progress indicator */}
-        <div className="border-b border-border bg-surface/80 backdrop-blur-sm">
+        <div className="bg-background">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <WizardProgress currentStep={session.step} />
           </div>
@@ -467,7 +467,7 @@ export default function WizardPage() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Progress indicator - only show after first step */}
       {session.step !== "source" && (
-        <div className="border-b border-border bg-surface/80 backdrop-blur-sm">
+        <div className="bg-background">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <WizardProgress currentStep={session.step} />
           </div>
