@@ -30,74 +30,105 @@ const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY || "" });
 const regularToolNames = new Set(allBackendTools.map((t) => t.name));
 
 /**
+ * Extract wizard context from CopilotKit readable data
+ */
+function extractContextFromReadable(state: FanficAgentState): {
+  sourceName?: string;
+  sourceType?: string;
+  shipType?: string;
+  setting?: string;
+  characters?: string[];
+  tags?: string[];
+  outline?: string;
+  researchData?: { mainCharacters: Array<{ name: string }>; popularShips: string[] };
+} | null {
+  // CopilotKit passes readable data through copilotkit.context or as part of state
+  // The wizard page uses useCopilotReadable to share session state
+  const copilotContext = state.copilotkit as { context?: string } | undefined;
+
+  if (copilotContext?.context) {
+    try {
+      // Try to parse the context as JSON (if it's structured)
+      const parsed = JSON.parse(copilotContext.context);
+      return parsed;
+    } catch {
+      // Context might be a string description
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * Build the system prompt based on current state
  */
 function buildSystemPrompt(state: FanficAgentState): string {
-  let prompt = `You are a creative fanfiction writing assistant with deep knowledge of popular fandoms, ships, and tropes.
+  // Try to get context from multiple sources
+  const readableContext = extractContextFromReadable(state);
+  const ws = state.wizardSession;
+  const ctx = state.storyContext;
+
+  // Determine the active context (prefer wizard session, fallback to readable, then story context)
+  const sourceName = ws?.sourceName || readableContext?.sourceName || ctx?.fandom;
+  const sourceType = ws?.sourceType || readableContext?.sourceType;
+  const shipType = ws?.shipType || readableContext?.shipType;
+  const setting = ws?.setting || readableContext?.setting || ctx?.setting;
+  const characters = ws?.characters?.map(c => c.name) || readableContext?.characters || ctx?.characters?.map(c => c.name) || [];
+  const tags = ws?.additionalTags || readableContext?.tags || ctx?.tags || [];
+  const outline = ws?.outline || readableContext?.outline;
+  const researchData = ws?.researchData || readableContext?.researchData;
+
+  let prompt = `You are a creative fanfiction writing assistant specializing in the specific fandom, characters, and context provided by the user.
+
+## CRITICAL INSTRUCTION - CONTEXT ENFORCEMENT
+**YOU MUST ALWAYS USE THE PROVIDED CONTEXT.** When the user has specified a fandom, characters, ship type, setting, or tags, you MUST:
+1. ONLY use characters from the specified fandom
+2. ONLY reference the specified characters by their canon names
+3. Maintain the specified setting (modern AU, canon, etc.)
+4. Follow the specified ship type and tags
+5. NEVER invent new generic characters when specific characters are provided
+6. NEVER ignore the fandom context to create unrelated stories
+
+If the user asks for a story, you MUST write about the specified fandom and characters, adapting their request to fit that context.`;
+
+  // Add the active context with STRONG emphasis
+  if (sourceName || characters.length > 0) {
+    prompt += `
+
+## ACTIVE STORY CONTEXT (YOU MUST USE THIS)
+${sourceName ? `- **FANDOM**: ${sourceName} ${sourceType ? `(${sourceType})` : ""}` : ""}
+${shipType ? `- **SHIP TYPE**: ${shipType.toUpperCase()}` : ""}
+${setting ? `- **SETTING**: ${setting}` : ""}
+${characters.length > 0 ? `- **CHARACTERS TO USE**: ${characters.join(", ")}` : ""}
+${tags.length > 0 ? `- **STORY TAGS**: ${tags.join(", ")}` : ""}
+${researchData ? `- **AVAILABLE CHARACTERS FROM RESEARCH**: ${researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
+${researchData?.popularShips?.length ? `- **POPULAR SHIPS**: ${researchData.popularShips.join(", ")}` : ""}
+${outline ? `- **EXISTING OUTLINE**: ${outline.slice(0, 500)}...` : ""}
+
+**IMPORTANT**: When the user asks you to write ANY story, you MUST use the characters and fandom above. For example, if they ask for "a gangster story", write a gangster AU featuring ${characters.slice(0, 2).join(" and ") || "the specified characters"} from ${sourceName || "the specified fandom"}.`;
+  }
+
+  prompt += `
 
 ## Your Personality
 - Enthusiastic about fanfiction and fandom culture
-- Encouraging and supportive of creative ideas
-- Knowledgeable about character voices and canon details
-- Respectful of content preferences and ratings
-- Familiar with common fandom terminology (ship, OTP, AU, canon, fanon, etc.)
-
-## Your Capabilities
-You can help users with:
-- Brainstorming story ideas and plot points
-- Developing characters (canon and OC)
-- Writing story continuations
-- Expanding and polishing prose
-- Checking for out-of-character moments
-- Setting up new stories with the Creative Wizard
+- Expert at adapting different genres/tropes to any fandom
+- Skilled at maintaining character voices across different AUs
+- Creative in reinterpreting characters in new settings
 
 ## Guidelines
-- Always respect the user's creative vision
-- Maintain consistent character voices
-- Use appropriate tone based on the story's genre/tags
-- Provide suggestions, not prescriptions
-- Be encouraging but also honest about potential issues
+- ALWAYS use the provided fandom and characters
+- Adapt user requests to fit the specified context
+- Maintain consistent character personalities even in AU settings
+- Use the specified ship type and tone
+- When asked to write freely, still use the provided context`;
 
-## Story Wizard Flow
-When helping with the Story Wizard:
-1. SOURCE: User selects source via UI
-2. CONFIG: User configures ship type and story setting
-3. RESEARCH: System automatically researches the source (handled internally)
-4. CHARACTERS: User selects characters from research results
-5. OUTLINE: Use generate_outline tool to create story outline
-6. COMPLETE: Start writing mode after outline approval`;
-
-  // Add story context if available
-  if (state.storyContext) {
-    const ctx = state.storyContext;
+  // Add wizard step info if available
+  if (ws?.step) {
     prompt += `
 
-## Current Story Context
-- Fandom: ${ctx.fandom}
-- Ships: ${ctx.ships.length > 0 ? ctx.ships.join(", ") : "None specified"}
-- Tags: ${ctx.tags.length > 0 ? ctx.tags.join(", ") : "None specified"}
-- Tone: ${ctx.tone}
-- Characters: ${ctx.characters.map((c) => c.name).join(", ") || "None defined"}
-- Current Chapter: ${ctx.currentChapter}
-${ctx.plotPoints.length > 0 ? `- Plot Points: ${ctx.plotPoints.join("; ")}` : ""}
-${ctx.setting ? `- Setting: ${ctx.setting}` : ""}`;
-  }
-
-  // Add wizard context if in wizard mode
-  if (state.wizardSession) {
-    const ws = state.wizardSession;
-    prompt += `
-
-## Creative Wizard Session Active
-Currently helping user set up a new story.
-- Current Step: ${ws.step}
-${ws.sourceName ? `- Source: ${ws.sourceName} (${ws.sourceType})` : ""}
-${ws.shipType ? `- Ship Type: ${ws.shipType}` : ""}
-${ws.setting ? `- Setting: ${ws.setting}` : ""}
-${ws.additionalTags?.length ? `- Tags: ${ws.additionalTags.join(", ")}` : ""}
-${ws.characters.length > 0 ? `- Characters: ${ws.characters.map((c) => c.name).join(", ")}` : ""}
-${ws.researchData ? `- Research Complete: Yes (${ws.researchData.mainCharacters.length} characters found)` : ""}
-${ws.outline ? `- Outline: Ready` : ""}`;
+## Current Wizard Step: ${ws.step}
+${ws.step === "outline" ? "Help the user create a story outline using their specified characters and settings. Use the generate_outline tool when ready." : ""}`;
   }
 
   return prompt;

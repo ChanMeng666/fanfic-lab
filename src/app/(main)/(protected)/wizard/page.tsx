@@ -338,9 +338,22 @@ export default function WizardPage() {
 
       case "outline":
         // Outline step uses CopilotChat for AI generation
+        // Build explicit context instructions for the AI
+        const outlineInstructions = `STORY CONTEXT - YOU MUST USE THIS:
+- Fandom: ${session.sourceName} (${session.sourceType})
+- Ship Type: ${session.shipType?.toUpperCase() || "Not specified"}
+- Setting: ${session.setting || "Not specified"}
+- Characters: ${session.characters.map((c) => c.name).join(", ") || "Not selected"}
+- Tags: ${session.additionalTags.join(", ") || "None"}
+${session.researchData ? `- Available Characters: ${session.researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
+${session.researchData?.popularShips?.length ? `- Popular Ships: ${session.researchData.popularShips.join(", ")}` : ""}
+
+IMPORTANT: When the user asks for ANY type of story (gangster, school, romance, etc.), you MUST write it using the characters above (${session.characters.map((c) => c.name).join(", ") || "the specified characters"}) from ${session.sourceName}. Adapt the user's request to fit this fandom context. NEVER create generic OC characters.`;
+
         return (
           <div className="flex-1 overflow-hidden wizard-chat-cream bg-background">
             <CopilotChat
+              instructions={outlineInstructions}
               labels={{
                 title: "Story Outline",
                 initial: `Great! Now let's create an outline for your ${session.sourceName} ${session.shipType?.toUpperCase() || ""} story set in a ${session.setting} setting.\n\nI'll generate a story outline based on:\n- Characters: ${session.characters.map((c) => c.name).join(", ")}\n- Tags: ${session.additionalTags.join(", ") || "None"}\n\nLet me create something special for you...`,

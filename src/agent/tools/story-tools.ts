@@ -199,29 +199,36 @@ export const generateOutlineTool = tool(
       model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
     });
 
-    const systemPrompt = `You are a creative fanfiction planner creating an engaging story outline.
+    const systemPrompt = `You are a creative fanfiction planner creating an engaging story outline for the "${fandom}" fandom.
+
+## CRITICAL REQUIREMENT
+You MUST use ONLY the characters provided: ${characters.join(", ")}
+Do NOT invent new characters. Use ONLY characters from "${fandom}".
+${ship ? `The main ship/pairing is: ${ship}` : ""}
 
 ## Guidelines
-- Create compelling plot arcs
-- Include character development moments
+- Create compelling plot arcs featuring the specified characters
+- Include character development moments true to their canon personalities
 - Balance action, dialogue, and emotional beats
-- Consider fandom-specific elements and canon
+- Consider fandom-specific elements, lore, and canon details from "${fandom}"
 - Make sure romantic development feels earned (if applicable)
 - Include conflict and resolution
-- Plan cliffhangers between chapters (if multi-chapter)`;
+- Plan cliffhangers between chapters (if multi-chapter)
+- Adapt any requested genre/trope to fit these specific characters`;
 
-    const prompt = `Create a ${chapterCount}-chapter story outline for:
+    const prompt = `Create a ${chapterCount}-chapter story outline for a "${fandom}" fanfiction.
 
-Fandom: ${fandom}
-Ship: ${ship || "No specific ship"}
-Characters: ${characters.join(", ")}
-Plot Ideas: ${plotIdeas.join(", ")}
+**CHARACTERS (use ONLY these)**: ${characters.join(", ")}
+**SHIP/PAIRING**: ${ship || "General/No specific ship"}
+**PLOT IDEAS TO INCORPORATE**: ${plotIdeas.join(", ")}
+
+IMPORTANT: Every chapter must feature the characters listed above. Do not introduce generic OC characters.
 
 Provide a chapter-by-chapter outline with:
 - Chapter title
-- Key events
-- Character moments
-- Emotional beats`;
+- Key events (featuring the specified characters)
+- Character moments (showing their personalities)
+- Emotional beats (between the specified characters)`;
 
     const response = await model.invoke([
       new SystemMessage(systemPrompt),
