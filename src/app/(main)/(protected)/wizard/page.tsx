@@ -350,9 +350,14 @@ ${session.researchData?.popularShips?.length ? `- Popular Ships: ${session.resea
 
 IMPORTANT: When the user asks for ANY type of story (gangster, school, romance, etc.), you MUST write it using the characters above (${session.characters.map((c) => c.name).join(", ") || "the specified characters"}) from ${session.sourceName}. Adapt the user's request to fit this fandom context. NEVER create generic OC characters.`;
 
+        // Use a stable key based on session data to start fresh conversation for outline
+        // This ensures a new thread when entering outline stage (avoids showing research messages)
+        const outlineChatKey = `outline-${session.sourceName}-${session.characters.length}`;
+
         return (
           <div className="flex-1 overflow-hidden wizard-chat-cream bg-background">
             <CopilotChat
+              key={outlineChatKey}
               instructions={outlineInstructions}
               labels={{
                 title: "Story Outline",

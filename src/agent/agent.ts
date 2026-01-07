@@ -31,6 +31,7 @@ const regularToolNames = new Set(allBackendTools.map((t) => t.name));
 
 /**
  * Extract wizard context from CopilotKit readable data
+ * CopilotKit context is an array of { description: string; value: string | object }
  */
 function extractContextFromReadable(state: FanficAgentState): {
   sourceName?: string;
@@ -42,18 +43,31 @@ function extractContextFromReadable(state: FanficAgentState): {
   outline?: string;
   researchData?: { mainCharacters: Array<{ name: string }>; popularShips: string[] };
 } | null {
-  // CopilotKit passes readable data through copilotkit.context or as part of state
+  // CopilotKit passes readable data through copilotkit.context as an array
   // The wizard page uses useCopilotReadable to share session state
-  const copilotContext = state.copilotkit as { context?: string } | undefined;
+  type CopilotContext = {
+    context?: Array<{ description: string; value: unknown }>;
+  };
+  const copilotState = state.copilotkit as CopilotContext | undefined;
 
-  if (copilotContext?.context) {
-    try {
-      // Try to parse the context as JSON (if it's structured)
-      const parsed = JSON.parse(copilotContext.context);
-      return parsed;
-    } catch {
-      // Context might be a string description
-      return null;
+  if (copilotState?.context && Array.isArray(copilotState.context)) {
+    // Find the wizard session context
+    const wizardContext = copilotState.context.find(
+      (c) => c.description?.includes("wizard") || c.description?.includes("session")
+    );
+
+    if (wizardContext?.value && typeof wizardContext.value === "object") {
+      const ws = wizardContext.value as Record<string, unknown>;
+      return {
+        sourceName: ws.sourceName as string | undefined,
+        sourceType: ws.sourceType as string | undefined,
+        shipType: ws.shipType as string | undefined,
+        setting: ws.setting as string | undefined,
+        characters: ws.characters ? (ws.characters as Array<{ name: string }>).map(c => c.name) : undefined,
+        tags: ws.additionalTags as string[] | undefined,
+        outline: ws.outline as string | undefined,
+        researchData: ws.researchData as { mainCharacters: Array<{ name: string }>; popularShips: string[] } | undefined,
+      };
     }
   }
   return null;
