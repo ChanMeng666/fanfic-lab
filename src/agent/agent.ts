@@ -789,7 +789,10 @@ async function chatNode(
 
 /**
  * Tool node for backend tools (non-research)
- * For HITL tools like generate_outline, returns an AIMessage to avoid ToolMessage format issues
+ * For HITL tools like generate_outline, we use STATE-ONLY approach:
+ * - Don't add any messages (avoids ToolMessage/AIMessage format issues)
+ * - Only emit pendingContent via copilotkitEmitState
+ * - Frontend detects pendingContent and renders OutlineApprovalCard
  */
 async function toolNode(
   state: FanficAgentState,
@@ -800,7 +803,7 @@ async function toolNode(
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
 
-  const resultMessages: (ToolMessage | AIMessage)[] = [];
+  const resultMessages: ToolMessage[] = [];
   let pendingContent: { type: "outline" | "continuation" | "expansion" | "image"; content: string } | null = null;
 
   for (const toolCall of toolCalls) {
@@ -814,18 +817,16 @@ async function toolNode(
           const result = await (tool as any).invoke(toolCall.args, customConfig);
           const resultContent = typeof result === "string" ? result : JSON.stringify(result);
 
-          // For generate_outline, return an AIMessage with the outline directly
-          // This avoids ToolMessage format issues with CopilotKit
+          // For generate_outline, use STATE-ONLY approach
+          // Don't add messages - frontend will detect pendingContent and render HITL component
           if (toolName === "generate_outline") {
-            console.log("[FanFic Agent] generate_outline completed, returning AIMessage with outline");
+            console.log("[FanFic Agent] generate_outline completed, using STATE-ONLY approach");
+            console.log("[FanFic Agent] Outline length:", resultContent.length);
             pendingContent = {
               type: "outline",
               content: resultContent,
             };
-            // Return the outline as a user-friendly message
-            resultMessages.push(new AIMessage({
-              content: `## Story Outline\n\n${resultContent}\n\n---\n\n**Please review the outline above.** Let me know if you'd like to:\n- **Approve it** and start writing\n- **Modify it** with specific changes\n- **Regenerate** with different ideas`,
-            }));
+            // NO message added - frontend will render OutlineApprovalCard based on pendingContent state
           } else {
             // For other tools, use standard ToolMessage
             resultMessages.push(new ToolMessage({
@@ -847,8 +848,10 @@ async function toolNode(
   }
 
   // Emit state with pendingContent if set (for HITL)
+  // Frontend will use useCoAgentStateRender to detect this and render approval UI
   if (pendingContent) {
-    console.log("[FanFic Agent] Emitting state with pendingContent for HITL approval");
+    console.log("[FanFic Agent] Emitting pendingContent state for frontend HITL detection");
+    console.log("[FanFic Agent] pendingContent type:", pendingContent.type);
     await copilotkitEmitState(config, {
       ...state,
       pendingContent,
@@ -856,7 +859,11 @@ async function toolNode(
   }
 
   // Return state update
-  const stateUpdate: Partial<FanficAgentState> = { messages: resultMessages };
+  // For outline: only pendingContent is set, no messages added
+  const stateUpdate: Partial<FanficAgentState> = {};
+  if (resultMessages.length > 0) {
+    stateUpdate.messages = resultMessages;
+  }
   if (pendingContent) {
     stateUpdate.pendingContent = pendingContent;
   }

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CopilotChat, CopilotPopup } from "@copilotkit/react-ui";
-import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
+import { useCopilotAction, useCopilotReadable, useCoAgentStateRender } from "@copilotkit/react-core";
 import { Sparkles, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -51,6 +51,46 @@ export default function WizardPage() {
   // Research state
   const [isResearching, setIsResearching] = useState(false);
   const [researchComplete, setResearchComplete] = useState(false);
+
+  // HITL: Use useCoAgentStateRender to detect pendingContent from agent state
+  // When agent emits pendingContent with type "outline", render OutlineApprovalCard inline in chat
+  useCoAgentStateRender<{
+    pendingContent?: { type: string; content: string } | null;
+  }>({
+    name: "fanfic_agent",
+    render: ({ state }) => {
+      console.log("[Wizard] useCoAgentStateRender called, state:", !!state);
+
+      // Check if there's a pending outline from agent state
+      if (state?.pendingContent?.type === "outline" && state.pendingContent.content) {
+        console.log("[Wizard] Rendering OutlineApprovalCard from agent state");
+        console.log("[Wizard] Outline content length:", state.pendingContent.content.length);
+
+        const outlineContent = state.pendingContent.content;
+
+        // Render OutlineApprovalCard inline in the chat
+        return (
+          <OutlineApprovalCard
+            outline={outlineContent}
+            onApprove={() => {
+              console.log("[Wizard] User APPROVED outline via state-based HITL");
+              handleOutlineApproved(outlineContent);
+            }}
+            onReject={(feedback?: string) => {
+              console.log("[Wizard] User REJECTED outline, feedback:", feedback);
+              // User will type regeneration request in chat
+            }}
+            onEdit={(editedOutline) => {
+              console.log("[Wizard] User EDITED and approved outline");
+              handleOutlineApproved(editedOutline);
+            }}
+          />
+        );
+      }
+
+      return null;
+    },
+  });
 
   // Debug: Track mode and session changes
   useEffect(() => {
