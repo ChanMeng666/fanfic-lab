@@ -52,6 +52,15 @@ export default function WizardPage() {
   const [isResearching, setIsResearching] = useState(false);
   const [researchComplete, setResearchComplete] = useState(false);
 
+  // Debug: Track mode and session changes
+  useEffect(() => {
+    console.log("[Wizard] MODE CHANGED:", mode);
+  }, [mode]);
+
+  useEffect(() => {
+    console.log("[Wizard] SESSION STEP CHANGED:", session.step);
+  }, [session.step]);
+
   // Auto-save wizard progress
   const saveProgress = useCallback(
     async (step: WizardStep, sessionData: Partial<WizardSession>) => {
@@ -177,6 +186,10 @@ export default function WizardPage() {
 
   // Step 5: Outline Approved Handler
   const handleOutlineApproved = async (finalOutline: string) => {
+    console.log("[Wizard] handleOutlineApproved called");
+    console.log("[Wizard] Outline length:", finalOutline?.length || 0);
+    console.log("[Wizard] Call stack:", new Error().stack);
+
     setSession((prev) => ({
       ...prev,
       outline: finalOutline,
@@ -236,25 +249,32 @@ export default function WizardPage() {
         required: true,
       },
     ],
-    renderAndWaitForResponse: ({ args, respond }) => (
-      <OutlineApprovalCard
-        outline={args.outline || ""}
-        onApprove={() => {
-          handleOutlineApproved(args.outline || "");
-          respond?.({ approved: true, outline: args.outline });
-        }}
-        onReject={(feedback?: string) => {
-          respond?.({
-            approved: false,
-            feedback: feedback || "Please regenerate with different ideas",
-          });
-        }}
-        onEdit={(editedOutline) => {
-          handleOutlineApproved(editedOutline);
-          respond?.({ approved: true, outline: editedOutline });
-        }}
-      />
-    ),
+    renderAndWaitForResponse: ({ args, respond }) => {
+      console.log("[Wizard] present_outline action RENDERED");
+      console.log("[Wizard] Outline arg length:", args.outline?.length || 0);
+      return (
+        <OutlineApprovalCard
+          outline={args.outline || ""}
+          onApprove={() => {
+            console.log("[Wizard] User clicked APPROVE in OutlineApprovalCard");
+            handleOutlineApproved(args.outline || "");
+            respond?.({ approved: true, outline: args.outline });
+          }}
+          onReject={(feedback?: string) => {
+            console.log("[Wizard] User clicked REJECT in OutlineApprovalCard");
+            respond?.({
+              approved: false,
+              feedback: feedback || "Please regenerate with different ideas",
+            });
+          }}
+          onEdit={(editedOutline) => {
+            console.log("[Wizard] User clicked EDIT in OutlineApprovalCard");
+            handleOutlineApproved(editedOutline);
+            respond?.({ approved: true, outline: editedOutline });
+          }}
+        />
+      );
+    },
   });
 
   // HITL: Start writing action
@@ -263,6 +283,8 @@ export default function WizardPage() {
     description: "User is ready to start writing their story",
     parameters: [],
     handler: async () => {
+      console.log("[Wizard] start_writing action CALLED");
+      console.log("[Wizard] Current mode:", mode);
       if (mode !== "writing") {
         setMode("writing");
       }

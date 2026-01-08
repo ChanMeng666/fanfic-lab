@@ -741,21 +741,36 @@ function routeFromStart(state: FanficAgentState): string {
  * Routing after chat node
  */
 function routeAfterChat(state: FanficAgentState): string {
+  console.log("[FanFic Agent] ========== ROUTE AFTER CHAT ==========");
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
 
+  console.log("[FanFic Agent] Last message type:", lastMessage._getType());
+  console.log("[FanFic Agent] Has tool_calls:", !!lastMessage.tool_calls?.length);
+
   if (lastMessage.tool_calls?.length) {
+    console.log("[FanFic Agent] Tool calls:", lastMessage.tool_calls.map(tc => tc.name));
+
     const hasBackendToolCall = lastMessage.tool_calls.some(
       (tc) => regularToolNames.has(tc.name)
     );
+    const hasFrontendToolCall = lastMessage.tool_calls.some(
+      (tc) => !regularToolNames.has(tc.name)
+    );
+
+    console.log("[FanFic Agent] Has backend tool call:", hasBackendToolCall);
+    console.log("[FanFic Agent] Has frontend tool call:", hasFrontendToolCall);
 
     if (hasBackendToolCall) {
+      console.log("[FanFic Agent] Routing to tool_node");
       return "tool_node";
     }
 
     // Frontend tools are handled by CopilotKit
+    console.log("[FanFic Agent] Frontend tool call, routing to END (CopilotKit handles)");
     return END;
   }
 
+  console.log("[FanFic Agent] No tool calls, routing to END");
   return END;
 }
 
