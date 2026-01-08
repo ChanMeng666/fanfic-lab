@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@stackframe/stack";
 import {
   BookOpen,
@@ -100,6 +100,7 @@ interface UserStats {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const stackUser = useUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
@@ -146,6 +147,14 @@ export default function ProfilePage() {
 
     fetchData();
   }, []);
+
+  // Sync tab from URL query parameter
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["stories", "drafts", "liked"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -545,7 +554,12 @@ export default function ProfilePage() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => router.push(`/wizard?draftId=${draft.id}`)}
+                            >
                               <Edit className="size-3.5" />
                               Continue
                             </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CopilotChat, CopilotPopup } from "@copilotkit/react-ui";
 import { useCopilotAction, useCopilotReadable, useCoAgentStateRender } from "@copilotkit/react-core";
 import { Sparkles, ArrowLeft } from "lucide-react";
@@ -28,7 +28,7 @@ import type {
   StoryCharacter,
 } from "@/lib/types/agent-state";
 import { INITIAL_WIZARD_SESSION } from "@/lib/types/agent-state";
-import { saveDraft, saveWizardProgress } from "@/lib/actions/user";
+import { saveDraft, saveWizardProgress, loadWizardProgress } from "@/lib/actions/user";
 
 // Custom AI thinking animation - three bouncing dots
 const ThinkingDots = (
@@ -41,6 +41,7 @@ const ThinkingDots = (
 
 export default function WizardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [session, setSession] = useState<WizardSession>(INITIAL_WIZARD_SESSION);
   const [mode, setMode] = useState<"setup" | "research" | "writing">("setup");
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -100,6 +101,28 @@ export default function WizardPage() {
   useEffect(() => {
     console.log("[Wizard] SESSION STEP CHANGED:", session.step);
   }, [session.step]);
+
+  // Load draft from URL parameter if present
+  useEffect(() => {
+    const draftIdParam = searchParams.get("draftId");
+    if (draftIdParam && !draftId) {
+      const loadDraft = async () => {
+        const wizardSession = await loadWizardProgress(draftIdParam);
+        if (wizardSession) {
+          setDraftId(draftIdParam);
+          setSession(wizardSession);
+          // Set mode based on saved step
+          if (wizardSession.step === "complete") {
+            setMode("writing");
+          } else if (["research", "characters", "outline"].includes(wizardSession.step)) {
+            setMode("research");
+            setResearchComplete(wizardSession.step !== "research");
+          }
+        }
+      };
+      loadDraft();
+    }
+  }, [searchParams, draftId]);
 
   // Auto-save wizard progress
   const saveProgress = useCallback(
