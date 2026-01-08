@@ -191,6 +191,7 @@ ${instructions}
 /**
  * Generate Outline Tool
  * Creates a story outline from basic parameters
+ * Enhanced with strong character enforcement
  */
 export const generateOutlineTool = tool(
   async ({ fandom, ship, characters, plotIdeas, chapterCount }) => {
@@ -199,36 +200,50 @@ export const generateOutlineTool = tool(
       model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
     });
 
-    const systemPrompt = `You are a creative fanfiction planner creating an engaging story outline for the "${fandom}" fandom.
+    const characterList = characters.join(", ");
+    const exampleChars = characters.slice(0, 2).join(" and ");
 
-## CRITICAL REQUIREMENT
-You MUST use ONLY the characters provided: ${characters.join(", ")}
-Do NOT invent new characters. Use ONLY characters from "${fandom}".
-${ship ? `The main ship/pairing is: ${ship}` : ""}
+    const systemPrompt = `You are a creative fanfiction planner for "${fandom}".
 
-## Guidelines
-- Create compelling plot arcs featuring the specified characters
-- Include character development moments true to their canon personalities
+## ABSOLUTE REQUIREMENTS - NEVER BREAK THESE
+
+1. **USE ONLY THESE CHARACTERS**: ${characterList}
+2. **DO NOT CREATE NEW CHARACTERS** - No OCs, no generic characters, only the ones listed
+3. **EVERY CHAPTER** must feature at least one character from the list
+4. **ALL INTERACTIONS** must be between the specified characters
+
+## CHARACTER LIST (USE ONLY THESE)
+${characters.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+
+${ship ? `## MAIN PAIRING\n${ship}\nThe romantic development between these characters is central to the story.` : ""}
+
+## GUIDELINES FOR "${fandom}"
+- Reference canon events, locations, and lore from "${fandom}"
+- Keep character voices authentic to their original portrayal
+- Adapt canon personalities to the requested genre/setting
+- Create compelling arcs highlighting relationships between ${exampleChars}
+- Include character development moments true to their personalities
 - Balance action, dialogue, and emotional beats
-- Consider fandom-specific elements, lore, and canon details from "${fandom}"
-- Make sure romantic development feels earned (if applicable)
-- Include conflict and resolution
-- Plan cliffhangers between chapters (if multi-chapter)
-- Adapt any requested genre/trope to fit these specific characters`;
+- Make romantic development feel earned (if applicable)
+- Plan engaging chapter endings`;
 
     const prompt = `Create a ${chapterCount}-chapter story outline for a "${fandom}" fanfiction.
 
-**CHARACTERS (use ONLY these)**: ${characters.join(", ")}
-**SHIP/PAIRING**: ${ship || "General/No specific ship"}
-**PLOT IDEAS TO INCORPORATE**: ${plotIdeas.join(", ")}
+## MANDATORY CHARACTER LIST (use ONLY these)
+${characters.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
-IMPORTANT: Every chapter must feature the characters listed above. Do not introduce generic OC characters.
+## STORY ELEMENTS
+- **Main Ship/Pairing**: ${ship || "General (focus on friendship/adventure)"}
+- **Plot Ideas**: ${plotIdeas.join(", ")}
 
-Provide a chapter-by-chapter outline with:
-- Chapter title
-- Key events (featuring the specified characters)
-- Character moments (showing their personalities)
-- Emotional beats (between the specified characters)`;
+## OUTPUT FORMAT
+For each chapter, provide:
+1. **Chapter Title** - A compelling title
+2. **Key Events** - What happens (featuring ONLY the listed characters)
+3. **Character Focus** - Which character(s) from the list are featured
+4. **Emotional Arc** - The emotional journey in this chapter
+
+CRITICAL: Do NOT introduce any characters not in the list above. All scenes must feature ${characterList}.`;
 
     const response = await model.invoke([
       new SystemMessage(systemPrompt),
@@ -240,13 +255,13 @@ Provide a chapter-by-chapter outline with:
   {
     name: "generate_outline",
     description:
-      "Generate a story outline from fandom, ship, characters, and plot ideas.",
+      "Generate a story outline from fandom, ship, characters, and plot ideas. ALWAYS use the characters provided - never create new ones.",
     schema: z.object({
       fandom: z.string().describe("The fandom the story is set in"),
       ship: z.string().optional().describe("The romantic pairing if any"),
       characters: z
         .array(z.string())
-        .describe("Names of main characters in the story"),
+        .describe("Names of main characters in the story - use ONLY these characters"),
       plotIdeas: z
         .array(z.string())
         .describe("Key plot points or ideas to incorporate"),

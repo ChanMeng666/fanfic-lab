@@ -338,36 +338,79 @@ export default function WizardPage() {
 
       case "outline":
         // Outline step uses CopilotChat for AI generation
-        // Build explicit context instructions for the AI
-        const outlineInstructions = `STORY CONTEXT - YOU MUST USE THIS:
-- Fandom: ${session.sourceName} (${session.sourceType})
-- Ship Type: ${session.shipType?.toUpperCase() || "Not specified"}
-- Setting: ${session.setting || "Not specified"}
-- Characters: ${session.characters.map((c) => c.name).join(", ") || "Not selected"}
-- Tags: ${session.additionalTags.join(", ") || "None"}
-${session.researchData ? `- Available Characters: ${session.researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
-${session.researchData?.popularShips?.length ? `- Popular Ships: ${session.researchData.popularShips.join(", ")}` : ""}
+        // Build explicit context instructions for the AI - VERY STRONG enforcement
+        const characterNames = session.characters.map((c) => c.name).join(", ") || "Not selected";
+        const outlineInstructions = `## ABSOLUTE RULES - FOLLOW THESE WITHOUT EXCEPTION
 
-IMPORTANT: When the user asks for ANY type of story (gangster, school, romance, etc.), you MUST write it using the characters above (${session.characters.map((c) => c.name).join(", ") || "the specified characters"}) from ${session.sourceName}. Adapt the user's request to fit this fandom context. NEVER create generic OC characters.`;
+### Rule 1: NEVER ASK FOR INFORMATION
+The user has ALREADY provided everything through the wizard. DO NOT ask for:
+- Fandom/source material (it's ${session.sourceName})
+- Character names (they are: ${characterNames})
+- Settings, ships, or tags (all provided below)
+
+### Rule 2: ADAPT ALL REQUESTS TO THIS CONTEXT
+When user asks for ANY type of story, use ONLY these characters:
+${characterNames}
+
+Examples:
+- "Write a school story" → Write school AU with ${characterNames}
+- "Write a gangster story" → Write gangster AU with ${characterNames}
+- "Make it fluffy" → Write fluffy romance with ${characterNames}
+
+### Rule 3: START IMMEDIATELY
+When asked to write, START WRITING. Don't confirm, don't ask questions.
+
+## YOUR MANDATORY CONTEXT
+- **FANDOM**: ${session.sourceName} (${session.sourceType})
+- **CHARACTERS**: ${characterNames}
+- **SHIP TYPE**: ${session.shipType?.toUpperCase() || "Not specified"}
+- **SETTING**: ${session.setting || "Not specified"}
+- **TAGS**: ${session.additionalTags.join(", ") || "None"}
+${session.researchData ? `- **AVAILABLE CHARACTERS**: ${session.researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
+${session.researchData?.popularShips?.length ? `- **POPULAR SHIPS**: ${session.researchData.popularShips.join(", ")}` : ""}`;
 
         // Use a stable key based on session data to start fresh conversation for outline
-        // This ensures a new thread when entering outline stage (avoids showing research messages)
         const outlineChatKey = `outline-${session.sourceName}-${session.characters.length}`;
 
         return (
-          <div className="flex-1 overflow-hidden wizard-chat-cream bg-background">
-            <CopilotChat
-              key={outlineChatKey}
-              instructions={outlineInstructions}
-              labels={{
-                title: "Story Outline",
-                initial: `Great! Now let's create an outline for your ${session.sourceName} ${session.shipType?.toUpperCase() || ""} story set in a ${session.setting} setting.\n\nI'll generate a story outline based on:\n- Characters: ${session.characters.map((c) => c.name).join(", ")}\n- Tags: ${session.additionalTags.join(", ") || "None"}\n\nLet me create something special for you...`,
-              }}
-              icons={{
-                activityIcon: ThinkingDots,
-              }}
-              className="h-full"
-            />
+          <div className="flex-1 flex flex-col overflow-hidden bg-background">
+            {/* Visible Context Banner - Shows users what context AI has */}
+            <div className="flex-shrink-0 border-b border-border bg-surface/50 px-4 py-3">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent flex-shrink-0">
+                    <Sparkles className="size-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-foreground mb-1">Story Context</h3>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p><span className="font-medium">Fandom:</span> {session.sourceName} ({session.sourceType})</p>
+                      <p><span className="font-medium">Characters:</span> {characterNames}</p>
+                      <p><span className="font-medium">Ship:</span> {session.shipType?.toUpperCase() || "General"} | <span className="font-medium">Setting:</span> {session.setting || "Canon"}</p>
+                      {session.additionalTags.length > 0 && (
+                        <p><span className="font-medium">Tags:</span> {session.additionalTags.join(", ")}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chat Area */}
+            <div className="flex-1 overflow-hidden wizard-chat-cream">
+              <CopilotChat
+                key={outlineChatKey}
+                instructions={outlineInstructions}
+                labels={{
+                  title: "Story Outline",
+                  initial: `I'll create a story outline using:\n\n**Fandom:** ${session.sourceName}\n**Characters:** ${characterNames}\n**Setting:** ${session.setting || "Canon"}\n**Ship Type:** ${session.shipType?.toUpperCase() || "General"}\n${session.additionalTags.length > 0 ? `**Tags:** ${session.additionalTags.join(", ")}\n` : ""}\nTell me what kind of story you'd like! For example:\n- "Write a sweet school romance"\n- "Create an enemies-to-lovers plot"\n- "Make it an action-adventure"\n\nI'll adapt any genre to feature ${session.characters.slice(0, 2).map(c => c.name).join(" and ") || "your characters"}!`,
+                }}
+                icons={{
+                  activityIcon: ThinkingDots,
+                }}
+                className="h-full"
+              />
+            </div>
           </div>
         );
 

@@ -75,6 +75,7 @@ function extractContextFromReadable(state: FanficAgentState): {
 
 /**
  * Build the system prompt based on current state
+ * Enhanced with strong anti-pattern instructions to prevent AI from ignoring context
  */
 function buildSystemPrompt(state: FanficAgentState): string {
   // Try to get context from multiple sources
@@ -92,34 +93,64 @@ function buildSystemPrompt(state: FanficAgentState): string {
   const outline = ws?.outline || readableContext?.outline;
   const researchData = ws?.researchData || readableContext?.researchData;
 
-  let prompt = `You are a creative fanfiction writing assistant specializing in the specific fandom, characters, and context provided by the user.
+  // Check if we have meaningful context
+  const hasContext = sourceName || characters.length > 0;
 
-## CRITICAL INSTRUCTION - CONTEXT ENFORCEMENT
-**YOU MUST ALWAYS USE THE PROVIDED CONTEXT.** When the user has specified a fandom, characters, ship type, setting, or tags, you MUST:
-1. ONLY use characters from the specified fandom
-2. ONLY reference the specified characters by their canon names
-3. Maintain the specified setting (modern AU, canon, etc.)
-4. Follow the specified ship type and tags
-5. NEVER invent new generic characters when specific characters are provided
-6. NEVER ignore the fandom context to create unrelated stories
+  let prompt = `You are a creative fanfiction writing assistant.
 
-If the user asks for a story, you MUST write about the specified fandom and characters, adapting their request to fit that context.`;
+## ABSOLUTE RULES - NEVER BREAK THESE
+
+### Rule 1: NEVER ASK FOR INFORMATION ALREADY PROVIDED
+The user has already specified their fandom, characters, and settings through the wizard.
+${hasContext ? `Context is provided below - DO NOT ask for:
+- The fandom/source material (already specified)
+- Character names (already specified)
+- Setting preferences (already specified)
+- Ship/pairing preferences (already specified)
+- Story tags (already specified)` : "If no context is provided, you may ask for details."}
+
+### Rule 2: ALWAYS ADAPT USER REQUESTS TO FIT THE CONTEXT
+When the user asks for any type of story, you MUST:
+- Use ONLY the characters specified in the context below
+- Adapt ANY genre/trope request to fit those specific characters
+- Example: User says "write a gangster story" → Write gangster AU using the specified characters
+- Example: User says "write a school romance" → Write school romance using the specified characters
+- NEVER create new generic OC characters when characters are already specified
+
+### Rule 3: USE THE PROVIDED CONTEXT IMMEDIATELY
+When asked to write anything, START WRITING IMMEDIATELY using the context below.
+- Do NOT confirm or ask "would you like me to..."
+- Do NOT ask for clarification on characters or settings
+- Do NOT request more details about the fandom
+- JUST START CREATING using what you have`;
 
   // Add the active context with STRONG emphasis
-  if (sourceName || characters.length > 0) {
+  if (hasContext) {
+    const characterList = characters.length > 0 ? characters.join(", ") : "Not specified";
+    const exampleChars = characters.slice(0, 2).join(" and ") || "the specified characters";
+
     prompt += `
 
-## ACTIVE STORY CONTEXT (YOU MUST USE THIS)
-${sourceName ? `- **FANDOM**: ${sourceName} ${sourceType ? `(${sourceType})` : ""}` : ""}
-${shipType ? `- **SHIP TYPE**: ${shipType.toUpperCase()}` : ""}
-${setting ? `- **SETTING**: ${setting}` : ""}
-${characters.length > 0 ? `- **CHARACTERS TO USE**: ${characters.join(", ")}` : ""}
-${tags.length > 0 ? `- **STORY TAGS**: ${tags.join(", ")}` : ""}
-${researchData ? `- **AVAILABLE CHARACTERS FROM RESEARCH**: ${researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
-${researchData?.popularShips?.length ? `- **POPULAR SHIPS**: ${researchData.popularShips.join(", ")}` : ""}
-${outline ? `- **EXISTING OUTLINE**: ${outline.slice(0, 500)}...` : ""}
+## YOUR MANDATORY CONTEXT (USE THIS NOW - DO NOT ASK FOR IT)
 
-**IMPORTANT**: When the user asks you to write ANY story, you MUST use the characters and fandom above. For example, if they ask for "a gangster story", write a gangster AU featuring ${characters.slice(0, 2).join(" and ") || "the specified characters"} from ${sourceName || "the specified fandom"}.`;
+**FANDOM**: ${sourceName || "Not specified"} ${sourceType ? `(${sourceType})` : ""}
+**CHARACTERS YOU MUST USE**: ${characterList}
+**SHIP TYPE**: ${shipType?.toUpperCase() || "General"}
+**SETTING**: ${setting || "Canon"}
+**TAGS**: ${tags.length > 0 ? tags.join(", ") : "None"}
+${researchData ? `**AVAILABLE CHARACTERS FROM RESEARCH**: ${researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
+${researchData?.popularShips?.length ? `**POPULAR SHIPS**: ${researchData.popularShips.join(", ")}` : ""}
+${outline ? `**EXISTING OUTLINE**: ${outline.slice(0, 500)}...` : ""}
+
+### CORRECT BEHAVIOR EXAMPLE
+User: "Write me a school romance"
+You: "Perfect! Here's a school romance AU featuring ${exampleChars} from ${sourceName}..." (Then immediately start writing)
+
+### INCORRECT BEHAVIOR EXAMPLE (NEVER DO THIS)
+User: "Write me a school romance"
+You: "I'd be happy to help! Which characters would you like to feature?" ← WRONG! Characters are specified above!
+You: "Could you tell me more about the setting?" ← WRONG! Setting is specified above!
+You: "What fandom is this for?" ← WRONG! Fandom is specified above!`;
   }
 
   prompt += `
@@ -129,20 +160,32 @@ ${outline ? `- **EXISTING OUTLINE**: ${outline.slice(0, 500)}...` : ""}
 - Expert at adapting different genres/tropes to any fandom
 - Skilled at maintaining character voices across different AUs
 - Creative in reinterpreting characters in new settings
+- PROACTIVE - you start creating without asking unnecessary questions
 
 ## Guidelines
-- ALWAYS use the provided fandom and characters
-- Adapt user requests to fit the specified context
+- ALWAYS use the provided fandom and characters without asking
+- Adapt user requests to fit the specified context automatically
 - Maintain consistent character personalities even in AU settings
 - Use the specified ship type and tone
-- When asked to write freely, still use the provided context`;
+- When asked to write freely, use the provided context immediately`;
 
   // Add wizard step info if available
   if (ws?.step) {
     prompt += `
 
-## Current Wizard Step: ${ws.step}
-${ws.step === "outline" ? "Help the user create a story outline using their specified characters and settings. Use the generate_outline tool when ready." : ""}`;
+## Current Wizard Step: ${ws.step}`;
+
+    if (ws.step === "outline") {
+      prompt += `
+You are helping create a story outline. The user has ALREADY provided:
+- Fandom: ${sourceName || "specified above"}
+- Characters: ${characters.join(", ") || "specified above"}
+
+When the user requests ANY type of story or outline:
+1. Use the generate_outline tool with the characters and fandom from the context
+2. Do NOT ask what characters or fandom to use - they are ALREADY specified
+3. Adapt the user's genre/trope request to fit the specified context`;
+    }
   }
 
   return prompt;
@@ -539,6 +582,47 @@ function fallbackAggregation(
 }
 
 /**
+ * Inject context reminder into user messages to ensure AI doesn't ignore context
+ * This is a defense-in-depth measure to reinforce context usage
+ */
+function injectContextReminder(
+  state: FanficAgentState,
+  userMessage: string
+): string {
+  const context = extractContextFromReadable(state);
+  const ws = state.wizardSession;
+
+  // Merge context sources
+  const sourceName = ws?.sourceName || context?.sourceName;
+  const characters = ws?.characters?.map(c => c.name) || context?.characters || [];
+
+  // If no meaningful context, return message unchanged
+  if (!sourceName || characters.length === 0) {
+    return userMessage;
+  }
+
+  // Detect if this is a story creation request (patterns for both English and common creative requests)
+  const storyPatterns = [
+    /write|create|make|generate|outline|story|chapter|draft|plot/i,
+    /help me|can you|please|i want|i'd like|let's/i,
+  ];
+
+  const isStoryRequest = storyPatterns.some(p => p.test(userMessage));
+
+  if (isStoryRequest) {
+    // Append system reminder to reinforce context usage
+    return `${userMessage}
+
+[SYSTEM REMINDER: User has already provided context through the wizard:
+- Fandom: ${sourceName}
+- Characters: ${characters.join(", ")}
+Do NOT ask for this information again. Adapt the user's request to use these characters and fandom immediately.]`;
+  }
+
+  return userMessage;
+}
+
+/**
  * Main chat node - handles conversation with the user
  */
 async function chatNode(
@@ -567,12 +651,30 @@ async function chatNode(
   // Build context-aware system prompt
   const systemPrompt = buildSystemPrompt(state);
 
+  // Process messages - inject context reminder into the last user message if needed
+  let processedMessages = [...state.messages];
+  const lastMessage = state.messages[state.messages.length - 1];
+
+  if (lastMessage && lastMessage._getType() === "human") {
+    const content = typeof lastMessage.content === "string" ? lastMessage.content : "";
+    const enrichedContent = injectContextReminder(state, content);
+
+    if (enrichedContent !== content) {
+      console.log("[FanFic Agent] Injected context reminder into user message");
+      // Replace the last message with the enriched version
+      processedMessages = [
+        ...state.messages.slice(0, -1),
+        new HumanMessage(enrichedContent)
+      ];
+    }
+  }
+
   // Emit state to frontend
   await copilotkitEmitState(config, state);
 
-  // Invoke the model
+  // Invoke the model with processed messages
   const response = await modelWithTools.invoke(
-    [new SystemMessage(systemPrompt), ...state.messages],
+    [new SystemMessage(systemPrompt), ...processedMessages],
     config
   );
 
