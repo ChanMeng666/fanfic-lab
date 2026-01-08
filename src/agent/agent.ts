@@ -184,7 +184,9 @@ You are helping create a story outline. The user has ALREADY provided:
 When the user requests ANY type of story or outline:
 1. Use the generate_outline tool with the characters and fandom from the context
 2. Do NOT ask what characters or fandom to use - they are ALREADY specified
-3. Adapt the user's genre/trope request to fit the specified context`;
+3. Adapt the user's genre/trope request to fit the specified context
+4. After generate_outline returns, you MUST call the present_outline action to show the outline to the user for approval
+5. NEVER skip the present_outline step - the user must approve the outline before proceeding`;
     }
   }
 
@@ -759,13 +761,17 @@ function routeAfterChat(state: FanficAgentState): string {
 
 /**
  * Route after tool execution
- * Self-contained tools (that return complete responses) go directly to END
- * to avoid unnecessary second chat_node call and reduce execution time
+ * Some tools need to go back to chat_node to trigger frontend actions (HITL)
+ * Others can return directly to END
  */
 function routeAfterTool(state: FanficAgentState): string {
-  // Tools that return complete, user-facing responses
+  // Tools that need HITL approval - must go back to chat_node to call frontend actions
+  const hitlTools = new Set([
+    "generate_outline",  // Needs to call present_outline for user approval
+  ]);
+
+  // Tools that return complete, user-facing responses (no HITL needed)
   const selfContainedTools = new Set([
-    "generate_outline",
     "continue_story",
     "expand_scene",
     "polish_prose"
@@ -777,13 +783,22 @@ function routeAfterTool(state: FanficAgentState): string {
     const prevAiMessage = state.messages[aiMessageIndex] as AIMessage;
     const toolCall = prevAiMessage?.tool_calls?.[0];
 
-    if (toolCall && selfContainedTools.has(toolCall.name)) {
-      console.log(`[FanFic Agent] Self-contained tool "${toolCall.name}" completed, routing to END`);
-      return END;  // Skip second chat_node call
+    if (toolCall) {
+      // HITL tools must go back to chat_node to trigger approval flow
+      if (hitlTools.has(toolCall.name)) {
+        console.log(`[FanFic Agent] HITL tool "${toolCall.name}" completed, routing to chat_node for approval`);
+        return "chat_node";
+      }
+
+      // Self-contained tools go directly to END
+      if (selfContainedTools.has(toolCall.name)) {
+        console.log(`[FanFic Agent] Self-contained tool "${toolCall.name}" completed, routing to END`);
+        return END;
+      }
     }
   }
 
-  return "chat_node";  // Other tools need LLM to process result
+  return "chat_node";  // Default: let LLM process result
 }
 
 /**
