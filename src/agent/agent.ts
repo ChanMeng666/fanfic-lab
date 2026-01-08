@@ -634,6 +634,18 @@ async function chatNode(
   console.log("[FanFic Agent] ========== CHAT NODE STARTED ==========");
   console.log("[FanFic Agent] Messages count:", state.messages?.length || 0);
 
+  // Debug: Log CopilotKit context to see what's being received
+  const copilotContext = state.copilotkit as { context?: unknown[]; actions?: unknown[] } | undefined;
+  console.log("[FanFic Agent] CopilotKit context array length:", copilotContext?.context?.length || 0);
+  console.log("[FanFic Agent] CopilotKit actions count:", copilotContext?.actions?.length || 0);
+
+  // Debug: Log extracted readable context
+  const readableContext = extractContextFromReadable(state);
+  console.log("[FanFic Agent] Extracted readable context:", JSON.stringify(readableContext, null, 2));
+
+  // Debug: Log wizard session
+  console.log("[FanFic Agent] Wizard session:", JSON.stringify(state.wizardSession, null, 2));
+
   const model = new ChatOpenAI({
     temperature: 0.8,
     model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
@@ -644,8 +656,12 @@ async function chatNode(
     state.copilotkit?.actions ?? []
   );
 
+  // Debug: Log available frontend tools
+  console.log("[FanFic Agent] Frontend tools available:", frontendTools.map(t => t.name));
+
   // Combine frontend and backend tools (research is handled separately)
   const allTools = [...frontendTools, ...allBackendTools];
+  console.log("[FanFic Agent] All tools available:", allTools.map(t => t.name));
 
   // Bind tools to the model
   const modelWithTools = model.bindTools(allTools, { parallel_tool_calls: false });
@@ -653,11 +669,26 @@ async function chatNode(
   // Build context-aware system prompt
   const systemPrompt = buildSystemPrompt(state);
 
+  // Debug: Log first 500 chars of system prompt
+  console.log("[FanFic Agent] System prompt (first 500 chars):", systemPrompt.substring(0, 500));
+
   // Process messages - inject context reminder into the last user message if needed
   let processedMessages = [...state.messages];
   const lastMessage = state.messages[state.messages.length - 1];
 
-  if (lastMessage && lastMessage._getType() === "human") {
+  // Debug: Log last message type
+  console.log("[FanFic Agent] Last message type:", lastMessage?._getType());
+
+  // Check if last message is a ToolMessage (after generate_outline returns)
+  // If so, we need to instruct the model to call present_outline
+  if (lastMessage && lastMessage._getType() === "tool") {
+    console.log("[FanFic Agent] Last message is a ToolMessage - need to call present_outline");
+    // Add instruction to call present_outline
+    processedMessages = [
+      ...state.messages,
+      new HumanMessage("[SYSTEM: The outline has been generated. You MUST now call the present_outline action to show the outline to the user for approval. Do NOT output text - call the present_outline tool with the outline content.]")
+    ];
+  } else if (lastMessage && lastMessage._getType() === "human") {
     const content = typeof lastMessage.content === "string" ? lastMessage.content : "";
     const enrichedContent = injectContextReminder(state, content);
 
@@ -679,6 +710,13 @@ async function chatNode(
     [new SystemMessage(systemPrompt), ...processedMessages],
     config
   );
+
+  // Debug: Log response tool calls
+  const aiResponse = response as AIMessage;
+  console.log("[FanFic Agent] Response has tool_calls:", !!aiResponse.tool_calls?.length);
+  if (aiResponse.tool_calls?.length) {
+    console.log("[FanFic Agent] Response tool calls:", aiResponse.tool_calls.map(tc => tc.name));
+  }
 
   return { messages: [response] };
 }
