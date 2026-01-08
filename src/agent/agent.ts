@@ -34,6 +34,7 @@ const regularToolNames = new Set(allBackendTools.map((t) => t.name));
  * CopilotKit context is an array of { description: string; value: string | object }
  */
 function extractContextFromReadable(state: FanficAgentState): {
+  step?: string;
   sourceName?: string;
   sourceType?: string;
   shipType?: string;
@@ -122,6 +123,7 @@ function extractContextFromReadable(state: FanficAgentState): {
       }
 
       console.log("[extractContextFromReadable] Extracted values:", {
+        step: ws.step,
         sourceName: ws.sourceName,
         sourceType: ws.sourceType,
         shipType: ws.shipType,
@@ -131,6 +133,7 @@ function extractContextFromReadable(state: FanficAgentState): {
       });
 
       return {
+        step: ws.step as string | undefined,
         sourceName: ws.sourceName as string | undefined,
         sourceType: ws.sourceType as string | undefined,
         shipType: ws.shipType as string | undefined,
@@ -243,24 +246,47 @@ You: "What fandom is this for?" ← WRONG! Fandom is specified above!`;
 - Use the specified ship type and tone
 - When asked to write freely, use the provided context immediately`;
 
+  // Get wizard step from either wizardSession or readableContext
+  const currentStep = ws?.step || readableContext?.step;
+
   // Add wizard step info if available
-  if (ws?.step) {
+  if (currentStep) {
     prompt += `
 
-## Current Wizard Step: ${ws.step}`;
+## Current Wizard Step: ${currentStep}`;
 
-    if (ws.step === "outline") {
+    if (currentStep === "outline") {
       prompt += `
-You are helping create a story outline. The user has ALREADY provided:
-- Fandom: ${sourceName || "specified above"}
-- Characters: ${characters.join(", ") || "specified above"}
 
-When the user requests ANY type of story or outline:
-1. Use the generate_outline tool with the characters and fandom from the context
-2. Do NOT ask what characters or fandom to use - they are ALREADY specified
-3. Adapt the user's genre/trope request to fit the specified context
-4. After generate_outline returns, you MUST call the present_outline action to show the outline to the user for approval
-5. NEVER skip the present_outline step - the user must approve the outline before proceeding`;
+## CRITICAL: STORY OUTLINE GENERATION RULES
+
+You are in the Story Outline creation stage. When the user asks for ANY type of story:
+
+### YOU MUST USE THE generate_outline TOOL
+- DO NOT write story content directly
+- DO NOT start narrating the story
+- ALWAYS call the generate_outline tool first
+
+### TOOL CALL REQUIREMENTS
+When calling generate_outline, use these EXACT values:
+- fandom: "${sourceName || "Use context"}"
+- characters: [${characters.map(c => `"${c}"`).join(", ") || '"Use characters from context"'}]
+- ship: "${shipType || "general"}"
+- chapterCount: 5 (default, or as user specifies)
+- plotIdeas: [Extract from user's request, e.g., "school romance", "enemies to lovers"]
+
+### EXAMPLE
+User: "Write me a sweet school romance"
+You: Call generate_outline tool with:
+  - fandom: "${sourceName}"
+  - characters: [${characters.map(c => `"${c}"`).join(", ")}]
+  - ship: "${shipType || "general"}"
+  - plotIdeas: ["sweet school romance", "romantic comedy"]
+  - chapterCount: 5
+
+### WRONG BEHAVIOR (NEVER DO THIS)
+User: "Write me a sweet school romance"
+You: "In the serene halls of Cloud Recesses..." ← WRONG! You must use the tool first!`;
     }
   }
 
