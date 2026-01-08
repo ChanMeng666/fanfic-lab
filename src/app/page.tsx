@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
+import { DeveloperAttribution } from "@/components/layout";
 
 // Literary themed images from Unsplash (known working URLs)
 const floatingImages = [
@@ -177,6 +178,9 @@ export default function Home() {
 
       {/* Bottom fade for scroll indication (optional) */}
       <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+
+      {/* Developer Attribution */}
+      <DeveloperAttribution />
     </main>
   );
 }
