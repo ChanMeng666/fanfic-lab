@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, BookOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StoryCard, FilterBar } from "@/components/feed";
 import type { StoryCardData } from "@/components/feed";
+
+const PAGE_SIZE = 8;
 
 // Sample data for demonstration
 const SAMPLE_STORIES: StoryCardData[] = [
@@ -61,6 +63,159 @@ const SAMPLE_STORIES: StoryCardData[] = [
     author: { id: "a3", username: "purple_army_writer" },
     updatedAt: new Date(Date.now() - 172800000).toISOString(),
   },
+  {
+    id: "4",
+    title: "Midnight in the Garden of Cloud Recesses",
+    summary:
+      "Wei Wuxian returns to Cloud Recesses after the Sunshot Campaign, haunted by memories and drawn to a certain Second Jade who seems equally unable to forget.",
+    fandom: "The Untamed",
+    ships: ["WangXian"],
+    tags: ["Post-Canon", "Healing", "Slow Burn", "Angst with Happy Ending"],
+    rating: "MATURE",
+    status: "PUBLISHED",
+    wordCount: 67000,
+    chapterCount: 18,
+    likes: 3456,
+    comments: 234,
+    author: { id: "a4", username: "lotus_pier_writer" },
+    updatedAt: new Date(Date.now() - 259200000).toISOString(),
+  },
+  {
+    id: "5",
+    title: "The Devil Wears Prada (But Make It Gay)",
+    summary:
+      "Andy Sachs takes a job at Runway Magazine and discovers that Miranda Priestly is nothing like she expected. A retelling with the romance we deserved.",
+    fandom: "The Devil Wears Prada",
+    ships: ["Mirandy"],
+    tags: ["Romance", "Slow Burn", "Boss/Employee", "Fashion"],
+    rating: "MATURE",
+    status: "COMPLETE",
+    wordCount: 52000,
+    chapterCount: 15,
+    likes: 1876,
+    comments: 145,
+    author: { id: "a5", username: "runway_dreams" },
+    updatedAt: new Date(Date.now() - 345600000).toISOString(),
+  },
+  {
+    id: "6",
+    title: "A Thousand Paper Cranes",
+    summary:
+      "Bakugou makes a wish. Midoriya folds a thousand paper cranes. Sometimes miracles happen to those who believe.",
+    fandom: "My Hero Academia",
+    ships: ["BakuDeku"],
+    tags: ["Hurt/Comfort", "Healing", "Friends to Lovers", "Magical Realism"],
+    rating: "TEEN",
+    status: "COMPLETE",
+    wordCount: 34000,
+    chapterCount: 10,
+    likes: 2134,
+    comments: 167,
+    author: { id: "a6", username: "plus_ultra_writes" },
+    updatedAt: new Date(Date.now() - 432000000).toISOString(),
+  },
+  {
+    id: "7",
+    title: "Starlight and Shadows",
+    summary:
+      "In a galaxy far, far away, a Jedi and a Sith discover that the Force has plans neither of them expected. An enemies-to-lovers tale across the stars.",
+    fandom: "Star Wars",
+    ships: ["Reylo"],
+    tags: ["Enemies to Lovers", "Force Bond", "Alternate Universe", "Epic"],
+    rating: "TEEN",
+    status: "PUBLISHED",
+    wordCount: 89000,
+    chapterCount: 25,
+    likes: 4521,
+    comments: 312,
+    author: { id: "a7", username: "force_writer" },
+    updatedAt: new Date(Date.now() - 518400000).toISOString(),
+  },
+  {
+    id: "8",
+    title: "221B Baker Street Blues",
+    summary:
+      "John Watson moves into 221B and discovers that his new flatmate is the most infuriating, brilliant, and utterly captivating person he has ever met.",
+    fandom: "Sherlock",
+    ships: ["Johnlock"],
+    tags: ["Slow Burn", "Case Fic", "Pining", "First Kiss"],
+    rating: "MATURE",
+    status: "COMPLETE",
+    wordCount: 76000,
+    chapterCount: 20,
+    likes: 3890,
+    comments: 278,
+    author: { id: "a8", username: "consulting_writer" },
+    updatedAt: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    id: "9",
+    title: "Crimson Peak: A Love Story",
+    summary:
+      "Thomas Sharpe never expected to find love in the cold halls of Allerdale. But when Edith arrives, everything changes.",
+    fandom: "Crimson Peak",
+    ships: ["Thomas/Edith"],
+    tags: ["Gothic Romance", "Dark", "Redemption", "Horror Elements"],
+    rating: "MATURE",
+    status: "COMPLETE",
+    wordCount: 41000,
+    chapterCount: 12,
+    likes: 1234,
+    comments: 98,
+    author: { id: "a9", username: "gothic_tales" },
+    updatedAt: new Date(Date.now() - 691200000).toISOString(),
+  },
+  {
+    id: "10",
+    title: "The Proposal (But They're Both Dumb)",
+    summary:
+      "Jimin needs a fake boyfriend for his sister's wedding. Yoongi needs a place to stay. What could possibly go wrong?",
+    fandom: "BTS",
+    ships: ["Yoonmin"],
+    tags: ["Fake Dating", "Comedy", "Fluff", "Mutual Pining"],
+    rating: "TEEN",
+    status: "COMPLETE",
+    wordCount: 38000,
+    chapterCount: 11,
+    likes: 2987,
+    comments: 203,
+    author: { id: "a10", username: "bangtan_writes" },
+    updatedAt: new Date(Date.now() - 777600000).toISOString(),
+  },
+  {
+    id: "11",
+    title: "Wolfsbane and Moonlight",
+    summary:
+      "After the war, Remus Lupin thought he had lost everything. Then Sirius Black walks back into his life, and nothing is the same.",
+    fandom: "Harry Potter",
+    ships: ["Wolfstar"],
+    tags: ["Post-War", "Fix-It", "Angst", "Reunion"],
+    rating: "MATURE",
+    status: "PUBLISHED",
+    wordCount: 58000,
+    chapterCount: 16,
+    likes: 2456,
+    comments: 189,
+    author: { id: "a11", username: "marauder_era" },
+    updatedAt: new Date(Date.now() - 864000000).toISOString(),
+  },
+  {
+    id: "12",
+    title: "Stark Industries Internship Program",
+    summary:
+      "Peter Parker gets an internship at Stark Industries. Tony Stark gets a headache. And maybe, just maybe, they both get a family.",
+    fandom: "Marvel",
+    ships: [],
+    tags: ["Found Family", "Mentor/Protégé", "Fluff", "Humor"],
+    rating: "GENERAL",
+    status: "COMPLETE",
+    wordCount: 45000,
+    chapterCount: 14,
+    likes: 5678,
+    comments: 456,
+    author: { id: "a12", username: "iron_dad_writes" },
+    updatedAt: new Date(Date.now() - 950400000).toISOString(),
+  },
 ];
 
 export default function FeedPage() {
@@ -68,6 +223,7 @@ export default function FeedPage() {
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
   const [sortBy, setSortBy] = useState("recent");
   const [searchQuery, setSearchQuery] = useState("");
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
 
   // Filter stories based on selection
   const filteredStories = SAMPLE_STORIES.filter((story) => {
@@ -98,6 +254,19 @@ export default function FeedPage() {
     }
   });
 
+  // Paginated stories
+  const displayedStories = sortedStories.slice(0, displayCount);
+  const hasMore = displayCount < sortedStories.length;
+
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(PAGE_SIZE);
+  }, [selectedFandom, selectedStatus, sortBy, searchQuery]);
+
+  const loadMore = () => {
+    setDisplayCount((prev) => prev + PAGE_SIZE);
+  };
+
   const hasActiveFilters = selectedFandom || selectedStatus || searchQuery;
 
   const clearAllFilters = () => {
@@ -124,7 +293,7 @@ export default function FeedPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search stories by title or summary..."
+            placeholder="Search stories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-12 text-base"
@@ -153,9 +322,9 @@ export default function FeedPage() {
         </div>
 
         {/* Story Grid */}
-        {sortedStories.length > 0 ? (
+        {displayedStories.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sortedStories.map((story) => (
+            {displayedStories.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
           </div>
@@ -179,10 +348,18 @@ export default function FeedPage() {
           </Card>
         )}
 
-        {/* End of List */}
-        {sortedStories.length > 0 && (
-          <div className="text-center mt-8 text-sm text-muted-foreground">
-            You&apos;ve reached the end
+        {/* Load More / End of List */}
+        {displayedStories.length > 0 && (
+          <div className="text-center mt-8">
+            {hasMore ? (
+              <Button variant="outline" size="lg" onClick={loadMore}>
+                Load More Stories
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You&apos;ve reached the end
+              </p>
+            )}
           </div>
         )}
       </main>
