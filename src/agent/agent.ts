@@ -726,6 +726,10 @@ Do NOT ask for this information again. Adapt the user's request to use these cha
 
 /**
  * Main chat node - handles conversation with the user
+ *
+ * Special case: After generate_outline tool, this node is called to generate
+ * a clean AIMessage that CopilotKit can display. This "consumes" the ToolMessage
+ * and provides a user-friendly response.
  */
 async function chatNode(
   state: FanficAgentState,
@@ -733,6 +737,26 @@ async function chatNode(
 ): Promise<Partial<FanficAgentState>> {
   console.log("[FanFic Agent] ========== CHAT NODE STARTED ==========");
   console.log("[FanFic Agent] Messages count:", state.messages?.length || 0);
+
+  // Check if we're being called after generate_outline (pendingContent is set)
+  // If so, generate a simple AIMessage to inform user about the outline
+  if (state.pendingContent?.type === "outline" && state.pendingContent.content) {
+    console.log("[FanFic Agent] Detected pending outline, generating response message");
+
+    // Return an AIMessage that tells the user the outline is ready
+    // The actual outline is displayed via useCoAgentStateRender on frontend
+    const responseMessage = new AIMessage({
+      content: `I've created your story outline! Please review it above and let me know if you'd like to:
+
+- **Approve it** and start writing
+- **Edit** any parts you want to change
+- **Regenerate** with different ideas
+
+Take your time to review each chapter's key events and emotional arcs.`,
+    });
+
+    return { messages: [responseMessage] };
+  }
 
   // Debug: Log CopilotKit context to see what's being received
   const copilotContext = state.copilotkit as { context?: unknown[]; actions?: unknown[] } | undefined;
@@ -815,17 +839,17 @@ async function chatNode(
 
 /**
  * Tool node for backend tools (non-research)
- * For HITL tools like generate_outline, we use STATE-ONLY approach:
- * - Don't add any messages (avoids ToolMessage/AIMessage format issues)
- * - Only emit pendingContent via copilotkitEmitState
- * - Frontend detects pendingContent and renders OutlineApprovalCard
+ *
+ * For generate_outline (HITL tool):
+ * - MUST return ToolMessage to satisfy OpenAI (tool_calls require responses)
+ * - BUT use emitMessages: false to prevent CopilotKit from parsing it (avoids ZodError)
+ * - Emit pendingContent state for frontend HITL detection
+ * - Frontend uses useCoAgentStateRender to detect and render OutlineApprovalCard
  */
 async function toolNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
-  const customConfig = copilotkitCustomizeConfig(config, { emitMessages: true });
-
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
 
@@ -839,20 +863,36 @@ async function toolNode(
       const tool = allBackendTools.find((t) => t.name === toolName);
       if (tool) {
         try {
+          // For generate_outline, use emitMessages: false to prevent CopilotKit ZodError
+          // Other tools use emitMessages: true for normal streaming
+          const shouldEmitMessages = toolName !== "generate_outline";
+          const customConfig = copilotkitCustomizeConfig(config, {
+            emitMessages: shouldEmitMessages
+          });
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const result = await (tool as any).invoke(toolCall.args, customConfig);
           const resultContent = typeof result === "string" ? result : JSON.stringify(result);
 
-          // For generate_outline, use STATE-ONLY approach
-          // Don't add messages - frontend will detect pendingContent and render HITL component
+          // For generate_outline:
+          // 1. Add ToolMessage to satisfy OpenAI (required for tool_calls)
+          // 2. Set pendingContent for frontend HITL detection
+          // 3. emitMessages: false prevents CopilotKit from parsing the ToolMessage (avoids ZodError)
           if (toolName === "generate_outline") {
-            console.log("[FanFic Agent] generate_outline completed, using STATE-ONLY approach");
+            console.log("[FanFic Agent] generate_outline completed");
             console.log("[FanFic Agent] Outline length:", resultContent.length);
+
             pendingContent = {
               type: "outline",
               content: resultContent,
             };
-            // NO message added - frontend will render OutlineApprovalCard based on pendingContent state
+
+            // Add ToolMessage for OpenAI (but not emitted to frontend due to emitMessages: false)
+            resultMessages.push(new ToolMessage({
+              content: "Outline generated. Waiting for user approval via UI component.",
+              name: toolName,
+              tool_call_id: toolCall.id!,
+            }));
           } else {
             // For other tools, use standard ToolMessage
             resultMessages.push(new ToolMessage({
@@ -863,6 +903,7 @@ async function toolNode(
           }
         } catch (error) {
           console.error(`Tool ${toolName} error:`, error);
+          const customConfig = copilotkitCustomizeConfig(config, { emitMessages: true });
           resultMessages.push(new ToolMessage({
             content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
             name: toolName,
@@ -884,8 +925,7 @@ async function toolNode(
     });
   }
 
-  // Return state update
-  // For outline: only pendingContent is set, no messages added
+  // Return state update - always include messages if any (OpenAI requires tool responses)
   const stateUpdate: Partial<FanficAgentState> = {};
   if (resultMessages.length > 0) {
     stateUpdate.messages = resultMessages;
@@ -947,22 +987,37 @@ function routeAfterChat(state: FanficAgentState): string {
 
 /**
  * Route after tool execution
- * All tools route to END - HITL is handled via state emission
+ *
+ * For generate_outline (HITL tool):
+ * - Route back to chatNode to generate an AIMessage
+ * - This "consumes" the ToolMessage and provides a clean response for CopilotKit
+ * - The AIMessage will inform the user that the outline is ready for review
+ *
+ * For other tools:
+ * - Route to END (handled normally)
  */
 function routeAfterTool(state: FanficAgentState): string {
   // Find the AI message that triggered the tool call
+  const lastToolMessage = state.messages[state.messages.length - 1];
   const aiMessageIndex = state.messages.length - 2;
+
   if (aiMessageIndex >= 0) {
     const prevAiMessage = state.messages[aiMessageIndex] as AIMessage;
     const toolCall = prevAiMessage?.tool_calls?.[0];
 
     if (toolCall) {
-      console.log(`[FanFic Agent] Tool "${toolCall.name}" completed, routing to END`);
+      console.log(`[FanFic Agent] Tool "${toolCall.name}" completed`);
+
+      // For generate_outline, route back to chatNode to generate a clean AIMessage
+      // This prevents CopilotKit from seeing raw ToolMessage (which causes ZodError)
+      if (toolCall.name === "generate_outline") {
+        console.log("[FanFic Agent] generate_outline: routing to chatNode for AIMessage response");
+        return "chat_node";
+      }
     }
   }
 
-  // All tools route directly to END
-  // HITL is handled by emitting pendingContent in toolNode, which frontend detects
+  console.log("[FanFic Agent] Routing to END");
   return END;
 }
 
