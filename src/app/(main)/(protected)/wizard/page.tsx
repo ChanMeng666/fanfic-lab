@@ -3,8 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CopilotChat, CopilotPopup } from "@copilotkit/react-ui";
-import { useCopilotAction, useCopilotReadable, useCoAgentStateRender } from "@copilotkit/react-core";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { useCopilotAction, useCopilotReadable, useCoAgentStateRender, useCopilotChat } from "@copilotkit/react-core";
+import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
+import { Sparkles, ArrowLeft, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Wizard components
@@ -52,6 +53,19 @@ export default function WizardPage() {
   // Research state
   const [isResearching, setIsResearching] = useState(false);
   const [researchComplete, setResearchComplete] = useState(false);
+
+  // CopilotChat hook for sending messages programmatically
+  const { appendMessage } = useCopilotChat();
+
+  // Handler for floating "Generate Outline" button
+  const handleGenerateOutline = useCallback(async () => {
+    await appendMessage(
+      new TextMessage({
+        role: Role.User,
+        content: "Please generate a formal outline based on our discussion",
+      })
+    );
+  }, [appendMessage]);
 
   // HITL: Use useCoAgentStateRender to detect pendingContent from agent state
   // When agent emits pendingContent with type "outline", render OutlineApprovalCard inline in chat
@@ -488,13 +502,25 @@ ${session.researchData?.popularShips?.length ? `- **POPULAR SHIPS**: ${session.r
                 instructions={outlineInstructions}
                 labels={{
                   title: "Story Outline",
-                  initial: `I'll create a story outline using:\n\n**Fandom:** ${session.sourceName}\n**Characters:** ${characterNames}\n**Setting:** ${session.setting || "Canon"}\n**Ship Type:** ${session.shipType?.toUpperCase() || "General"}\n${session.additionalTags.length > 0 ? `**Tags:** ${session.additionalTags.join(", ")}\n` : ""}\nTell me what kind of story you'd like! For example:\n- "Write a sweet school romance"\n- "Create an enemies-to-lovers plot"\n- "Make it an action-adventure"\n\nI'll adapt any genre to feature ${session.characters.slice(0, 2).map(c => c.name).join(" and ") || "your characters"}!`,
+                  initial: `Let's create your ${session.sourceName} story outline!\n\n**Your setup:**\n- Characters: ${characterNames}\n- Ship: ${session.shipType?.toUpperCase() || "General"}\n- Setting: ${session.setting || "Canon"}\n${session.additionalTags.length > 0 ? `- Tags: ${session.additionalTags.join(", ")}\n` : ""}\n**What you can do:**\n1. Tell me what kind of story you want (e.g., "Write a sweet school romance")\n2. Discuss plot ideas with me to refine your vision\n3. When ready, click the **"Generate Outline"** button in the bottom right\n\nI'll create a chapter-by-chapter outline for you to review!`,
                 }}
                 icons={{
                   activityIcon: ThinkingDots,
                 }}
                 className="h-full"
               />
+            </div>
+
+            {/* Floating "Generate Outline" Button */}
+            <div className="fixed bottom-24 right-8 z-50">
+              <Button
+                onClick={handleGenerateOutline}
+                className="gap-2 shadow-lg ai-glow bg-accent hover:bg-accent/90 text-accent-foreground"
+                size="lg"
+              >
+                <ClipboardList className="size-4" />
+                Generate Outline
+              </Button>
             </div>
           </div>
         );
