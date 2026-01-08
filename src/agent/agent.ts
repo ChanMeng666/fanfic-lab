@@ -753,16 +753,8 @@ async function chatNode(
   // Debug: Log last message type
   console.log("[FanFic Agent] Last message type:", lastMessage?._getType());
 
-  // Check if last message is a ToolMessage (after generate_outline returns)
-  // If so, we need to instruct the model to call present_outline
-  if (lastMessage && lastMessage._getType() === "tool") {
-    console.log("[FanFic Agent] Last message is a ToolMessage - need to call present_outline");
-    // Add instruction to call present_outline
-    processedMessages = [
-      ...state.messages,
-      new HumanMessage("[SYSTEM: The outline has been generated. You MUST now call the present_outline action to show the outline to the user for approval. Do NOT output text - call the present_outline tool with the outline content.]")
-    ];
-  } else if (lastMessage && lastMessage._getType() === "human") {
+  // Process user messages - inject context reminder if needed
+  if (lastMessage && lastMessage._getType() === "human") {
     const content = typeof lastMessage.content === "string" ? lastMessage.content : "";
     const enrichedContent = injectContextReminder(state, content);
 
@@ -797,17 +789,19 @@ async function chatNode(
 
 /**
  * Tool node for backend tools (non-research)
+ * For HITL tools like generate_outline, returns an AIMessage to avoid ToolMessage format issues
  */
 async function toolNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
-  const customConfig = copilotkitCustomizeConfig(config, { emitMessages: false });
+  const customConfig = copilotkitCustomizeConfig(config, { emitMessages: true });
 
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
 
-  const toolMessages: ToolMessage[] = [];
+  const resultMessages: (ToolMessage | AIMessage)[] = [];
+  let pendingContent: { type: "outline" | "continuation" | "expansion" | "image"; content: string } | null = null;
 
   for (const toolCall of toolCalls) {
     const toolName = toolCall.name;
@@ -818,14 +812,31 @@ async function toolNode(
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const result = await (tool as any).invoke(toolCall.args, customConfig);
-          toolMessages.push(new ToolMessage({
-            content: typeof result === "string" ? result : JSON.stringify(result),
-            name: toolName,
-            tool_call_id: toolCall.id!,
-          }));
+          const resultContent = typeof result === "string" ? result : JSON.stringify(result);
+
+          // For generate_outline, return an AIMessage with the outline directly
+          // This avoids ToolMessage format issues with CopilotKit
+          if (toolName === "generate_outline") {
+            console.log("[FanFic Agent] generate_outline completed, returning AIMessage with outline");
+            pendingContent = {
+              type: "outline",
+              content: resultContent,
+            };
+            // Return the outline as a user-friendly message
+            resultMessages.push(new AIMessage({
+              content: `## Story Outline\n\n${resultContent}\n\n---\n\n**Please review the outline above.** Let me know if you'd like to:\n- **Approve it** and start writing\n- **Modify it** with specific changes\n- **Regenerate** with different ideas`,
+            }));
+          } else {
+            // For other tools, use standard ToolMessage
+            resultMessages.push(new ToolMessage({
+              content: resultContent,
+              name: toolName,
+              tool_call_id: toolCall.id!,
+            }));
+          }
         } catch (error) {
           console.error(`Tool ${toolName} error:`, error);
-          toolMessages.push(new ToolMessage({
+          resultMessages.push(new ToolMessage({
             content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
             name: toolName,
             tool_call_id: toolCall.id!,
@@ -835,7 +846,22 @@ async function toolNode(
     }
   }
 
-  return { messages: toolMessages };
+  // Emit state with pendingContent if set (for HITL)
+  if (pendingContent) {
+    console.log("[FanFic Agent] Emitting state with pendingContent for HITL approval");
+    await copilotkitEmitState(config, {
+      ...state,
+      pendingContent,
+    });
+  }
+
+  // Return state update
+  const stateUpdate: Partial<FanficAgentState> = { messages: resultMessages };
+  if (pendingContent) {
+    stateUpdate.pendingContent = pendingContent;
+  }
+
+  return stateUpdate;
 }
 
 /**
@@ -888,22 +914,9 @@ function routeAfterChat(state: FanficAgentState): string {
 
 /**
  * Route after tool execution
- * Some tools need to go back to chat_node to trigger frontend actions (HITL)
- * Others can return directly to END
+ * All tools route to END - HITL is handled via state emission
  */
 function routeAfterTool(state: FanficAgentState): string {
-  // Tools that need HITL approval - must go back to chat_node to call frontend actions
-  const hitlTools = new Set([
-    "generate_outline",  // Needs to call present_outline for user approval
-  ]);
-
-  // Tools that return complete, user-facing responses (no HITL needed)
-  const selfContainedTools = new Set([
-    "continue_story",
-    "expand_scene",
-    "polish_prose"
-  ]);
-
   // Find the AI message that triggered the tool call
   const aiMessageIndex = state.messages.length - 2;
   if (aiMessageIndex >= 0) {
@@ -911,21 +924,13 @@ function routeAfterTool(state: FanficAgentState): string {
     const toolCall = prevAiMessage?.tool_calls?.[0];
 
     if (toolCall) {
-      // HITL tools must go back to chat_node to trigger approval flow
-      if (hitlTools.has(toolCall.name)) {
-        console.log(`[FanFic Agent] HITL tool "${toolCall.name}" completed, routing to chat_node for approval`);
-        return "chat_node";
-      }
-
-      // Self-contained tools go directly to END
-      if (selfContainedTools.has(toolCall.name)) {
-        console.log(`[FanFic Agent] Self-contained tool "${toolCall.name}" completed, routing to END`);
-        return END;
-      }
+      console.log(`[FanFic Agent] Tool "${toolCall.name}" completed, routing to END`);
     }
   }
 
-  return "chat_node";  // Default: let LLM process result
+  // All tools route directly to END
+  // HITL is handled by emitting pendingContent in toolNode, which frontend detects
+  return END;
 }
 
 /**
