@@ -2,7 +2,7 @@
  * FanFic Lab LangGraph Agent
  * Main agent workflow for AI-powered fanfiction writing assistance
  *
- * Architecture: Research is handled as a dedicated node (not a tool)
+ * Architecture: Research and Outline are handled as dedicated nodes (not tools)
  * to avoid CopilotKit/LangGraph.js ToolMessage format issues (bug #2897)
  */
 
@@ -255,39 +255,8 @@ You: "What fandom is this for?" ← WRONG! Fandom is specified above!`;
 
 ## Current Wizard Step: ${currentStep}`;
 
-    if (currentStep === "outline") {
-      prompt += `
-
-## CRITICAL: STORY OUTLINE GENERATION RULES
-
-You are in the Story Outline creation stage. When the user asks for ANY type of story:
-
-### YOU MUST USE THE generate_outline TOOL
-- DO NOT write story content directly
-- DO NOT start narrating the story
-- ALWAYS call the generate_outline tool first
-
-### TOOL CALL REQUIREMENTS
-When calling generate_outline, use these EXACT values:
-- fandom: "${sourceName || "Use context"}"
-- characters: [${characters.map(c => `"${c}"`).join(", ") || '"Use characters from context"'}]
-- ship: "${shipType || "general"}"
-- chapterCount: 5 (default, or as user specifies)
-- plotIdeas: [Extract from user's request, e.g., "school romance", "enemies to lovers"]
-
-### EXAMPLE
-User: "Write me a sweet school romance"
-You: Call generate_outline tool with:
-  - fandom: "${sourceName}"
-  - characters: [${characters.map(c => `"${c}"`).join(", ")}]
-  - ship: "${shipType || "general"}"
-  - plotIdeas: ["sweet school romance", "romantic comedy"]
-  - chapterCount: 5
-
-### WRONG BEHAVIOR (NEVER DO THIS)
-User: "Write me a sweet school romance"
-You: "In the serene halls of Cloud Recesses..." ← WRONG! You must use the tool first!`;
-    }
+    // Note: Outline requests are automatically routed to outline_node by the graph
+    // No special tool instructions needed here
   }
 
   return prompt;
@@ -684,6 +653,189 @@ function fallbackAggregation(
 }
 
 /**
+ * Check if this is an outline generation request
+ * Returns true when user is in outline step and asking for a story/outline
+ */
+function isOutlineRequest(state: FanficAgentState): boolean {
+  console.log("[FanFic Agent] isOutlineRequest called");
+
+  // Check if we're in the outline step
+  const context = extractContextFromReadable(state);
+  const ws = state.wizardSession;
+  const currentStep = ws?.step || context?.step;
+
+  console.log("[FanFic Agent] Current step:", currentStep);
+
+  if (currentStep !== "outline") {
+    console.log("[FanFic Agent] Not in outline step, skipping outline check");
+    return false;
+  }
+
+  // Check if the last message is a human message asking for a story/outline
+  const lastMessage = state.messages[state.messages.length - 1];
+  if (!lastMessage || lastMessage._getType() !== "human") {
+    console.log("[FanFic Agent] No human message, skipping outline check");
+    return false;
+  }
+
+  const content = typeof lastMessage.content === "string"
+    ? lastMessage.content.toLowerCase()
+    : "";
+
+  // Patterns that indicate an outline request
+  const outlinePatterns = [
+    /write|create|make|generate|outline|story|chapter|draft|plot/i,
+    /romance|adventure|action|drama|comedy|tragedy|mystery|thriller/i,
+    /enemies.?to.?lovers|slow.?burn|fluff|angst|hurt.?comfort/i,
+    /help me|can you|please|i want|i'd like|let's/i,
+    /school|modern|canon|au|alternate/i,
+  ];
+
+  const isOutline = outlinePatterns.some(p => p.test(content));
+  console.log("[FanFic Agent] isOutlineRequest result:", isOutline);
+
+  return isOutline;
+}
+
+/**
+ * Outline Node - Generates story outline without tool calling
+ * This bypasses the ToolMessage format issue with CopilotKit
+ */
+async function outlineNode(
+  state: FanficAgentState,
+  config: RunnableConfig
+): Promise<Partial<FanficAgentState>> {
+  console.log("[FanFic Agent] ========== OUTLINE NODE STARTED ==========");
+
+  // Extract context
+  const context = extractContextFromReadable(state);
+  const ws = state.wizardSession;
+
+  const sourceName = ws?.sourceName || context?.sourceName || "Unknown Fandom";
+  const sourceType = ws?.sourceType || context?.sourceType || "unknown";
+  const shipType = ws?.shipType || context?.shipType || "general";
+  const setting = ws?.setting || context?.setting || "canon";
+  const characters = ws?.characters?.map(c => c.name) || context?.characters || [];
+  const tags = ws?.additionalTags || context?.tags || [];
+
+  console.log("[FanFic Agent] Outline context:", {
+    sourceName,
+    sourceType,
+    shipType,
+    setting,
+    characters,
+    tags,
+  });
+
+  // Get user's request from last message
+  const lastMessage = state.messages[state.messages.length - 1];
+  const userRequest = typeof lastMessage?.content === "string"
+    ? lastMessage.content
+    : "Write a story";
+
+  // Generate outline using LLM
+  const model = new ChatOpenAI({
+    temperature: 0.9,
+    model: "gpt-4o-mini",
+  });
+
+  const characterList = characters.join(", ") || "main characters";
+  const exampleChars = characters.slice(0, 2).join(" and ") || "the main characters";
+
+  const systemPrompt = `You are a creative fanfiction planner for "${sourceName}".
+
+## ABSOLUTE REQUIREMENTS - NEVER BREAK THESE
+
+1. **USE ONLY THESE CHARACTERS**: ${characterList}
+2. **DO NOT CREATE NEW CHARACTERS** - No OCs, no generic characters, only the ones listed
+3. **EVERY CHAPTER** must feature at least one character from the list
+4. **ALL INTERACTIONS** must be between the specified characters
+
+## CHARACTER LIST (USE ONLY THESE)
+${characters.map((c, i) => `${i + 1}. ${c}`).join("\n") || "Use provided characters"}
+
+${shipType !== "general" ? `## MAIN PAIRING
+The romantic development between ${exampleChars} is central to the story. Ship type: ${shipType.toUpperCase()}` : ""}
+
+## STORY SETTING: ${setting}
+## TAGS TO INCORPORATE: ${tags.join(", ") || "None specified"}
+
+## GUIDELINES FOR "${sourceName}"
+- Reference canon events, locations, and lore from "${sourceName}"
+- Keep character voices authentic to their original portrayal
+- Adapt canon personalities to the requested genre/setting
+- Create compelling arcs highlighting relationships between ${exampleChars}
+- Include character development moments true to their personalities
+- Balance action, dialogue, and emotional beats
+- Make romantic development feel earned (if applicable)
+- Plan engaging chapter endings`;
+
+  const prompt = `Create a 5-chapter story outline for a "${sourceName}" fanfiction.
+
+## USER'S REQUEST
+${userRequest}
+
+## MANDATORY CHARACTER LIST (use ONLY these)
+${characters.map((c, i) => `${i + 1}. ${c}`).join("\n") || "Use the specified characters"}
+
+## STORY ELEMENTS
+- **Setting**: ${setting}
+- **Ship/Pairing Type**: ${shipType.toUpperCase()}
+- **Tags**: ${tags.join(", ") || "General"}
+
+## OUTPUT FORMAT
+For each chapter, provide:
+1. **Chapter Title** - A compelling title
+2. **Key Events** - What happens (featuring ONLY the listed characters)
+3. **Character Focus** - Which character(s) from the list are featured
+4. **Emotional Arc** - The emotional journey in this chapter
+
+CRITICAL: Do NOT introduce any characters not in the list above. All scenes must feature ${characterList}.`;
+
+  console.log("[FanFic Agent] Generating outline with LLM...");
+
+  const response = await model.invoke([
+    new SystemMessage(systemPrompt),
+    new HumanMessage(prompt),
+  ]);
+
+  const outlineContent = typeof response.content === "string"
+    ? response.content
+    : JSON.stringify(response.content);
+
+  console.log("[FanFic Agent] Outline generated, length:", outlineContent.length);
+
+  // Set pendingContent for HITL approval
+  const pendingContent = {
+    type: "outline" as const,
+    content: outlineContent,
+  };
+
+  // Emit state for frontend HITL detection
+  console.log("[FanFic Agent] Emitting pendingContent for HITL approval");
+  await copilotkitEmitState(config, {
+    ...state,
+    pendingContent,
+  });
+
+  // Return AIMessage (not ToolMessage) - this is CopilotKit compatible
+  const responseMessage = new AIMessage({
+    content: `I've created your story outline! Please review it above and let me know if you'd like to:
+
+- **Approve it** and start writing
+- **Edit** any parts you want to change
+- **Regenerate** with different ideas
+
+Take your time to review each chapter's key events and emotional arcs.`,
+  });
+
+  return {
+    messages: [responseMessage],
+    pendingContent,
+  };
+}
+
+/**
  * Inject context reminder into user messages to ensure AI doesn't ignore context
  * This is a defense-in-depth measure to reinforce context usage
  */
@@ -726,10 +878,7 @@ Do NOT ask for this information again. Adapt the user's request to use these cha
 
 /**
  * Main chat node - handles conversation with the user
- *
- * Special case: After generate_outline tool, this node is called to generate
- * a clean AIMessage that CopilotKit can display. This "consumes" the ToolMessage
- * and provides a user-friendly response.
+ * Note: Outline generation is handled by outline_node (not this node)
  */
 async function chatNode(
   state: FanficAgentState,
@@ -737,26 +886,6 @@ async function chatNode(
 ): Promise<Partial<FanficAgentState>> {
   console.log("[FanFic Agent] ========== CHAT NODE STARTED ==========");
   console.log("[FanFic Agent] Messages count:", state.messages?.length || 0);
-
-  // Check if we're being called after generate_outline (pendingContent is set)
-  // If so, generate a simple AIMessage to inform user about the outline
-  if (state.pendingContent?.type === "outline" && state.pendingContent.content) {
-    console.log("[FanFic Agent] Detected pending outline, generating response message");
-
-    // Return an AIMessage that tells the user the outline is ready
-    // The actual outline is displayed via useCoAgentStateRender on frontend
-    const responseMessage = new AIMessage({
-      content: `I've created your story outline! Please review it above and let me know if you'd like to:
-
-- **Approve it** and start writing
-- **Edit** any parts you want to change
-- **Regenerate** with different ideas
-
-Take your time to review each chapter's key events and emotional arcs.`,
-    });
-
-    return { messages: [responseMessage] };
-  }
 
   // Debug: Log CopilotKit context to see what's being received
   const copilotContext = state.copilotkit as { context?: unknown[]; actions?: unknown[] } | undefined;
@@ -838,23 +967,20 @@ Take your time to review each chapter's key events and emotional arcs.`,
 }
 
 /**
- * Tool node for backend tools (non-research)
- *
- * For generate_outline (HITL tool):
- * - MUST return ToolMessage to satisfy OpenAI (tool_calls require responses)
- * - BUT use emitMessages: false to prevent CopilotKit from parsing it (avoids ZodError)
- * - Emit pendingContent state for frontend HITL detection
- * - Frontend uses useCoAgentStateRender to detect and render OutlineApprovalCard
+ * Tool node for backend tools
+ * Note: generate_outline is now a dedicated node (outline_node), not a tool
+ * This avoids the CopilotKit ToolMessage format issues
  */
 async function toolNode(
   state: FanficAgentState,
   config: RunnableConfig
 ): Promise<Partial<FanficAgentState>> {
+  const customConfig = copilotkitCustomizeConfig(config, { emitMessages: true });
+
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
 
   const resultMessages: ToolMessage[] = [];
-  let pendingContent: { type: "outline" | "continuation" | "expansion" | "image"; content: string } | null = null;
 
   for (const toolCall of toolCalls) {
     const toolName = toolCall.name;
@@ -863,102 +989,53 @@ async function toolNode(
       const tool = allBackendTools.find((t) => t.name === toolName);
       if (tool) {
         try {
-          // For generate_outline, use emitMessages: false to prevent CopilotKit ZodError
-          // Other tools use emitMessages: true for normal streaming
-          const shouldEmitMessages = toolName !== "generate_outline";
-          const customConfig = copilotkitCustomizeConfig(config, {
-            emitMessages: shouldEmitMessages
-          });
-
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const result = await (tool as any).invoke(toolCall.args, customConfig);
           const resultContent = typeof result === "string" ? result : JSON.stringify(result);
 
-          // For generate_outline:
-          // 1. Add ToolMessage to satisfy OpenAI (required for tool_calls)
-          // 2. Set pendingContent for frontend HITL detection
-          // 3. Add toolCallId field for CopilotKit compatibility (it expects camelCase)
-          if (toolName === "generate_outline") {
-            console.log("[FanFic Agent] generate_outline completed");
-            console.log("[FanFic Agent] Outline length:", resultContent.length);
-
-            pendingContent = {
-              type: "outline",
-              content: resultContent,
-            };
-
-            // Create ToolMessage with both snake_case and camelCase fields
-            // OpenAI uses tool_call_id, CopilotKit expects toolCallId
-            const toolMessage = new ToolMessage({
-              content: "Outline generated. Waiting for user approval via UI component.",
-              name: toolName,
-              tool_call_id: toolCall.id!,
-            });
-            // Add CopilotKit-compatible camelCase field (it expects toolCallId not tool_call_id)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (toolMessage as any).toolCallId = toolCall.id!;
-            resultMessages.push(toolMessage);
-          } else {
-            // For other tools, create ToolMessage with both field formats
-            const toolMessage = new ToolMessage({
-              content: resultContent,
-              name: toolName,
-              tool_call_id: toolCall.id!,
-            });
-            // Add CopilotKit-compatible camelCase field
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (toolMessage as any).toolCallId = toolCall.id!;
-            resultMessages.push(toolMessage);
-          }
+          resultMessages.push(new ToolMessage({
+            content: resultContent,
+            name: toolName,
+            tool_call_id: toolCall.id!,
+          }));
         } catch (error) {
           console.error(`Tool ${toolName} error:`, error);
-          // Create error ToolMessage with both field formats
-          const errorMessage = new ToolMessage({
+          resultMessages.push(new ToolMessage({
             content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
             name: toolName,
             tool_call_id: toolCall.id!,
-          });
-          // Add CopilotKit-compatible camelCase field
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (errorMessage as any).toolCallId = toolCall.id!;
-          resultMessages.push(errorMessage);
+          }));
         }
       }
     }
   }
 
-  // Emit state with pendingContent if set (for HITL)
-  // Frontend will use useCoAgentStateRender to detect this and render approval UI
-  if (pendingContent) {
-    console.log("[FanFic Agent] Emitting pendingContent state for frontend HITL detection");
-    console.log("[FanFic Agent] pendingContent type:", pendingContent.type);
-    await copilotkitEmitState(config, {
-      ...state,
-      pendingContent,
-    });
-  }
-
-  // Return state update - always include messages if any (OpenAI requires tool responses)
-  const stateUpdate: Partial<FanficAgentState> = {};
-  if (resultMessages.length > 0) {
-    stateUpdate.messages = resultMessages;
-  }
-  if (pendingContent) {
-    stateUpdate.pendingContent = pendingContent;
-  }
-
-  return stateUpdate;
+  return { messages: resultMessages };
 }
 
 /**
- * Initial routing - check if this is a research request
+ * Initial routing - check if this is a research or outline request
  */
 function routeFromStart(state: FanficAgentState): string {
   console.log("[FanFic Agent] ========== ROUTE FROM START ==========");
+
+  // Check for research request first
   const isResearch = isResearchRequest(state);
-  const destination = isResearch ? "research_node" : "chat_node";
-  console.log("[FanFic Agent] Routing to:", destination);
-  return destination;
+  if (isResearch) {
+    console.log("[FanFic Agent] Routing to: research_node");
+    return "research_node";
+  }
+
+  // Check for outline request (in outline step with story/outline keywords)
+  const isOutline = isOutlineRequest(state);
+  if (isOutline) {
+    console.log("[FanFic Agent] Routing to: outline_node");
+    return "outline_node";
+  }
+
+  // Default to chat node
+  console.log("[FanFic Agent] Routing to: chat_node");
+  return "chat_node";
 }
 
 /**
@@ -1000,18 +1077,10 @@ function routeAfterChat(state: FanficAgentState): string {
 
 /**
  * Route after tool execution
- *
- * For generate_outline (HITL tool):
- * - Route back to chatNode to generate an AIMessage
- * - This "consumes" the ToolMessage and provides a clean response for CopilotKit
- * - The AIMessage will inform the user that the outline is ready for review
- *
- * For other tools:
- * - Route to END (handled normally)
+ * All tools route to END - outline is now a dedicated node (not a tool)
  */
 function routeAfterTool(state: FanficAgentState): string {
-  // Find the AI message that triggered the tool call
-  const lastToolMessage = state.messages[state.messages.length - 1];
+  // Find the AI message that triggered the tool call for logging
   const aiMessageIndex = state.messages.length - 2;
 
   if (aiMessageIndex >= 0) {
@@ -1019,18 +1088,10 @@ function routeAfterTool(state: FanficAgentState): string {
     const toolCall = prevAiMessage?.tool_calls?.[0];
 
     if (toolCall) {
-      console.log(`[FanFic Agent] Tool "${toolCall.name}" completed`);
-
-      // For generate_outline, route back to chatNode to generate a clean AIMessage
-      // This prevents CopilotKit from seeing raw ToolMessage (which causes ZodError)
-      if (toolCall.name === "generate_outline") {
-        console.log("[FanFic Agent] generate_outline: routing to chatNode for AIMessage response");
-        return "chat_node";
-      }
+      console.log(`[FanFic Agent] Tool "${toolCall.name}" completed, routing to END`);
     }
   }
 
-  console.log("[FanFic Agent] Routing to END");
   return END;
 }
 
@@ -1041,15 +1102,24 @@ function routeAfterResearch(): string {
   return END;
 }
 
+/**
+ * Route after outline generation
+ */
+function routeAfterOutline(): string {
+  return END;
+}
+
 // Build the graph
 const workflow = new StateGraph(FanficAgentStateAnnotation)
   .addNode("chat_node", chatNode)
   .addNode("tool_node", toolNode)
   .addNode("research_node", researchNode)
+  .addNode("outline_node", outlineNode)
   .addConditionalEdges(START, routeFromStart)
   .addConditionalEdges("chat_node", routeAfterChat)
   .addConditionalEdges("tool_node", routeAfterTool)
-  .addConditionalEdges("research_node", routeAfterResearch);
+  .addConditionalEdges("research_node", routeAfterResearch)
+  .addConditionalEdges("outline_node", routeAfterOutline);
 
 // Create memory saver for state persistence
 const memory = new MemorySaver();
