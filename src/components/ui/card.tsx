@@ -11,8 +11,8 @@ const cardVariants = cva(
         default: "border-border hover:border-border-strong hover:shadow-md",
         // AI content card - amber accent with glow
         ai: "border-accent/30 bg-ai-surface ai-glow",
-        // Story card with accent border on hover
-        story: "relative overflow-hidden story-card-accent hover:shadow-lg",
+        // Story card
+        story: "relative overflow-hidden hover:shadow-lg",
         // Elevated card
         elevated: "border-border shadow-md hover:shadow-lg",
         // Ghost card - minimal

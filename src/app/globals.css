@@ -456,21 +456,7 @@
     background-clip: text;
   }
 
-  /* Story card accent border */
-  .story-card-accent::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--gradient-primary);
-    opacity: 0;
-    transition: opacity 200ms;
-  }
-  .story-card-accent:hover::before {
-    opacity: 1;
-  }
+  /* Story card accent border - removed hover effect */
 
   /* Prose reading styles */
   .prose-reading {

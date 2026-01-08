@@ -179,12 +179,10 @@ export default function FeedPage() {
           </Card>
         )}
 
-        {/* Load More */}
+        {/* End of List */}
         {sortedStories.length > 0 && (
-          <div className="text-center mt-8">
-            <Button variant="outline" size="lg" className="min-w-[200px]">
-              Load More Stories
-            </Button>
+          <div className="text-center mt-8 text-sm text-muted-foreground">
+            You&apos;ve reached the end
           </div>
         )}
       </main>
