@@ -71,15 +71,17 @@ function extractContextFromReadable(state: FanficAgentState): {
       (c) => c.description?.includes("wizard") || c.description?.includes("session")
     );
 
-    // Fallback: if not found by description, try the first context item that has wizard-like data
+    // Fallback 1: If only one context item exists, use it directly
+    if (!wizardContext && copilotState.context.length === 1) {
+      console.log("[extractContextFromReadable] Only one context item, using it directly");
+      wizardContext = copilotState.context[0];
+    }
+
+    // Fallback 2: Try to find context item that has wizard-like data structure
     if (!wizardContext) {
-      console.log("[extractContextFromReadable] No context found by description match, trying fallback...");
+      console.log("[extractContextFromReadable] No context found by description match, trying data structure fallback...");
       wizardContext = copilotState.context.find((c) => {
-        if (typeof c.value === "object" && c.value !== null) {
-          const keys = Object.keys(c.value as object);
-          return keys.includes("sourceName") || keys.includes("characters") || keys.includes("step");
-        }
-        // Check if value is a JSON string that can be parsed
+        // Most likely the value is a JSON string (CopilotKit stringifies values)
         if (typeof c.value === "string") {
           try {
             const parsed = JSON.parse(c.value);
@@ -87,6 +89,11 @@ function extractContextFromReadable(state: FanficAgentState): {
           } catch {
             return false;
           }
+        }
+        // Less common: value might be an object directly
+        if (typeof c.value === "object" && c.value !== null) {
+          const keys = Object.keys(c.value as object);
+          return keys.includes("sourceName") || keys.includes("characters") || keys.includes("step");
         }
         return false;
       });
