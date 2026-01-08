@@ -877,7 +877,7 @@ async function toolNode(
           // For generate_outline:
           // 1. Add ToolMessage to satisfy OpenAI (required for tool_calls)
           // 2. Set pendingContent for frontend HITL detection
-          // 3. emitMessages: false prevents CopilotKit from parsing the ToolMessage (avoids ZodError)
+          // 3. Add toolCallId field for CopilotKit compatibility (it expects camelCase)
           if (toolName === "generate_outline") {
             console.log("[FanFic Agent] generate_outline completed");
             console.log("[FanFic Agent] Outline length:", resultContent.length);
@@ -887,28 +887,41 @@ async function toolNode(
               content: resultContent,
             };
 
-            // Add ToolMessage for OpenAI (but not emitted to frontend due to emitMessages: false)
-            resultMessages.push(new ToolMessage({
+            // Create ToolMessage with both snake_case and camelCase fields
+            // OpenAI uses tool_call_id, CopilotKit expects toolCallId
+            const toolMessage = new ToolMessage({
               content: "Outline generated. Waiting for user approval via UI component.",
               name: toolName,
               tool_call_id: toolCall.id!,
-            }));
+            });
+            // Add CopilotKit-compatible camelCase field (it expects toolCallId not tool_call_id)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (toolMessage as any).toolCallId = toolCall.id!;
+            resultMessages.push(toolMessage);
           } else {
-            // For other tools, use standard ToolMessage
-            resultMessages.push(new ToolMessage({
+            // For other tools, create ToolMessage with both field formats
+            const toolMessage = new ToolMessage({
               content: resultContent,
               name: toolName,
               tool_call_id: toolCall.id!,
-            }));
+            });
+            // Add CopilotKit-compatible camelCase field
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (toolMessage as any).toolCallId = toolCall.id!;
+            resultMessages.push(toolMessage);
           }
         } catch (error) {
           console.error(`Tool ${toolName} error:`, error);
-          const customConfig = copilotkitCustomizeConfig(config, { emitMessages: true });
-          resultMessages.push(new ToolMessage({
+          // Create error ToolMessage with both field formats
+          const errorMessage = new ToolMessage({
             content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
             name: toolName,
             tool_call_id: toolCall.id!,
-          }));
+          });
+          // Add CopilotKit-compatible camelCase field
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (errorMessage as any).toolCallId = toolCall.id!;
+          resultMessages.push(errorMessage);
         }
       }
     }
