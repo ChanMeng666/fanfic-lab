@@ -50,14 +50,79 @@ function extractContextFromReadable(state: FanficAgentState): {
   };
   const copilotState = state.copilotkit as CopilotContext | undefined;
 
+  console.log("[extractContextFromReadable] copilotState exists:", !!copilotState);
+  console.log("[extractContextFromReadable] copilotState.context exists:", !!copilotState?.context);
+  console.log("[extractContextFromReadable] copilotState.context is array:", Array.isArray(copilotState?.context));
+
   if (copilotState?.context && Array.isArray(copilotState.context)) {
-    // Find the wizard session context
-    const wizardContext = copilotState.context.find(
+    // Log each context item for debugging
+    console.log("[extractContextFromReadable] Context items:");
+    copilotState.context.forEach((c, i) => {
+      console.log(`  [${i}] description: "${c.description}", value type: ${typeof c.value}`);
+      if (typeof c.value === "string") {
+        console.log(`  [${i}] value (string, first 200 chars): ${c.value.substring(0, 200)}`);
+      } else if (typeof c.value === "object" && c.value !== null) {
+        console.log(`  [${i}] value (object keys): ${Object.keys(c.value as object).join(", ")}`);
+      }
+    });
+
+    // Find the wizard session context - try multiple matching strategies
+    let wizardContext = copilotState.context.find(
       (c) => c.description?.includes("wizard") || c.description?.includes("session")
     );
 
-    if (wizardContext?.value && typeof wizardContext.value === "object") {
-      const ws = wizardContext.value as Record<string, unknown>;
+    // Fallback: if not found by description, try the first context item that has wizard-like data
+    if (!wizardContext) {
+      console.log("[extractContextFromReadable] No context found by description match, trying fallback...");
+      wizardContext = copilotState.context.find((c) => {
+        if (typeof c.value === "object" && c.value !== null) {
+          const keys = Object.keys(c.value as object);
+          return keys.includes("sourceName") || keys.includes("characters") || keys.includes("step");
+        }
+        // Check if value is a JSON string that can be parsed
+        if (typeof c.value === "string") {
+          try {
+            const parsed = JSON.parse(c.value);
+            return parsed.sourceName || parsed.characters || parsed.step;
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      });
+    }
+
+    console.log("[extractContextFromReadable] Found wizardContext:", !!wizardContext);
+
+    if (wizardContext) {
+      let ws: Record<string, unknown>;
+
+      // Handle both object and JSON string values
+      if (typeof wizardContext.value === "string") {
+        try {
+          ws = JSON.parse(wizardContext.value);
+          console.log("[extractContextFromReadable] Parsed JSON string value");
+        } catch {
+          console.log("[extractContextFromReadable] Failed to parse value as JSON");
+          return null;
+        }
+      } else if (typeof wizardContext.value === "object" && wizardContext.value !== null) {
+        ws = wizardContext.value as Record<string, unknown>;
+        console.log("[extractContextFromReadable] Using object value directly");
+      } else {
+        console.log("[extractContextFromReadable] Value is neither string nor object");
+        return null;
+      }
+
+      console.log("[extractContextFromReadable] Extracted values:", {
+        sourceName: ws.sourceName,
+        sourceType: ws.sourceType,
+        shipType: ws.shipType,
+        setting: ws.setting,
+        charactersCount: Array.isArray(ws.characters) ? ws.characters.length : 0,
+        tagsCount: Array.isArray(ws.additionalTags) ? ws.additionalTags.length : 0,
+      });
+
       return {
         sourceName: ws.sourceName as string | undefined,
         sourceType: ws.sourceType as string | undefined,
@@ -70,6 +135,8 @@ function extractContextFromReadable(state: FanficAgentState): {
       };
     }
   }
+
+  console.log("[extractContextFromReadable] Returning null - no context found");
   return null;
 }
 
