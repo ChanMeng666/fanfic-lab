@@ -12,6 +12,7 @@ import {
   Clock,
   AlertCircle,
   Check,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SmartEditor, CharacterSidebar } from "@/components/editor";
+import { SmartEditor, CharacterSidebar, CoverUploader } from "@/components/editor";
 import { SplitPaneEditor } from "@/components/editor/SplitPaneEditor";
 import { AIPartnerPanel } from "@/components/editor/AIPartnerPanel";
 import { useStory, useAutosave } from "@/lib/hooks";
@@ -56,11 +57,13 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
 
   // Initialize state when story loads
   useEffect(() => {
     if (story) {
       setStoryTitle(story.title);
+      setCoverImageUrl(story.coverImageUrl || null);
       setStoryContext({
         fandom: story.fandom,
         ships: story.ships,
@@ -138,8 +141,20 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
   const handlePublish = async () => {
     if (!story) return;
 
+    if (!coverImageUrl) {
+      toast.error("Please upload a cover image before publishing");
+      return;
+    }
+
     setIsPublishing(true);
     try {
+      // First update story with cover image URL
+      await updateStory({
+        id: story.id,
+        coverImageUrl,
+      });
+
+      // Then publish
       await publishStory(story.id);
       toast.success("Story published successfully!");
       setShowPublishDialog(false);
@@ -405,16 +420,24 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
 
       {/* Publish Dialog */}
       <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Publish Story</DialogTitle>
             <DialogDescription>
-              Are you ready to share your story with the world? Once published,
-              your story will be visible in the Fandom Feed.
+              Add a cover image and publish your story to the Fandom Feed.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="space-y-3 text-sm">
+          <div className="py-4 space-y-6">
+            {/* Cover Image Upload */}
+            <CoverUploader
+              storyId={story.id}
+              onUploadComplete={(url) => setCoverImageUrl(url || null)}
+              onUploadError={(error) => toast.error(error)}
+              existingCoverUrl={story.coverImageUrl || undefined}
+            />
+
+            {/* Story Details Summary */}
+            <div className="space-y-3 text-sm border-t border-border pt-4">
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Title</span>
                 <span className="font-medium text-foreground">{storyTitle}</span>
@@ -445,8 +468,22 @@ export default function EditStoryPage({ params }: EditStoryPageProps) {
             <Button variant="outline" onClick={() => setShowPublishDialog(false)}>
               Not Yet
             </Button>
-            <Button onClick={handlePublish} disabled={isPublishing}>
-              {isPublishing ? "Publishing..." : "Publish Now"}
+            <Button
+              onClick={handlePublish}
+              disabled={isPublishing || !coverImageUrl}
+              className="gap-1.5"
+            >
+              {isPublishing ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Upload className="size-4" />
+                  Publish Now
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

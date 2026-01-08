@@ -75,6 +75,8 @@ interface FeedFilters {
   tags?: string[];
   rating?: Rating;
   status?: StoryStatus;
+  search?: string;
+  sortBy?: "recent" | "popular" | "comments" | "words";
 }
 
 /**
@@ -254,7 +256,7 @@ export function useFeedStories(
   useEffect(() => {
     fetchStories(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters?.fandom, filters?.rating, JSON.stringify(filters?.tags)]);
+  }, [filters?.fandom, filters?.rating, filters?.search, filters?.sortBy, JSON.stringify(filters?.tags)]);
 
   const loadMore = useCallback(async () => {
     if (!loading && hasMore) {

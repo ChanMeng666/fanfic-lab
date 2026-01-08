@@ -258,13 +258,38 @@ export async function getFeedStories(options?: {
   status?: StoryStatus;
   limit?: number;
   offset?: number;
+  search?: string;
+  sortBy?: "recent" | "popular" | "comments" | "words";
 }) {
+  // Build orderBy based on sortBy option
+  type OrderByType =
+    | { publishedAt: "desc" }
+    | { likes: { _count: "desc" } }
+    | { comments: { _count: "desc" } }
+    | { wordCount: "desc" };
+
+  const orderByMap: Record<string, OrderByType> = {
+    recent: { publishedAt: "desc" },
+    popular: { likes: { _count: "desc" } },
+    comments: { comments: { _count: "desc" } },
+    words: { wordCount: "desc" },
+  };
+
+  const orderBy = orderByMap[options?.sortBy || "recent"];
+
   const stories = await prisma.story.findMany({
     where: {
       status: options?.status || StoryStatus.PUBLISHED,
       ...(options?.fandom && { fandom: options.fandom }),
       ...(options?.tags?.length && { tags: { hasSome: options.tags } }),
       ...(options?.rating && { rating: options.rating }),
+      // Search filter for title and summary
+      ...(options?.search && {
+        OR: [
+          { title: { contains: options.search, mode: "insensitive" as const } },
+          { summary: { contains: options.search, mode: "insensitive" as const } },
+        ],
+      }),
     },
     include: {
       author: {
@@ -283,7 +308,7 @@ export async function getFeedStories(options?: {
         },
       },
     },
-    orderBy: { publishedAt: "desc" },
+    orderBy,
     take: options?.limit || 20,
     skip: options?.offset || 0,
   });
