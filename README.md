@@ -1,40 +1,89 @@
-# FanFic Lab
+<div align="center"><a name="readme-top"></a>
 
-An AI-powered fanfiction writing platform built with **Next.js 15**, **CopilotKit**, and **LangGraph.js**. Create amazing fanfiction with an AI assistant that understands your characters, respects canon, and helps bring your stories to life.
+<img src="https://readme-typing-svg.herokuapp.com?font=Cormorant+Garamond&weight=700&size=45&pause=1000&color=2DD4BF&center=true&vCenter=true&random=false&width=600&height=80&lines=%E2%9C%A8+FanFic+Lab+%E2%9C%A8" alt="FanFic Lab" />
 
-![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black)
-![React](https://img.shields.io/badge/React-19-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-38bdf8)
-![CopilotKit](https://img.shields.io/badge/CopilotKit-1.8-purple)
-![LangGraph](https://img.shields.io/badge/LangGraph.js-0.3-green)
+<h3>AI-Powered Fanfiction Writing Platform</h3>
 
-## Table of Contents
+An innovative AI-powered fanfiction writing platform built with **Next.js 16**, **CopilotKit**, and **LangGraph.js**.<br/>
+Create amazing fanfiction with an AI assistant that understands your characters, respects canon, and helps bring your stories to life.<br/>
+Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop approval workflows.
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Design System](#design-system)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Database Schema](#database-schema)
-- [CopilotKit Integration](#copilotkit-integration)
-- [LangGraph Agent](#langgraph-agent)
-- [Components](#components)
-- [API Routes](#api-routes)
-- [Deployment](#deployment)
+[Live Demo][project-link] · [Report Bug][github-issues-link] · [Request Feature][github-issues-link]
 
-## Overview
+<br/>
+
+[![Visit FanFic Lab](https://img.shields.io/badge/🚀_Visit_FanFic_Lab-teal?style=for-the-badge&labelColor=black)][project-link]
+
+<br/>
+
+<!-- SHIELD GROUP -->
+
+[![][github-stars-shield]][github-stars-link]
+[![][github-forks-shield]][github-forks-link]
+[![][github-issues-shield]][github-issues-link]
+[![][github-license-shield]][github-license-link]<br/>
+[![][vercel-shield]][vercel-link]
+[![][nextjs-shield]][nextjs-link]
+[![][typescript-shield]][typescript-link]
+[![][tailwind-shield]][tailwind-link]
+
+**Share FanFic Lab**
+
+[![][share-x-shield]][share-x-link]
+[![][share-linkedin-shield]][share-linkedin-link]
+[![][share-reddit-shield]][share-reddit-link]
+[![][share-whatsapp-shield]][share-whatsapp-link]
+
+<sup>Pioneering the future of AI-assisted creative writing. Built for the fanfiction community.</sup>
+
+<br/>
+
+**Tech Stack**
+
+<img src="https://img.shields.io/badge/next.js-%23000000.svg?style=for-the-badge&logo=nextdotjs&logoColor=white"/>
+<img src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB"/>
+<img src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white"/>
+<img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwindcss&logoColor=white"/>
+<img src="https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white"/>
+<img src="https://img.shields.io/badge/redis-%23DC382D.svg?style=for-the-badge&logo=redis&logoColor=white"/>
+<img src="https://img.shields.io/badge/openai-%23412991.svg?style=for-the-badge&logo=openai&logoColor=white"/>
+
+</div>
+
+> [!IMPORTANT]
+> FanFic Lab combines cutting-edge AI technology with a deep understanding of fanfiction culture. It features CopilotKit for real-time AI suggestions, LangGraph.js for intelligent agent workflows, Tavily for fandom research, and a beautiful "Literary Atelier" design system with Teal + Amber color palette.
+
+<details>
+<summary><kbd>Table of Contents</kbd></summary>
+
+#### TOC
+
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Tech Stack](#️-tech-stack)
+- [Architecture](#️-architecture)
+- [Getting Started](#-getting-started)
+- [Environment Variables](#-environment-variables)
+- [Database Schema](#-database-schema)
+- [Project Structure](#-project-structure)
+- [API Reference](#-api-reference)
+- [Deployment](#-deployment)
+- [Contributing](#-contributing)
+- [Author](#-author)
+- [License](#-license)
+
+</details>
+
+## ✨ Overview
 
 FanFic Lab is designed for the fanfiction community, providing:
 
 - **Smart Editor** - AI-powered writing assistance with inline suggestions
 - **Creative Wizard** - Conversational story setup with Human-in-the-Loop (HITL) forms
+- **Fandom Research** - Tavily-powered research for characters, ships, and world-building
 - **Fandom Feed** - Discover and filter stories by fandom, ships, and tags
 - **Character Management** - Track characters and detect out-of-character moments
-- **Image Generation** - AI-generated character portraits and scene illustrations
+- **Image Gallery** - AI-generated character portraits and scene illustrations (coming soon)
 
 ```mermaid
 graph TB
@@ -49,174 +98,258 @@ graph TB
         E[CopilotKit Provider]
         F[LangGraph Agent]
         G[OpenAI GPT-4o]
+        H[Tavily Search]
     end
 
     subgraph "Backend"
-        H[Next.js API Routes]
-        I[Prisma ORM]
-        J[Neon PostgreSQL]
+        I[Next.js API Routes]
+        J[Prisma ORM]
+        K[Neon PostgreSQL]
+        L[Redis Cache]
     end
 
     C --> E
     B --> E
-    E --> H
-    H --> F
+    E --> I
+    I --> F
     F --> G
-    H --> I
+    F --> H
     I --> J
+    J --> K
+    I --> L
 ```
 
-## Features
+<div align="right">
 
-### Phase 2: Smart Editor MVP
+[![][back-to-top]](#readme-top)
 
-| Feature | Description |
-|---------|-------------|
-| CopilotTextarea | Inline AI suggestions while typing |
-| Magic Continue | AI writes the next 200-300 words naturally |
-| Expand Text | Enhance selected text with more dialogue/description/emotion |
-| Polish Prose | Improve writing quality at light/medium/deep levels |
-| Autosave | Automatic saving with debounce to localStorage |
-| HITL Approval | Review and approve/edit AI-generated content |
+</div>
 
-### Phase 3: Character & OOC System
+## 🚀 Key Features
+
+### `1` Smart Editor with AI Assistance
+
+Experience next-generation writing with AI-powered inline suggestions. The Smart Editor integrates CopilotKit for real-time assistance, helping you write better fanfiction faster.
 
 | Feature | Description |
 |---------|-------------|
-| Character Sidebar | Add/manage characters with personality traits |
-| OOC Detection | AI checks for out-of-character moments |
-| Character Profiles | Name, fandom, personality, speech patterns |
-| Original Characters | Support for OCs with custom definitions |
+| **CopilotTextarea** | Inline AI suggestions while typing |
+| **Magic Continue** | AI writes the next 200-300 words naturally |
+| **Expand Text** | Enhance selected text with more dialogue/description/emotion |
+| **Polish Prose** | Improve writing quality at light/medium/deep levels |
+| **Autosave** | Automatic saving with debounce to localStorage |
+| **HITL Approval** | Review and approve/edit AI-generated content |
 
-### Phase 4: Creative Wizard
+<div align="right">
 
-| Feature | Description |
-|---------|-------------|
-| Fandom Selector | Browse popular fandoms or enter custom |
-| Ship Builder | Define romantic pairings with suggestions |
-| Character Setup | Add characters with AI suggestions |
-| Outline Generation | AI creates story outline for approval |
-| Step Progress | Visual progress tracking through wizard |
+[![][back-to-top]](#readme-top)
 
-### Phase 5: Image Generation
+</div>
 
-| Feature | Description |
-|---------|-------------|
-| Image Approval Card | Review AI-generated images before saving |
-| Image Gallery | Browse portraits, illustrations, covers |
-| Prompt Editing | Modify prompts and regenerate |
+### `2` Creative Wizard with Fandom Research
 
-### Phase 6: Fandom Feed
+Revolutionary story setup wizard that researches your fandom using Tavily API, understands your characters, and generates story outlines for your approval.
 
 | Feature | Description |
 |---------|-------------|
-| Story Cards | Display story info with metadata |
-| Tag Filtering | Filter by relationship, setting, tone, content |
-| Fandom Tabs | Quick navigation between fandoms |
-| Rating/Status Filters | Filter by age rating and completion status |
-| Sorting | Sort by recent, popular, comments, word count |
+| **Fandom Selector** | Browse popular fandoms or enter custom |
+| **Source Research** | Tavily-powered research for characters, ships, world-building |
+| **Ship Builder** | Define romantic pairings with AI suggestions |
+| **Character Setup** | Add characters with AI-enhanced profiles |
+| **Outline Generation** | AI creates story outline for HITL approval |
+| **Step Progress** | Visual progress tracking through wizard |
 
-## Tech Stack
+<div align="right">
 
-```mermaid
-graph LR
-    subgraph "Frontend (Vercel)"
-        A[Next.js 16] --> B[React 19]
-        B --> C[TailwindCSS 4]
-        C --> D[shadcn/ui]
-        E[CopilotKit Runtime]
-    end
+[![][back-to-top]](#readme-top)
 
-    subgraph "AI Agent (Railway)"
-        F[LangGraph.js] --> G[OpenAI GPT-4o]
-    end
+</div>
 
-    subgraph "Database"
-        H[Prisma 7] --> I[Neon PostgreSQL]
-    end
+### `3` Character & OOC System
 
-    subgraph "Auth"
-        J[Stack Auth]
-    end
+Intelligent character management with out-of-character detection to keep your characters authentic.
 
-    E -->|HTTP| F
-```
+| Feature | Description |
+|---------|-------------|
+| **Character Sidebar** | Add/manage characters with personality traits |
+| **OOC Detection** | AI checks for out-of-character moments |
+| **Character Profiles** | Name, fandom, personality, speech patterns |
+| **Original Characters** | Support for OCs with custom definitions |
+| **Dialogue Suggestions** | In-character dialogue generation |
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+### `4` Fandom Feed
+
+Discover and filter stories by fandom, ships, tags, rating, and status.
+
+| Feature | Description |
+|---------|-------------|
+| **Story Cards** | Display story info with cover images and metadata |
+| **Tag Filtering** | Filter by relationship, setting, tone, content |
+| **Fandom Tabs** | Quick navigation between fandoms |
+| **Rating/Status Filters** | Filter by age rating and completion status |
+| **Sorting** | Sort by recent, popular, comments, word count |
+| **Infinite Scroll** | Load more stories seamlessly |
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+### `*` Additional Features
+
+- [x] 💨 **Quick Setup**: Deploy in under 5 minutes with one-click Vercel deployment
+- [x] 🌐 **Responsive Design**: Beautiful UI on desktop and mobile
+- [x] 🔒 **Authentication**: Stack Auth for secure user management
+- [x] 💎 **Literary Atelier Design**: Teal + Amber color palette with elegant typography
+- [x] 🗣️ **Real-time AI**: Live AI suggestions and generation
+- [x] 📊 **Research Cache**: Redis caching for Tavily search results (30-day TTL)
+- [x] 🔌 **Extensible**: Plugin-ready architecture for custom functionality
+- [x] ☁️ **Cloud Storage**: Cloudinary integration for image hosting
+
+> ✨ More features are continuously being added as the project evolves.
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 🛠️ Tech Stack
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/nextdotjs" width="48" height="48" alt="Next.js" />
+        <br>Next.js 16
+      </td>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/react" width="48" height="48" alt="React" />
+        <br>React 19
+      </td>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/typescript" width="48" height="48" alt="TypeScript" />
+        <br>TypeScript 5
+      </td>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/tailwindcss" width="48" height="48" alt="TailwindCSS" />
+        <br>TailwindCSS 4
+      </td>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/postgresql" width="48" height="48" alt="PostgreSQL" />
+        <br>PostgreSQL
+      </td>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/redis" width="48" height="48" alt="Redis" />
+        <br>Redis
+      </td>
+      <td align="center" width="96">
+        <img src="https://cdn.simpleicons.org/openai" width="48" height="48" alt="OpenAI" />
+        <br>GPT-4o
+      </td>
+    </tr>
+  </table>
+</div>
 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
-| Framework | Next.js 16 (App Router, Turbopack) | Vercel |
-| UI | React 19, TailwindCSS 4, shadcn/ui | Vercel |
-| AI Runtime | CopilotKit 1.8 | Vercel |
-| AI Agent | LangGraph.js 0.3 | Railway |
-| LLM | OpenAI GPT-4o | OpenAI API |
-| Database | Neon PostgreSQL + Prisma 7 | Neon |
-| Auth | Stack Auth | Stack Auth Cloud |
+| **Framework** | Next.js 16 (App Router, Turbopack) | Vercel |
+| **UI** | React 19, TailwindCSS 4, shadcn/ui | Vercel |
+| **AI Runtime** | CopilotKit 1.x | Vercel |
+| **AI Agent** | LangGraph.js 1.0 | Railway |
+| **LLM** | OpenAI GPT-4o / GPT-4o-mini | OpenAI API |
+| **Search** | Tavily API | Tavily |
+| **Database** | Neon PostgreSQL + Prisma 7 | Neon |
+| **Cache** | Redis (ioredis) | Upstash/Redis |
+| **Auth** | Stack Auth | Stack Auth Cloud |
+| **Storage** | Cloudinary | Cloudinary |
 
-## Design System
+<div align="right">
 
-FanFic Lab uses a **"Literary Atelier"** design concept with a Teal + Amber color palette.
+[![][back-to-top]](#readme-top)
 
-### Brand Colors
+</div>
 
-| Color | Token | Light Mode | Dark Mode | Usage |
-|-------|-------|------------|-----------|-------|
-| **Teal** | `--primary` | `oklch(0.45 0.12 175)` | `oklch(0.60 0.12 175)` | Main actions, links |
-| **Amber** | `--accent` | `oklch(0.75 0.15 75)` | `oklch(0.75 0.15 75)` | AI interactions |
-| **Cream** | `--background` | `oklch(0.985 0.005 85)` | `oklch(0.18 0.015 50)` | Page background |
-| **Surface** | `--surface` | `oklch(1 0 0)` | `oklch(0.22 0.015 50)` | Cards, panels |
+## 🏗️ Architecture
 
-### Typography
+### System Architecture
 
-| Font | Usage |
-|------|-------|
-| Cormorant Garamond | Display headings, titles (`font-display`) |
-| Source Sans 3 | UI text, body (default `font-sans`) |
-| Lora | Story content, prose (`font-prose`) |
-| JetBrains Mono | Code, technical text (`font-mono`) |
-
-### Icons
-
-All icons use **Lucide React**. No emojis in UI.
-
-| Concept | Icon |
-|---------|------|
-| Brand | `Feather` |
-| AI/Magic | `Sparkles` |
-| Writing | `PenLine` |
-| Characters | `Users` |
-| Stories | `BookOpen` |
-
-### AI-Specific Patterns
-
-- **AI Cards**: Use `bg-ai-surface` + `ai-glow` class + amber borders
-- **AI Actions**: Use amber accent color for AI-related buttons
-- **AI Badge**: Show `<Sparkles />` icon with "AI Generated" label
-
-For complete design system documentation, see [CLAUDE.md](./CLAUDE.md).
-
-## Architecture
-
-### Application Flow
+> [!TIP]
+> FanFic Lab uses a **split deployment architecture**: Vercel for the Next.js frontend and Railway for the LangGraph agent. This allows for optimal performance and scalability.
 
 ```mermaid
-sequenceDiagram
-    participant U as User
-    participant FE as Frontend (React)
-    participant CK as CopilotKit
-    participant API as /api/copilotkit
-    participant LG as LangGraph Agent
-    participant AI as OpenAI
+graph TB
+    subgraph "Vercel (Frontend)"
+        A[Next.js 16] --> B[React 19]
+        B --> C[CopilotKit 1.x]
+        C --> D[API Routes]
+        D --> E[Prisma 7]
+    end
 
-    U->>FE: Type in CopilotTextarea
-    FE->>CK: Request suggestions
-    CK->>API: POST /api/copilotkit
-    API->>LG: Route to fanfic_agent
-    LG->>AI: Generate text
-    AI-->>LG: Response
-    LG-->>API: Formatted response
-    API-->>CK: Stream response
-    CK-->>FE: Display suggestions
-    FE-->>U: Show inline suggestions
+    subgraph "Railway (Agent)"
+        F[LangGraph.js 1.0] --> G[chat_node]
+        F --> H[research_node]
+        F --> I[outline_node]
+        F --> J[tool_node]
+    end
+
+    subgraph "External Services"
+        K[OpenAI API]
+        L[Tavily API]
+        M[LangSmith]
+    end
+
+    subgraph "Data Layer"
+        N[Neon PostgreSQL]
+        O[Redis Cache]
+        P[Cloudinary]
+    end
+
+    D -->|HTTP| F
+    G --> K
+    H --> L
+    F --> M
+    E --> N
+    D --> O
+    D --> P
+```
+
+### Agent Workflow (LangGraph)
+
+The agent uses **dedicated graph nodes** for HITL operations instead of tools. This is a workaround for the CopilotKit/LangGraph.js ToolMessage format incompatibility.
+
+```mermaid
+graph TD
+    A[START] --> B{routeFromStart}
+    B -->|Research Request| C[research_node]
+    B -->|Outline Request| D[outline_node]
+    B -->|Default| E[chat_node]
+
+    C --> F[Tavily Search x4]
+    F --> G[LLM Aggregation]
+    G --> H[Emit State with researchData]
+    H --> I[Return AIMessage]
+
+    D --> J[Generate Outline]
+    J --> K[Set pendingContent]
+    K --> L[Emit State for HITL]
+    L --> I
+
+    E --> M{Has Tool Call?}
+    M -->|Yes| N[tool_node]
+    M -->|No| I
+
+    N --> O[Execute Tool]
+    O --> I
+
+    I --> P[END]
 ```
 
 ### HITL (Human-in-the-Loop) Pattern
@@ -228,146 +361,74 @@ sequenceDiagram
     participant CK as CopilotKit
     participant Agent as LangGraph Agent
 
-    Agent->>CK: renderAndWaitForResponse
-    CK->>FE: Render HITL Component
-    FE->>U: Display form/card
-    U->>FE: Make selection
+    Agent->>CK: copilotkitEmitState(pendingContent)
+    CK->>FE: State Update
+    FE->>FE: useCoAgentStateRender detects pendingContent
+    FE->>U: Render Approval Card
+    U->>FE: Approve/Edit/Reject
     FE->>CK: respond({ data })
     CK->>Agent: Continue with user input
 ```
 
-## Project Structure
+<div align="right">
 
-```
-fanfic-lab/
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── copilotkit/
-│   │   │       └── route.ts          # CopilotKit runtime endpoint
-│   │   ├── handler/
-│   │   │   └── [...stack]/
-│   │   │       └── page.tsx          # Stack Auth handler
-│   │   ├── (main)/
-│   │   │   ├── layout.tsx            # Main layout wrapper
-│   │   │   ├── editor/
-│   │   │   │   └── page.tsx          # Smart Editor page
-│   │   │   ├── wizard/
-│   │   │   │   └── page.tsx          # Creative Wizard page
-│   │   │   └── feed/
-│   │   │       └── page.tsx          # Fandom Feed page
-│   │   ├── layout.tsx                # Root layout with providers
-│   │   ├── page.tsx                  # Homepage
-│   │   └── globals.css
-│   │
-│   ├── components/
-│   │   ├── ui/                       # shadcn/ui components
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── textarea.tsx
-│   │   │   ├── badge.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── avatar.tsx
-│   │   │   ├── scroll-area.tsx
-│   │   │   ├── collapsible.tsx
-│   │   │   └── select.tsx
-│   │   │
-│   │   ├── editor/
-│   │   │   ├── SmartEditor.tsx       # Main editor with CopilotTextarea
-│   │   │   ├── AIToolbar.tsx         # Magic Continue, Expand, Polish
-│   │   │   ├── CharacterSidebar.tsx  # Character management
-│   │   │   ├── OOCChecker.tsx        # OOC detection display
-│   │   │   ├── ImageGallery.tsx      # Image browsing
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── wizard/
-│   │   │   ├── FandomSelector.tsx    # Fandom picker with search
-│   │   │   ├── ShipBuilder.tsx       # Ship/pairing selector
-│   │   │   ├── CharacterSetup.tsx    # Character configuration
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── feed/
-│   │   │   ├── StoryCard.tsx         # Story display card
-│   │   │   ├── TagFilter.tsx         # Tag-based filtering
-│   │   │   ├── FandomTabs.tsx        # Fandom navigation
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── hitl/
-│   │   │   ├── ContentApprovalCard.tsx   # Content review card
-│   │   │   ├── OutlineApprovalCard.tsx   # Outline review card
-│   │   │   ├── ImageApprovalCard.tsx     # Image review card
-│   │   │   └── index.ts
-│   │   │
-│   │   └── providers/
-│   │       ├── CopilotProvider.tsx   # CopilotKit wrapper
-│   │       └── StackProvider.tsx     # Stack Auth wrapper
-│   │
-│   ├── agent/
-│   │   ├── agent.ts                  # LangGraph workflow definition
-│   │   ├── state.ts                  # Agent state annotation
-│   │   └── tools/
-│   │       ├── story-tools.ts        # continueStory, expandScene, etc.
-│   │       ├── character-tools.ts    # createCharacter, checkOOC
-│   │       └── image-tools.ts        # generatePortrait, etc.
-│   │
-│   ├── lib/
-│   │   ├── types/
-│   │   │   └── agent-state.ts        # TypeScript interfaces
-│   │   ├── hooks/
-│   │   │   ├── useAutosave.ts        # Autosave hook
-│   │   │   └── index.ts
-│   │   ├── storage/
-│   │   │   └── draft-storage.ts      # localStorage utilities
-│   │   ├── stack.ts                  # Stack Auth server config
-│   │   ├── stack-client.ts           # Stack Auth client config
-│   │   └── utils.ts
-│   │
-│   └── middleware.ts                 # Auth middleware
-│
-├── prisma/
-│   ├── schema.prisma                 # Database schema
-│   └── prisma.config.ts              # Prisma 7 configuration
-│
-├── .env.example                      # Environment template
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── package.json
-```
+[![][back-to-top]](#readme-top)
 
-## Getting Started
+</div>
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
+> [!IMPORTANT]
+> Ensure you have the following installed:
+
 - Node.js 20.9.0+ (required by Prisma 7.2.0)
-- npm 9.x
+- npm/yarn/pnpm package manager
+- Git
 - PostgreSQL database (Neon recommended)
 - OpenAI API key
 
-### Installation
+### Quick Installation
+
+**1. Clone Repository**
 
 ```bash
-# Clone the repository
 git clone https://github.com/ChanMeng666/fanfic-lab.git
 cd fanfic-lab
+```
 
-# Install dependencies
+**2. Install Dependencies**
+
+```bash
 npm install
+```
 
-# Set up environment variables
+**3. Environment Setup**
+
+```bash
 cp .env.example .env.local
 # Edit .env.local with your values
+```
 
+**4. Database Setup**
+
+```bash
 # Generate Prisma client
 npx prisma generate
 
 # Run database migrations
 npx prisma migrate dev
+```
 
+**5. Start Development**
+
+```bash
 # Start both Next.js and LangGraph agent
 npm run dev:all
 ```
+
+🎉 **Success!** Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ### Development Commands
 
@@ -380,7 +441,13 @@ npm run start      # Start production server
 npm run lint       # Run ESLint
 ```
 
-## Environment Variables
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 🔐 Environment Variables
 
 ### Local Development (`.env.local`)
 
@@ -399,35 +466,57 @@ OPENAI_API_KEY=sk-...
 # LangGraph (local development)
 LANGGRAPH_URL=http://localhost:8123
 
-# Optional: Together AI for image generation
+# Redis (for research caching)
+REDIS_URL=redis://localhost:6379
+
+# Cloudinary (for image hosting)
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+
+# Optional: Together AI for image generation (currently disabled)
 TOGETHER_API_KEY=...
 
 # Optional: LangSmith for tracing
 LANGSMITH_API_KEY=lsv2_...
+
+# Optional: Admin endpoint protection
+ADMIN_SECRET=...
 ```
 
 ### Production Environment Variables
 
-**Vercel** requires:
-- `DATABASE_URL` - Neon PostgreSQL connection string
-- `STACK_SECRET_SERVER_KEY` - Stack Auth server key
-- `NEXT_PUBLIC_STACK_PROJECT_ID` - Stack Auth project ID
-- `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` - Stack Auth client key
-- `LANGGRAPH_URL` - Railway agent URL (e.g., `https://fanfic-lab-production.up.railway.app`)
-- `LANGSMITH_API_KEY` - LangSmith API key for LangGraph Platform authentication
-- `OPENAI_API_KEY` - OpenAI API key for CopilotKit adapter
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | Neon PostgreSQL connection string | ✅ |
+| `STACK_SECRET_SERVER_KEY` | Stack Auth server key | ✅ |
+| `NEXT_PUBLIC_STACK_PROJECT_ID` | Stack Auth project ID | ✅ |
+| `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Stack Auth client key | ✅ |
+| `LANGGRAPH_URL` | Railway agent URL | ✅ |
+| `OPENAI_API_KEY` | OpenAI API key | ✅ |
+| `REDIS_URL` | Redis connection string | ✅ |
+| `CLOUDINARY_*` | Cloudinary credentials | ✅ |
+| `LANGSMITH_API_KEY` | LangSmith API key | 🔶 |
+| `TAVILY_API_KEY` | Tavily API key (Railway) | ✅ |
+| `ADMIN_SECRET` | Admin endpoint protection | 🔶 |
 
-**Railway** requires:
-- `OPENAI_API_KEY` - OpenAI API key for AI features
-- `LANGSMITH_API_KEY` - LangSmith API key for LangGraph Platform
-- `PORT` - Automatically assigned by Railway
+> ✅ Required, 🔶 Optional
 
-## Database Schema
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 📊 Database Schema
 
 ```mermaid
 erDiagram
     User ||--o{ Story : writes
     User ||--o{ Character : creates
+    User ||--o{ Draft : has
+    User ||--|| UserPreferences : configures
+    User ||--o{ Follow : follows
     Story ||--o{ Chapter : contains
     Story ||--o{ StoryCharacter : features
     Story ||--o{ Like : receives
@@ -437,9 +526,12 @@ erDiagram
 
     User {
         string id PK
-        string email
-        string username
+        string stackAuthId UK
+        string email UK
+        string username UK
+        string displayName
         string avatarUrl
+        string bio
     }
 
     Story {
@@ -452,219 +544,95 @@ erDiagram
         enum rating
         enum status
         int wordCount
-    }
-
-    Chapter {
-        string id PK
-        string title
-        text content
-        int chapterNumber
-        int wordCount
+        string coverImageUrl
     }
 
     Character {
         string id PK
         string name
         string fandom
-        string[] personality
-        string speechPattern
+        string[] personalityTraits
+        string speechPatterns
         boolean isOriginal
         string portraitUrl
     }
 
-    Image {
+    SourceResearchCache {
         string id PK
-        string url
-        enum type
-        string prompt
+        string sourceName
+        string sourceType
+        string normalizedName UK
+        json researchData
+        int searchCount
+        datetime lastAccessedAt
     }
 ```
 
-## CopilotKit Integration
+<div align="right">
 
-### Provider Setup
+[![][back-to-top]](#readme-top)
 
-```tsx
-// src/components/providers/CopilotProvider.tsx
-<CopilotKit
-  runtimeUrl="/api/copilotkit"
-  agent="fanfic_agent"
->
-  {children}
-</CopilotKit>
+</div>
+
+## 📁 Project Structure
+
+```
+fanfic-lab/
+├── src/
+│   ├── app/                          # Next.js App Router
+│   │   ├── api/                      # API routes
+│   │   │   ├── copilotkit/          # CopilotKit runtime
+│   │   │   ├── research-cache/      # Redis caching
+│   │   │   ├── health/              # Health check
+│   │   │   ├── admin/cache-stats/   # Cache analytics
+│   │   │   └── upload/cover/        # Cover upload
+│   │   ├── (main)/                   # Main routes
+│   │   │   ├── (protected)/         # Auth required
+│   │   │   │   ├── editor/          # Smart Editor
+│   │   │   │   ├── wizard/          # Creative Wizard
+│   │   │   │   └── profile/         # User Profile
+│   │   │   └── feed/                # Fandom Feed (public)
+│   │   └── handler/[...stack]/      # Stack Auth
+│   │
+│   ├── components/                   # React components
+│   │   ├── ui/                      # shadcn/ui components
+│   │   ├── editor/                  # Editor components
+│   │   ├── wizard/                  # Wizard components
+│   │   ├── feed/                    # Feed components
+│   │   ├── hitl/                    # HITL approval cards
+│   │   ├── layout/                  # Layout components
+│   │   └── providers/               # Context providers
+│   │
+│   ├── agent/                        # LangGraph agent
+│   │   ├── agent.ts                 # Workflow definition
+│   │   ├── state.ts                 # State annotation
+│   │   └── tools/                   # Agent tools
+│   │
+│   └── lib/                          # Utilities
+│       ├── hooks/                   # Custom hooks
+│       ├── actions/                 # Server actions
+│       ├── types/                   # TypeScript types
+│       ├── db.ts                    # Database client
+│       ├── redis.ts                 # Redis client
+│       └── cloudinary.ts            # Cloudinary client
+│
+├── prisma/
+│   ├── schema.prisma                # Database schema
+│   └── migrations/                  # Migrations
+│
+├── docs/
+│   └── COPILOTKIT_LANGGRAPH_HITL_GUIDE.md
+│
+└── public/                          # Static assets
 ```
 
-### useCopilotReadable
+<div align="right">
 
-Provides context to the AI:
+[![][back-to-top]](#readme-top)
 
-```tsx
-useCopilotReadable({
-  description: "Current story being edited",
-  value: {
-    fandom: storyContext.fandom,
-    ships: storyContext.ships,
-    characters: storyContext.characters,
-    tone: storyContext.tone,
-  },
-});
-```
+</div>
 
-### useCopilotAction
-
-Defines AI-callable actions with UI rendering:
-
-```tsx
-useCopilotAction({
-  name: "continue_story",
-  description: "Continue the story from where the user left off",
-  parameters: [
-    { name: "continuation", type: "string", required: true },
-  ],
-  handler: async ({ continuation }) => {
-    setPendingContent({ type: "continuation", content: continuation });
-  },
-  render: ({ status }) => {
-    if (status === "inProgress") {
-      return <LoadingSpinner />;
-    }
-    return <></>;
-  },
-});
-```
-
-### HITL with renderAndWaitForResponse
-
-```tsx
-useCopilotAction({
-  name: "gather_fandom_info",
-  parameters: [],
-  renderAndWaitForResponse: ({ respond }) => (
-    <FandomSelector
-      onSelect={(fandom) => {
-        respond?.({ fandom });
-      }}
-    />
-  ),
-});
-```
-
-### useCopilotChat
-
-Send messages to the AI:
-
-```tsx
-import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
-
-const { appendMessage } = useCopilotChat();
-
-await appendMessage(
-  new TextMessage({
-    role: Role.User,
-    content: "Continue the story...",
-  })
-);
-```
-
-## LangGraph Agent
-
-### Agent State
-
-```typescript
-// src/lib/types/agent-state.ts
-export interface StoryContext {
-  fandom: string;
-  ships: string[];
-  tags: string[];
-  plotPoints: string[];
-  currentChapter: number;
-  characters: StoryCharacter[];
-  tone: string;
-}
-
-export interface FanficAgentState {
-  storyContext: StoryContext;
-  editorContent: string;
-  pendingContent: PendingContent | null;
-  oocCheckResults: OOCCheckResult[];
-  generatedImages: GeneratedImage[];
-}
-```
-
-### Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `continueStory` | Generate next story segment |
-| `expandScene` | Expand selected text with detail |
-| `polishProse` | Improve writing quality |
-| `generateOutline` | Create story outline |
-| `createCharacter` | Define character profile |
-| `checkOOC` | Detect out-of-character moments |
-| `suggestDialogue` | Generate character dialogue |
-| `generateCharacterPortrait` | AI portrait image |
-| `generateSceneIllustration` | AI scene image |
-| `generateStoryCover` | AI cover image |
-
-### Agent Workflow
-
-```mermaid
-graph TD
-    A[Start] --> B{Has Tool Call?}
-    B -->|Yes| C[Route to Tool]
-    B -->|No| D[Generate Response]
-
-    C --> E{Tool Type}
-    E -->|Story| F[story-tools]
-    E -->|Character| G[character-tools]
-    E -->|Image| H[image-tools]
-
-    F --> I[Execute Tool]
-    G --> I
-    H --> I
-
-    I --> J[Return Result]
-    D --> J
-    J --> K[End]
-```
-
-## Components
-
-### Editor Components
-
-| Component | Purpose |
-|-----------|---------|
-| `SmartEditor` | Main editor with CopilotTextarea, AI actions |
-| `AIToolbar` | Toolbar with Magic Continue, Expand, Polish |
-| `CharacterSidebar` | Character management panel |
-| `OOCChecker` | Display OOC detection results |
-| `ImageGallery` | Browse and manage images |
-
-### Wizard Components
-
-| Component | Purpose |
-|-----------|---------|
-| `FandomSelector` | Pick fandom with search and categories |
-| `ShipBuilder` | Define romantic pairings |
-| `CharacterSetup` | Configure characters |
-
-### Feed Components
-
-| Component | Purpose |
-|-----------|---------|
-| `StoryCard` | Display story with metadata |
-| `TagFilter` | Filter by tags, rating, status |
-| `FandomTabs` | Navigate between fandoms |
-
-### HITL Components
-
-| Component | Purpose |
-|-----------|---------|
-| `ContentApprovalCard` | Review AI-generated text |
-| `OutlineApprovalCard` | Review story outline |
-| `ImageApprovalCard` | Review generated images |
-
-## API Routes
+## 📡 API Reference
 
 ### POST /api/copilotkit
 
@@ -673,20 +641,73 @@ CopilotKit runtime endpoint that routes requests to the LangGraph agent.
 ```typescript
 const runtime = new CopilotRuntime({
   agents: {
-    fanfic_agent: new LangGraphHttpAgent({
-      url: `${LANGGRAPH_URL}/agents/fanfic_agent`,
+    fanfic_agent: new LangGraphAgent({
+      deploymentUrl: process.env.LANGGRAPH_URL,
+      graphId: "fanfic_agent",
     }),
   },
 });
+
+export const maxDuration = 60; // Vercel timeout
 ```
 
-### GET/POST /handler/[...stack]
+### GET/POST /api/research-cache
 
-Stack Auth handler for authentication flows (sign-in, sign-up, sign-out).
+Research results caching endpoint (Redis).
 
-## Deployment
+| Method | Query/Body | Description |
+|--------|------------|-------------|
+| GET | `?sourceName=X&sourceType=Y` | Check if cached research exists |
+| POST | `{ sourceName, sourceType, researchData }` | Save research results (30-day TTL) |
+| DELETE | `?sourceName=X` | Clear cache (requires ADMIN_SECRET) |
 
-FanFic Lab uses a **split deployment architecture**: Vercel for the Next.js frontend and Railway for the LangGraph agent.
+### GET /api/health
+
+Service health check endpoint.
+
+```json
+{
+  "status": "healthy",
+  "services": {
+    "redis": { "status": "up", "latency": 5 },
+    "database": { "status": "up", "latency": 12 }
+  }
+}
+```
+
+### POST /api/upload/cover
+
+Cover image upload endpoint.
+
+- Validates user authentication and story ownership
+- Accepts: jpeg, png, webp (max 5MB)
+- Uploads to Cloudinary
+- Returns: URL, publicId, dimensions
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 🛳 Deployment
+
+### Cloud Deployment
+
+**Vercel (Recommended for Frontend)**
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FChanMeng666%2Ffanfic-lab)
+
+**Railway (For LangGraph Agent)**
+
+The LangGraph agent requires a persistent server and cannot run on Vercel's serverless functions.
+
+```bash
+# Railway uses these files for configuration:
+# - railway.json
+# - nixpacks.toml
+# - Start command: npm run start:agent
+```
 
 ### Production URLs
 
@@ -702,71 +723,162 @@ FanFic Lab uses a **split deployment architecture**: Vercel for the Next.js fron
 │      Vercel         │         │      Railway        │
 │  (Next.js + API)    │         │   (LangGraph Agent) │
 ├─────────────────────┤         ├─────────────────────┤
-│  • Next.js 16       │         │  • LangGraph.js     │
+│  • Next.js 16       │         │  • LangGraph.js 1.0 │
 │  • React 19         │  HTTP   │  • OpenAI GPT-4o    │
-│  • CopilotKit       │◄───────►│  • Agent Tools      │
-│  • Prisma 7         │         │                     │
-│  • Stack Auth       │         │  Port: 8123         │
+│  • CopilotKit 1.x   │◄───────►│  • Tavily Search    │
+│  • Prisma 7         │         │  • Agent Nodes      │
+│  • Stack Auth       │         │                     │
+└─────────────────────┘         └─────────────────────┘
+         │                               │
+         ▼                               ▼
+┌─────────────────────┐         ┌─────────────────────┐
+│   Neon PostgreSQL   │         │   External APIs     │
+│      (Database)     │         │   (OpenAI, Tavily)  │
+└─────────────────────┘         └─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐         ┌─────────────────────┐
+│   Redis (Upstash)   │         │     Cloudinary      │
+│     (Caching)       │         │  (Image Storage)    │
 └─────────────────────┘         └─────────────────────┘
 ```
 
-### Why Split Deployment?
+<div align="right">
 
-- **Vercel** cannot run long-running processes like `langgraphjs dev`
-- **Railway** provides a persistent server for the LangGraph agent
-- CopilotKit on Vercel connects to Railway via the `LANGGRAPH_URL` environment variable
+[![][back-to-top]](#readme-top)
 
-### Vercel Deployment
+</div>
 
-1. Connect GitHub repository to Vercel
-2. Configure environment variables (see above)
-3. Vercel auto-deploys on push to `master`
+## 🤝 Contributing
 
-### Railway Deployment
+We welcome contributions! Here's how you can help improve FanFic Lab:
 
-1. Connect GitHub repository to Railway
-2. Set `OPENAI_API_KEY` environment variable
-3. Railway uses `railway.json` and `nixpacks.toml` for configuration
-4. Deploys with `npm run start:agent` command
+**1. Fork & Clone**
 
-### Key Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `railway.json` | Railway deployment settings (start command, restart policy) |
-| `nixpacks.toml` | Railway build config (Node.js 20, skip Prisma) |
-| `.nvmrc` | Node.js version specification |
-| `src/agent/langgraph.json` | LangGraph agent configuration |
-
-### Build Configuration
-
-```json
-{
-  "build": "prisma generate && next build",
-  "postinstall": "prisma generate",
-  "start:agent": "langgraphjs dev --host 0.0.0.0 --port ${PORT:-8123} --config src/agent/langgraph.json"
-}
+```bash
+git clone https://github.com/ChanMeng666/fanfic-lab.git
+cd fanfic-lab
 ```
 
-### Serverless Configuration
+**2. Create Branch**
 
-```typescript
-// src/app/api/copilotkit/route.ts
-export const maxDuration = 60; // 60 second timeout
+```bash
+git checkout -b feature/your-feature-name
 ```
 
-## Contributing
+**3. Make Changes**
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
+- Follow our coding standards in [CLAUDE.md](./CLAUDE.md)
+- Add tests for new features
+- Update documentation as needed
 
-## License
+**4. Submit PR**
 
-MIT License - see LICENSE file for details.
+- Provide clear description
+- Reference related issues
+- Ensure CI passes
+
+[![][pr-welcome-shield]][github-issues-link]
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 🙋‍♀️ Author
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <a href="https://github.com/ChanMeng666">
+          <img src="https://avatars.githubusercontent.com/u/145256190?v=4" width="100px;" alt="Chan Meng" style="border-radius: 50%;"/>
+          <br />
+          <sub><b>Chan Meng</b></sub>
+        </a>
+        <br />
+        <sub>Creator & Lead Developer</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+**Chan Meng**
+
+- <img src="https://cdn.simpleicons.org/linkedin/0A66C2" width="16" height="16" alt="LinkedIn"> LinkedIn: [chanmeng666](https://www.linkedin.com/in/chanmeng666/)
+- <img src="https://cdn.simpleicons.org/github/181717" width="16" height="16" alt="GitHub"> GitHub: [ChanMeng666](https://github.com/ChanMeng666)
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+**Open Source Benefits:**
+- ✅ Commercial use allowed
+- ✅ Modification allowed
+- ✅ Distribution allowed
+- ✅ Private use allowed
 
 ---
 
-Built with love for the fanfiction community. AI-powered, community-driven.
+<div align="center">
+
+**Built with ❤️ for the fanfiction community**
+
+AI-powered, community-driven.
+
+<br/>
+
+[![][github-stars-shield]][github-stars-link]
+[![][github-forks-shield]][github-forks-link]
+
+**⭐ Star us on GitHub** — it helps!
+
+</div>
+
+<!-- LINK DEFINITIONS -->
+
+[back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
+
+<!-- Project Links -->
+[project-link]: https://fanfic-lab.vercel.app
+
+<!-- GitHub Links -->
+[github-issues-link]: https://github.com/ChanMeng666/fanfic-lab/issues
+[github-stars-link]: https://github.com/ChanMeng666/fanfic-lab/stargazers
+[github-forks-link]: https://github.com/ChanMeng666/fanfic-lab/forks
+[github-license-link]: https://github.com/ChanMeng666/fanfic-lab/blob/main/LICENSE
+
+<!-- External Links -->
+[vercel-link]: https://fanfic-lab.vercel.app
+[nextjs-link]: https://nextjs.org
+[typescript-link]: https://www.typescriptlang.org
+[tailwind-link]: https://tailwindcss.com
+
+<!-- Shield Badges -->
+[github-stars-shield]: https://img.shields.io/github/stars/ChanMeng666/fanfic-lab?color=ffcb47&labelColor=black&style=flat-square
+[github-forks-shield]: https://img.shields.io/github/forks/ChanMeng666/fanfic-lab?color=8ae8ff&labelColor=black&style=flat-square
+[github-issues-shield]: https://img.shields.io/github/issues/ChanMeng666/fanfic-lab?color=ff80eb&labelColor=black&style=flat-square
+[github-license-shield]: https://img.shields.io/github/license/ChanMeng666/fanfic-lab?color=white&labelColor=black&style=flat-square
+[vercel-shield]: https://img.shields.io/badge/vercel-online-55b467?labelColor=black&logo=vercel&style=flat-square
+[nextjs-shield]: https://img.shields.io/badge/Next.js-16-black?labelColor=black&logo=nextdotjs&style=flat-square
+[typescript-shield]: https://img.shields.io/badge/TypeScript-5-3178C6?labelColor=black&logo=typescript&style=flat-square
+[tailwind-shield]: https://img.shields.io/badge/TailwindCSS-4-38B2AC?labelColor=black&logo=tailwindcss&style=flat-square
+[pr-welcome-shield]: https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square
+
+<!-- Social Share Links -->
+[share-x-link]: https://x.com/intent/tweet?hashtags=fanfiction,ai,opensource&text=Check%20out%20FanFic%20Lab%20-%20AI-powered%20fanfiction%20writing%20platform!&url=https%3A%2F%2Fgithub.com%2FChanMeng666%2Ffanfic-lab
+[share-linkedin-link]: https://linkedin.com/sharing/share-offsite/?url=https://github.com/ChanMeng666/fanfic-lab
+[share-reddit-link]: https://www.reddit.com/submit?title=FanFic%20Lab%20-%20AI-powered%20fanfiction%20writing%20platform&url=https%3A%2F%2Fgithub.com%2FChanMeng666%2Ffanfic-lab
+[share-whatsapp-link]: https://api.whatsapp.com/send?text=Check%20out%20FanFic%20Lab%20https%3A%2F%2Fgithub.com%2FChanMeng666%2Ffanfic-lab
+
+[share-x-shield]: https://img.shields.io/badge/-share%20on%20x-black?labelColor=black&logo=x&logoColor=white&style=flat-square
+[share-linkedin-shield]: https://img.shields.io/badge/-share%20on%20linkedin-black?labelColor=black&logo=linkedin&logoColor=white&style=flat-square
+[share-reddit-shield]: https://img.shields.io/badge/-share%20on%20reddit-black?labelColor=black&logo=reddit&logoColor=white&style=flat-square
+[share-whatsapp-shield]: https://img.shields.io/badge/-share%20on%20whatsapp-black?labelColor=black&logo=whatsapp&logoColor=white&style=flat-square

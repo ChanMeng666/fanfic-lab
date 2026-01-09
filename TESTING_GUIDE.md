@@ -83,17 +83,24 @@ OPENAI_API_KEY=sk-...
 # LangGraph Agent URL (local development)
 LANGGRAPH_URL=http://localhost:8123
 
-# Together AI (Optional - for image generation)
-# Get your key at: https://www.together.ai/
-TOGETHER_API_KEY=your_together_api_key
+# Redis (Required for research caching)
+REDIS_URL=redis://localhost:6379
 
-# Cloudinary (Optional - for permanent image storage)
+# Cloudinary (Required for image storage)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 
+# Together AI (Optional - for image generation, currently DISABLED)
+# Get your key at: https://www.together.ai/
+# Note: Image generation tools are currently disabled in the codebase
+TOGETHER_API_KEY=your_together_api_key
+
 # LangSmith (Optional - for AI observability)
 LANGSMITH_API_KEY=lsv2_...
+
+# Admin (Optional - for admin endpoints)
+ADMIN_SECRET=your_admin_secret
 ```
 
 ### Environment Variable Tests
@@ -102,6 +109,8 @@ LANGSMITH_API_KEY=lsv2_...
 - [ ] Stack Auth loads without errors
 - [ ] OpenAI API key is recognized (test AI features)
 - [ ] LangGraph agent accessible at `LANGGRAPH_URL`
+- [ ] Redis connection works (check `/api/health` endpoint)
+- [ ] Cloudinary credentials valid (test cover upload)
 
 ---
 
@@ -447,33 +456,31 @@ Test these routes redirect to sign-in when unauthenticated:
 
 ## 11. Image Generation Tests
 
-**Prerequisite:** Together AI API key configured (free at https://www.together.ai/)
+> **⚠️ IMPORTANT:** Image generation tools are currently **DISABLED** in the codebase (IMAGE_GENERATION_ENABLED = false). These tests will not work until the feature is re-enabled.
 
-### Character Portrait
-1. [ ] Add a character
-2. [ ] Request portrait generation via chat
-3. [ ] If API configured: image generates
-4. [ ] Image approval card displays
-5. [ ] Can approve/reject/regenerate
-6. [ ] If Cloudinary configured: image uploads
+**Status:** Temporarily disabled. Will be re-enabled when a free/affordable image generation API is available.
 
-### Scene Illustration
-1. [ ] Write a scene description
-2. [ ] Request illustration via chat
-3. [ ] If API configured: image generates
-4. [ ] Image approval card displays
-5. [ ] Can modify prompt and regenerate
+**What you can test instead:**
+- [ ] Cover image upload via CoverUploader component
+- [ ] Cover upload to Cloudinary works (requires CLOUDINARY_* env vars)
+- [ ] Uploaded covers display correctly in feed and profile
 
-### Story Cover
-1. [ ] Request cover generation via chat
-2. [ ] Provide story details when asked
-3. [ ] If API configured: cover generates
-4. [ ] Image approval card displays
+### Character Portrait (DISABLED)
+~~1. [ ] Add a character~~
+~~2. [ ] Request portrait generation via chat~~
+~~3. [ ] If API configured: image generates~~
+~~4. [ ] Image approval card displays~~
 
-### Without API Keys
-- [ ] Graceful fallback with "pending approval" status
-- [ ] Prompt is displayed for review
-- [ ] No errors in console
+### Scene Illustration (DISABLED)
+~~1. [ ] Write a scene description~~
+~~2. [ ] Request illustration via chat~~
+
+### Story Cover Upload (ACTIVE)
+1. [ ] Navigate to editor with a story
+2. [ ] Click cover upload button
+3. [ ] Select an image (jpeg, png, webp, max 5MB)
+4. [ ] Image uploads to Cloudinary
+5. [ ] Cover displays in story card
 
 ---
 
@@ -490,11 +497,12 @@ npm run dev:all   # Starts both Next.js and LangGraph agent
 ```
 
 ### Current Limitations
-1. **Image Generation**: Requires Together AI API key (free at together.ai)
-2. **Cloudinary**: Images stored as base64 without Cloudinary configured
-3. **Social Features**: Like/comment/follow UI exists but may need database connection
-4. **Real-time Updates**: No WebSocket/SSE for live updates
-5. **Search**: Full-text search not implemented
+1. **Image Generation**: Currently **DISABLED** in codebase. Will be re-enabled when a free/affordable API is available.
+2. **Cover Upload**: Requires Cloudinary credentials for permanent storage
+3. **Research Cache**: Requires Redis connection for caching Tavily search results
+4. **Social Features**: Like/comment/follow UI exists but may need database connection
+5. **Real-time Updates**: No WebSocket/SSE for live updates
+6. **Search**: Full-text search not implemented
 
 ### Expected Behaviors
 - Unauthenticated users are redirected to sign-in for protected routes

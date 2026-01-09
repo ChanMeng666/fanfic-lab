@@ -5,9 +5,9 @@
 This document summarizes our experience integrating **CopilotKit** with **LangGraph.js** for Human-in-the-Loop (HITL) workflows. It covers critical bugs, failed approaches, and the final working solution.
 
 **Tech Stack:**
-- Frontend: Next.js 15, React 19, CopilotKit 1.8
+- Frontend: Next.js 16, React 19, CopilotKit 1.x
 - AI Runtime: CopilotKit SDK
-- AI Agent: LangGraph.js 0.3
+- AI Agent: LangGraph.js 1.0
 - Deployment: Vercel (frontend) + Railway (agent)
 
 ---

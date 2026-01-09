@@ -9,9 +9,11 @@ Essential design system rules and coding patterns for Claude Code. For detailed 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
 | Frontend | Next.js 16, React 19, TailwindCSS 4 | Vercel |
-| AI Runtime | CopilotKit 1.8 | Vercel |
-| AI Agent | LangGraph.js 0.3 | Railway |
+| AI Runtime | CopilotKit 1.x | Vercel |
+| AI Agent | LangGraph.js 1.0 | Railway |
 | Database | Prisma 7 + Neon PostgreSQL | Neon |
+| Cache | Redis (ioredis) | Upstash |
+| Storage | Cloudinary | Cloudinary |
 
 **Production URLs:**
 - Frontend: `https://fanfic-lab.vercel.app`
