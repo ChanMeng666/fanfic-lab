@@ -786,28 +786,31 @@ git checkout -b feature/your-feature-name
 
 </div>
 
-## 🙋‍♀️ Author
+## 👥 Team
 
 <div align="center">
   <table>
     <tr>
       <td align="center">
         <a href="https://github.com/ChanMeng666">
-          <img src="https://avatars.githubusercontent.com/u/145256190?v=4" width="100px;" alt="Chan Meng" style="border-radius: 50%;"/>
+          <img src="https://github.com/ChanMeng666.png?size=100" width="100px;" alt="Chan Meng"/>
           <br />
           <sub><b>Chan Meng</b></sub>
         </a>
         <br />
-        <sub>Creator & Lead Developer</sub>
+        <small>Creator & Lead Developer</small>
       </td>
     </tr>
   </table>
 </div>
 
-**Chan Meng**
+## 🙋‍♀️ Author
 
-- <img src="https://cdn.simpleicons.org/linkedin/0A66C2" width="16" height="16" alt="LinkedIn"> LinkedIn: [chanmeng666](https://www.linkedin.com/in/chanmeng666/)
-- <img src="https://cdn.simpleicons.org/github/181717" width="16" height="16" alt="GitHub"> GitHub: [ChanMeng666](https://github.com/ChanMeng666)
+**Chan Meng**
+- <img src="https://cdn.simpleicons.org/linkedin/0A66C2" width="16" height="16"> LinkedIn: [chanmeng666](https://www.linkedin.com/in/chanmeng666/)
+- <img src="https://cdn.simpleicons.org/github/181717" width="16" height="16"> GitHub: [ChanMeng666](https://github.com/ChanMeng666)
+- <img src="https://cdn.simpleicons.org/gmail/EA4335" width="16" height="16"> Email: [chanmeng.dev@gmail.com](mailto:chanmeng.dev@gmail.com)
+- <img src="https://cdn.simpleicons.org/internetexplorer/0078D4" width="16" height="16"> Website: [chanmeng.live](https://2d-portfolio-eta.vercel.app/)
 
 <div align="right">
 

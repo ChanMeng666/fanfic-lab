@@ -54,3 +54,6 @@ next-env.d.ts
 .vercel
 .env*.local
 open-research-ANA/
+.claude/settings.local.json
+nul
+.claude/settings.local.json
