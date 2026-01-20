@@ -131,7 +131,32 @@
       "Bash(git -C \"D:/github_repository/fanfic-lab\" add CLAUDE.md README.md TESTING_GUIDE.md docs/COPILOTKIT_LANGGRAPH_HITL_GUIDE.md)",
       "Bash(git -C \"D:/github_repository/fanfic-lab\" commit -m \"$\\(cat <<''EOF''\ndocs: overhaul project documentation with professional template\n\n- Restructure README.md with centered layout, badges, and mermaid diagrams\n- Update version numbers across all docs \\(Next.js 16, CopilotKit 1.x, LangGraph 1.0\\)\n- Add new components, API routes, and architecture documentation\n- Document node-based agent architecture \\(research_node, outline_node\\)\n- Add Redis caching and Cloudinary integration details\n- Update environment variables with new requirements\n- Add author section with social links\n- Include social share buttons and tech stack badges\n- Update TESTING_GUIDE.md with disabled image generation notes\n- Sync CLAUDE.md quick reference table\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C \"D:/github_repository/fanfic-lab\" push origin master)",
-      "Bash(git -C \"D:/github_repository/fanfic-lab\" log --oneline -3)"
+      "Bash(git -C \"D:/github_repository/fanfic-lab\" log --oneline -3)",
+      "Bash(railway service:*)",
+      "Bash(railway --help:*)",
+      "Bash(railway add --help:*)",
+      "Bash(git remote:*)",
+      "Bash(railway add:*)",
+      "Bash(railway domain --help:*)",
+      "Bash(railway domain:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway redeploy --help:*)",
+      "Bash(railway redeploy:*)",
+      "Bash(railway open:*)",
+      "Bash(railway up:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(railway deployment --help:*)",
+      "Bash(railway deployment:*)",
+      "Bash(railway delete:*)",
+      "Bash(railway down:*)",
+      "Bash(nslookup:*)",
+      "Bash(host:*)",
+      "Bash(railway restart:*)",
+      "Bash(grep:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(npx langgraphjs up --help:*)"
     ]
   }
 }

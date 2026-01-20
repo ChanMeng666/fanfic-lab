@@ -13,19 +13,19 @@ WORKDIR /app
 ARG NEXT_PUBLIC_STACK_PROJECT_ID
 ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
 
-# Server-side (required for Next.js build to generate routes)
+# Server-side (needed for Prisma generate during build)
 ARG STACK_SECRET_SERVER_KEY
 ARG DATABASE_URL
 ARG REDIS_URL
 ARG OPENAI_API_KEY
 ARG LANGSMITH_API_KEY
+ARG LANGGRAPH_URL
 ARG CLOUDINARY_CLOUD_NAME
 ARG CLOUDINARY_API_KEY
 ARG CLOUDINARY_API_SECRET
 ARG ADMIN_SECRET
-ARG LANGGRAPH_URL
 
-# Set as environment variables for the build process
+# Set environment variables from build args
 ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID
 ENV NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
 ENV STACK_SECRET_SERVER_KEY=$STACK_SECRET_SERVER_KEY
@@ -33,21 +33,20 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV REDIS_URL=$REDIS_URL
 ENV OPENAI_API_KEY=$OPENAI_API_KEY
 ENV LANGSMITH_API_KEY=$LANGSMITH_API_KEY
+ENV LANGGRAPH_URL=$LANGGRAPH_URL
 ENV CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME
 ENV CLOUDINARY_API_KEY=$CLOUDINARY_API_KEY
 ENV CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET
 ENV ADMIN_SECRET=$ADMIN_SECRET
-ENV LANGGRAPH_URL=$LANGGRAPH_URL
 
-# Copy package files first
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Copy prisma schema BEFORE npm ci (postinstall runs prisma generate)
+# Copy Prisma schema and config before install (needed for postinstall)
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# Install dependencies (use legacy-peer-deps to resolve @langchain/core conflicts)
-# Also use --ignore-scripts to skip prisma generate in postinstall, we'll run it manually
+# Install dependencies
 RUN npm ci --legacy-peer-deps --ignore-scripts
 
 # Generate Prisma client
@@ -62,7 +61,7 @@ RUN npm run build
 # Expose port 3000
 EXPOSE 3000
 
-# Set environment variables
+# Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
 

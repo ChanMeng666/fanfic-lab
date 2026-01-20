@@ -17,7 +17,22 @@ Essential design system rules and coding patterns for Claude Code. For detailed 
 
 **Production URLs:**
 - Frontend: `https://web-production-01677.up.railway.app`
-- Agent: `http://fanfic-lab.railway.internal:8123` (Railway private network)
+- Agent: `http://agent.railway.internal:8123` (Railway private network)
+
+**Deployment (Railway CLI):**
+```bash
+# Deploy web service
+railway service link web
+railway up
+
+# Deploy agent service
+railway service link agent
+railway up
+```
+
+**Dockerfile Structure:**
+- `Dockerfile.web` - Full Next.js build for web service
+- `Dockerfile.agent` - Lightweight build for LangGraph agent
 
 ---
 
