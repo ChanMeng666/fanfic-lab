@@ -260,14 +260,14 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
-| **Framework** | Next.js 16 (App Router, Turbopack) | Vercel |
-| **UI** | React 19, TailwindCSS 4, shadcn/ui | Vercel |
-| **AI Runtime** | CopilotKit 1.x | Vercel |
+| **Framework** | Next.js 16 (App Router, Turbopack) | Railway |
+| **UI** | React 19, TailwindCSS 4, shadcn/ui | Railway |
+| **AI Runtime** | CopilotKit 1.x | Railway |
 | **AI Agent** | LangGraph.js 1.0 | Railway |
 | **LLM** | OpenAI GPT-4o / GPT-4o-mini | OpenAI API |
 | **Search** | Tavily API | Tavily |
 | **Database** | Neon PostgreSQL + Prisma 7 | Neon |
-| **Cache** | Redis (ioredis) | Upstash/Redis |
+| **Cache** | Redis (ioredis) | Upstash |
 | **Auth** | Stack Auth | Stack Auth Cloud |
 | **Storage** | Cloudinary | Cloudinary |
 
@@ -282,18 +282,18 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 ### System Architecture
 
 > [!TIP]
-> FanFic Lab uses a **split deployment architecture**: Vercel for the Next.js frontend and Railway for the LangGraph agent. This allows for optimal performance and scalability.
+> FanFic Lab uses a **unified Railway deployment**: Both the Next.js frontend and LangGraph agent run on Railway, communicating via private networking for low latency and no timeout limits.
 
 ```mermaid
 graph TB
-    subgraph "Vercel (Frontend)"
+    subgraph "Railway (Web Service)"
         A[Next.js 16] --> B[React 19]
         B --> C[CopilotKit 1.x]
         C --> D[API Routes]
         D --> E[Prisma 7]
     end
 
-    subgraph "Railway (Agent)"
+    subgraph "Railway (Agent Service)"
         F[LangGraph.js 1.0] --> G[chat_node]
         F --> H[research_node]
         F --> I[outline_node]
@@ -312,7 +312,7 @@ graph TB
         P[Cloudinary]
     end
 
-    D -->|HTTP| F
+    D -->|Private Network| F
     G --> K
     H --> L
     F --> M
@@ -692,55 +692,50 @@ Cover image upload endpoint.
 
 ## 🛳 Deployment
 
-### Cloud Deployment
+### Cloud Deployment (Railway)
 
-**Vercel (Recommended for Frontend)**
+FanFic Lab runs entirely on Railway with two services communicating via private networking.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FChanMeng666%2Ffanfic-lab)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template)
 
-**Railway (For LangGraph Agent)**
+**Railway Services:**
 
-The LangGraph agent requires a persistent server and cannot run on Vercel's serverless functions.
-
-```bash
-# Railway uses these files for configuration:
-# - railway.json
-# - nixpacks.toml
-# - Start command: npm run start:agent
-```
+| Service | Config File | Start Command |
+|---------|------------|---------------|
+| **Web** (Next.js) | `railway.json` + `nixpacks.toml` | `npm run start` |
+| **Agent** (LangGraph) | `railway-agent.json` + `nixpacks-agent.toml` | `npm run start:agent` |
 
 ### Production URLs
 
 | Service | URL |
 |---------|-----|
-| Frontend (Vercel) | https://fanfic-lab.vercel.app |
-| Agent (Railway) | https://fanfic-lab-production.up.railway.app |
+| Frontend (Railway) | https://fanfic-lab-web.up.railway.app |
+| Agent (Internal) | http://agent.railway.internal:8123 |
 
 ### Architecture Diagram
 
 ```
-┌─────────────────────┐         ┌─────────────────────┐
-│      Vercel         │         │      Railway        │
-│  (Next.js + API)    │         │   (LangGraph Agent) │
-├─────────────────────┤         ├─────────────────────┤
-│  • Next.js 16       │         │  • LangGraph.js 1.0 │
-│  • React 19         │  HTTP   │  • OpenAI GPT-4o    │
-│  • CopilotKit 1.x   │◄───────►│  • Tavily Search    │
-│  • Prisma 7         │         │  • Agent Nodes      │
-│  • Stack Auth       │         │                     │
-└─────────────────────┘         └─────────────────────┘
-         │                               │
-         ▼                               ▼
-┌─────────────────────┐         ┌─────────────────────┐
-│   Neon PostgreSQL   │         │   External APIs     │
-│      (Database)     │         │   (OpenAI, Tavily)  │
-└─────────────────────┘         └─────────────────────┘
-         │
-         ▼
-┌─────────────────────┐         ┌─────────────────────┐
-│   Redis (Upstash)   │         │     Cloudinary      │
-│     (Caching)       │         │  (Image Storage)    │
-└─────────────────────┘         └─────────────────────┘
+┌───────────────────────────────────────────────────┐
+│                  Railway Project                   │
+│  ┌─────────────────────┐  ┌─────────────────────┐ │
+│  │    Web Service      │  │   Agent Service     │ │
+│  │    (Next.js 16)     │  │   (LangGraph.js)    │ │
+│  │                     │  │                     │ │
+│  │  • React 19         │  │  • chat_node        │ │
+│  │  • CopilotKit 1.x   │  │  • research_node    │ │
+│  │  • Prisma 7         │  │  • outline_node     │ │
+│  │  • Stack Auth       │  │  • tool_node        │ │
+│  └──────────┬──────────┘  └──────────┬──────────┘ │
+│             │    Private Network     │            │
+│             └────────────┬───────────┘            │
+└──────────────────────────┼────────────────────────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+   ┌──────────┐      ┌──────────┐      ┌──────────┐
+   │   Neon   │      │  Upstash │      │Cloudinary│
+   │PostgreSQL│      │  Redis   │      │  Images  │
+   └──────────┘      └──────────┘      └──────────┘
 ```
 
 <div align="right">

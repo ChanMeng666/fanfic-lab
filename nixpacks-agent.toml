@@ -1,0 +1,16 @@
+# Railway Agent Service Configuration (LangGraph)
+# This config is for the LangGraph agent service only
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x", "openssl"]
+
+# Install dependencies, skip scripts (no Prisma needed for LangGraph)
+[phases.install]
+cmds = ["npm ci --ignore-scripts"]
+
+# Skip the build phase since we only need LangGraph agent
+[phases.build]
+cmds = ["echo 'Skipping Next.js build for LangGraph-only deployment'"]
+
+[start]
+cmd = "npm run start:agent"

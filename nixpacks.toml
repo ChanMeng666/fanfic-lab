@@ -1,11 +1,14 @@
-# Use Node.js 20 LTS (more stable) instead of 22
+# Railway Web Service Configuration (Next.js)
+# For Agent service, use nixpacks-agent.toml
+
 [phases.setup]
 nixPkgs = ["nodejs_20", "npm-9_x", "openssl"]
 
-# Skip the build phase since we only need LangGraph agent
-[phases.build]
-cmds = ["echo 'Skipping Next.js build for LangGraph-only deployment'"]
-
-# Install dependencies, skip all scripts (no Prisma needed for LangGraph)
 [phases.install]
-cmds = ["npm ci --ignore-scripts"]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start"

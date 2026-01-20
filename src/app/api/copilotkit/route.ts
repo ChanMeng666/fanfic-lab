@@ -6,17 +6,16 @@ import {
 import { LangGraphAgent } from "@copilotkit/runtime/langgraph";
 import { NextRequest } from "next/server";
 
-// Vercel serverless function configuration
-export const maxDuration = 60;
-
 // Initialize the OpenAI adapter for fallback/suggestions
 const serviceAdapter = new OpenAIAdapter({
   model: "gpt-4o",
 });
 
-// LangGraph agent URL - uses Railway in production and local dev
-// For local agent development, comment out LANGGRAPH_URL in .env.local
-const LANGGRAPH_URL = process.env.LANGGRAPH_URL || "http://127.0.0.1:8123";
+// LangGraph agent URL
+// - Local development: http://127.0.0.1:8123
+// - Railway production: Uses private networking (agent.railway.internal:8123)
+const LANGGRAPH_URL =
+  process.env.LANGGRAPH_URL || "http://127.0.0.1:8123";
 
 // LangSmith API key for LangGraph Platform authentication
 const LANGSMITH_API_KEY = process.env.LANGSMITH_API_KEY;

@@ -8,16 +8,16 @@ Essential design system rules and coding patterns for Claude Code. For detailed 
 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
-| Frontend | Next.js 16, React 19, TailwindCSS 4 | Vercel |
-| AI Runtime | CopilotKit 1.x | Vercel |
+| Frontend | Next.js 16, React 19, TailwindCSS 4 | Railway |
+| AI Runtime | CopilotKit 1.x | Railway |
 | AI Agent | LangGraph.js 1.0 | Railway |
 | Database | Prisma 7 + Neon PostgreSQL | Neon |
 | Cache | Redis (ioredis) | Upstash |
 | Storage | Cloudinary | Cloudinary |
 
 **Production URLs:**
-- Frontend: `https://fanfic-lab.vercel.app`
-- Agent: `https://fanfic-lab-production.up.railway.app`
+- Frontend: `https://fanfic-lab-web.up.railway.app` (Railway default domain)
+- Agent: `http://agent.railway.internal:8123` (Railway private network)
 
 ---
 
