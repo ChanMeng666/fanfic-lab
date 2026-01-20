@@ -8,7 +8,7 @@ This document summarizes our experience integrating **CopilotKit** with **LangGr
 - Frontend: Next.js 16, React 19, CopilotKit 1.x
 - AI Runtime: CopilotKit SDK
 - AI Agent: LangGraph.js 1.0
-- Deployment: Vercel (frontend) + Railway (agent)
+- Deployment: Railway (frontend + agent via private network)
 
 ---
 

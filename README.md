@@ -22,7 +22,7 @@ Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop
 [![][github-forks-shield]][github-forks-link]
 [![][github-issues-shield]][github-issues-link]
 [![][github-license-shield]][github-license-link]<br/>
-[![][vercel-shield]][vercel-link]
+[![][railway-shield]][railway-link]
 [![][nextjs-shield]][nextjs-link]
 [![][typescript-shield]][typescript-link]
 [![][tailwind-shield]][tailwind-link]
@@ -204,7 +204,7 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 
 ### `*` Additional Features
 
-- [x] 💨 **Quick Setup**: Deploy in under 5 minutes with one-click Vercel deployment
+- [x] 💨 **Quick Setup**: Deploy in under 5 minutes with Railway deployment
 - [x] 🌐 **Responsive Design**: Beautiful UI on desktop and mobile
 - [x] 🔒 **Authentication**: Stack Auth for secure user management
 - [x] 💎 **Literary Atelier Design**: Teal + Amber color palette with elegant typography
@@ -647,8 +647,6 @@ const runtime = new CopilotRuntime({
     }),
   },
 });
-
-export const maxDuration = 60; // Vercel timeout
 ```
 
 ### GET/POST /api/research-cache
@@ -709,8 +707,8 @@ FanFic Lab runs entirely on Railway with two services communicating via private 
 
 | Service | URL |
 |---------|-----|
-| Frontend (Railway) | https://fanfic-lab-web.up.railway.app |
-| Agent (Internal) | http://agent.railway.internal:8123 |
+| Frontend (Railway) | https://web-production-01677.up.railway.app |
+| Agent (Internal) | http://fanfic-lab.railway.internal:8123 |
 
 ### Architecture Diagram
 
@@ -845,7 +843,7 @@ AI-powered, community-driven.
 [back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
 
 <!-- Project Links -->
-[project-link]: https://fanfic-lab.vercel.app
+[project-link]: https://web-production-01677.up.railway.app
 
 <!-- GitHub Links -->
 [github-issues-link]: https://github.com/ChanMeng666/fanfic-lab/issues
@@ -854,7 +852,7 @@ AI-powered, community-driven.
 [github-license-link]: https://github.com/ChanMeng666/fanfic-lab/blob/main/LICENSE
 
 <!-- External Links -->
-[vercel-link]: https://fanfic-lab.vercel.app
+[railway-link]: https://web-production-01677.up.railway.app
 [nextjs-link]: https://nextjs.org
 [typescript-link]: https://www.typescriptlang.org
 [tailwind-link]: https://tailwindcss.com
@@ -864,7 +862,7 @@ AI-powered, community-driven.
 [github-forks-shield]: https://img.shields.io/github/forks/ChanMeng666/fanfic-lab?color=8ae8ff&labelColor=black&style=flat-square
 [github-issues-shield]: https://img.shields.io/github/issues/ChanMeng666/fanfic-lab?color=ff80eb&labelColor=black&style=flat-square
 [github-license-shield]: https://img.shields.io/github/license/ChanMeng666/fanfic-lab?color=white&labelColor=black&style=flat-square
-[vercel-shield]: https://img.shields.io/badge/vercel-online-55b467?labelColor=black&logo=vercel&style=flat-square
+[railway-shield]: https://img.shields.io/badge/railway-online-55b467?labelColor=black&logo=railway&style=flat-square
 [nextjs-shield]: https://img.shields.io/badge/Next.js-16-black?labelColor=black&logo=nextdotjs&style=flat-square
 [typescript-shield]: https://img.shields.io/badge/TypeScript-5-3178C6?labelColor=black&logo=typescript&style=flat-square
 [tailwind-shield]: https://img.shields.io/badge/TailwindCSS-4-38B2AC?labelColor=black&logo=tailwindcss&style=flat-square

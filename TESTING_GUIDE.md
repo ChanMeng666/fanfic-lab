@@ -487,9 +487,9 @@ Test these routes redirect to sign-in when unauthenticated:
 ## 12. Known Issues & Limitations
 
 ### Deployment Architecture
-FanFic Lab uses a **split deployment**:
-- **Vercel**: Next.js frontend, API routes, CopilotKit runtime
-- **Railway**: LangGraph.js agent server
+FanFic Lab uses a **unified Railway deployment**:
+- **Railway Web Service**: Next.js frontend, API routes, CopilotKit runtime
+- **Railway Agent Service**: LangGraph.js agent server (private network)
 
 For local development, both services must run:
 ```bash
@@ -519,8 +519,8 @@ npm run dev:all   # Starts both Next.js and LangGraph agent
 ### Production URLs
 | Service | URL |
 |---------|-----|
-| Frontend | https://fanfic-lab.vercel.app |
-| Agent | https://fanfic-lab-production.up.railway.app |
+| Frontend | https://web-production-01677.up.railway.app |
+| Agent | http://fanfic-lab.railway.internal:8123 (private) |
 
 ---
 
