@@ -20,7 +20,7 @@ import { tavily } from "@tavily/core";
 import { FanficAgentStateAnnotation, FanficAgentState, AgentLog } from "./state";
 import { allBackendTools } from "./tools";
 import type { SourceResearchData } from "../lib/types/agent-state";
-// Note: Cache is now handled on Vercel side via /api/research-cache
+// Note: Cache is handled on frontend side via /api/research-cache
 // This eliminates Prisma dependency on Railway
 
 // Initialize Tavily client
@@ -362,7 +362,7 @@ async function researchNode(
   const logs: AgentLog[] = [];
   const sources: Record<string, { title: string; content: string; url: string; score?: number }> = {};
 
-  // Start research (cache is checked by Vercel frontend before calling agent)
+  // Start research (cache is checked by frontend before calling agent)
 
   console.log("[FanFic Agent] TAVILY_API_KEY present:", !!process.env.TAVILY_API_KEY);
 
@@ -439,7 +439,7 @@ async function researchNode(
 
   // Mark aggregation as done
   logs[logs.length - 1].done = true;
-  // Note: Cache save is handled by Vercel frontend after receiving results
+  // Note: Cache save is handled by frontend after receiving results
 
   // Update wizard session with research data
   // Create a new session if one doesn't exist (important for state detection)
@@ -901,7 +901,7 @@ async function chatNode(
 
   const model = new ChatOpenAI({
     temperature: 0.8,
-    model: "gpt-4o-mini",  // Using mini for faster responses (fits within Vercel 60s timeout)
+    model: "gpt-4o-mini",  // Using mini for faster responses
   });
 
   // Get frontend tools from CopilotKit

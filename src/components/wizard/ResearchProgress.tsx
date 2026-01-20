@@ -4,7 +4,7 @@
  * Research Progress Component - Minimal Version
  * Displays a Lottie animation with simple status text
  *
- * Cache Strategy (Vercel-side):
+ * Cache Strategy (Frontend-side):
  * 1. Check cache via /api/research-cache BEFORE triggering agent
  * 2. If cache hit, return immediately (saves API costs!)
  * 3. If cache miss, trigger agent, then save results to cache
@@ -78,7 +78,7 @@ export function ResearchProgress({
     appendMessageRef.current = appendMessage;
   }, [appendMessage]);
 
-  // Save research to cache (Vercel-side)
+  // Save research to cache (frontend-side)
   const saveToCache = useCallback(async (data: SourceResearchData) => {
     try {
       await fetch("/api/research-cache", {
