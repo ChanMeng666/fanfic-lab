@@ -16,8 +16,8 @@ Essential design system rules and coding patterns for Claude Code. For detailed 
 | Storage | Cloudinary | Cloudinary |
 
 **Production URLs:**
-- Frontend: `https://fanfic-lab-web.up.railway.app` (Railway default domain)
-- Agent: `http://agent.railway.internal:8123` (Railway private network)
+- Frontend: `https://web-production-01677.up.railway.app`
+- Agent: `http://fanfic-lab.railway.internal:8123` (Railway private network)
 
 ---
 
