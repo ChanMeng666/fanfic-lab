@@ -1,0 +1,30 @@
+# Dockerfile for LangGraph Agent Service
+# Uses Node.js 22.13.0 for Prisma 7.2.0 compatibility
+
+FROM node:22.13.0-bookworm-slim
+
+# Install required system packages
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (skip Prisma scripts - not needed for agent)
+RUN npm ci --legacy-peer-deps --ignore-scripts
+
+# Copy agent source code
+COPY src/agent ./src/agent
+COPY src/lib ./src/lib
+COPY tsconfig.json ./
+
+# Expose port
+EXPOSE 8123
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=8123
+
+# Start the LangGraph agent
+CMD ["npm", "run", "start:agent"]
