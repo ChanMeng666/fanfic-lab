@@ -1,0 +1,70 @@
+# FanFic Lab Web Service Dockerfile
+# Prisma 7.2.0 requires Node.js 20.19+ or 22.12+
+
+FROM node:22.13.0-bookworm-slim
+
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Build arguments for environment variables required at build time
+# Client-side (NEXT_PUBLIC_)
+ARG NEXT_PUBLIC_STACK_PROJECT_ID
+ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
+
+# Server-side (required for Next.js build to generate routes)
+ARG STACK_SECRET_SERVER_KEY
+ARG DATABASE_URL
+ARG REDIS_URL
+ARG OPENAI_API_KEY
+ARG LANGSMITH_API_KEY
+ARG CLOUDINARY_CLOUD_NAME
+ARG CLOUDINARY_API_KEY
+ARG CLOUDINARY_API_SECRET
+ARG ADMIN_SECRET
+ARG LANGGRAPH_URL
+
+# Set as environment variables for the build process
+ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID
+ENV NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
+ENV STACK_SECRET_SERVER_KEY=$STACK_SECRET_SERVER_KEY
+ENV DATABASE_URL=$DATABASE_URL
+ENV REDIS_URL=$REDIS_URL
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+ENV LANGSMITH_API_KEY=$LANGSMITH_API_KEY
+ENV CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME
+ENV CLOUDINARY_API_KEY=$CLOUDINARY_API_KEY
+ENV CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET
+ENV ADMIN_SECRET=$ADMIN_SECRET
+ENV LANGGRAPH_URL=$LANGGRAPH_URL
+
+# Copy package files first
+COPY package*.json ./
+
+# Copy prisma schema BEFORE npm ci (postinstall runs prisma generate)
+COPY prisma ./prisma/
+COPY prisma.config.ts ./
+
+# Install dependencies (use legacy-peer-deps to resolve @langchain/core conflicts)
+# Also use --ignore-scripts to skip prisma generate in postinstall, we'll run it manually
+RUN npm ci --legacy-peer-deps --ignore-scripts
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy the rest of the application
+COPY . .
+
+# Build the Next.js application
+RUN npm run build
+
+# Expose port 3000
+EXPOSE 3000
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Start the application
+CMD ["npm", "run", "start"]
