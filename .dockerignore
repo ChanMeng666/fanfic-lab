@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+out
+build
+dist
+
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Claude / AI
+.claude
+
+# Vercel (legacy)
+.vercel
+
+# Testing / Coverage
+coverage
+
+# Documentation
+docs
+*.md
+!README.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+npm-debug.log*
