@@ -707,7 +707,7 @@ FanFic Lab runs entirely on Railway with two services communicating via private 
 
 | Service | URL |
 |---------|-----|
-| Frontend (Railway) | https://web-production-01677.up.railway.app |
+| Frontend | https://www.fanfic-lab.tech |
 | Agent (Internal) | http://fanfic-lab.railway.internal:8123 |
 
 ### Architecture Diagram
@@ -843,7 +843,7 @@ AI-powered, community-driven.
 [back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
 
 <!-- Project Links -->
-[project-link]: https://web-production-01677.up.railway.app
+[project-link]: https://www.fanfic-lab.tech
 
 <!-- GitHub Links -->
 [github-issues-link]: https://github.com/ChanMeng666/fanfic-lab/issues
@@ -852,7 +852,7 @@ AI-powered, community-driven.
 [github-license-link]: https://github.com/ChanMeng666/fanfic-lab/blob/main/LICENSE
 
 <!-- External Links -->
-[railway-link]: https://web-production-01677.up.railway.app
+[railway-link]: https://www.fanfic-lab.tech
 [nextjs-link]: https://nextjs.org
 [typescript-link]: https://www.typescriptlang.org
 [tailwind-link]: https://tailwindcss.com

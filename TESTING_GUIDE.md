@@ -519,7 +519,7 @@ npm run dev:all   # Starts both Next.js and LangGraph agent
 ### Production URLs
 | Service | URL |
 |---------|-----|
-| Frontend | https://web-production-01677.up.railway.app |
+| Frontend | https://www.fanfic-lab.tech |
 | Agent | http://fanfic-lab.railway.internal:8123 (private) |
 
 ---
