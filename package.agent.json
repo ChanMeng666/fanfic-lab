@@ -7,14 +7,12 @@
   },
   "dependencies": {
     "@copilotkit/sdk-js": "^1.50.1",
-    "@langchain/community": "^0.0.53",
     "@langchain/core": "^1.1.8",
     "@langchain/langgraph": "^1.0.7",
     "@langchain/langgraph-cli": "^1.1.2",
     "@langchain/openai": "^1.2.0",
     "@tavily/core": "^0.6.4",
     "cloudinary": "^2.8.0",
-    "langchain": "^0.3.3",
     "zod": "^3.25.76"
   }
 }
