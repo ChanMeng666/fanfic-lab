@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { CopilotTextarea } from "@copilotkit/react-textarea";
-import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
+import { useEditorAI } from "@/lib/hooks/useEditorAI";
 import { Card } from "@/components/ui/card";
 import { AIToolbar } from "./AIToolbar";
 import { OOCChecker, type OOCIssue } from "./OOCChecker";
@@ -29,27 +28,7 @@ export function SmartEditor({
   const [oocResults, setOocResults] = useState<OOCIssue[]>([]);
   const [isCheckingOOC, setIsCheckingOOC] = useState(false);
 
-  // Provide story context to the AI
-  useCopilotReadable({
-    description: "Current story being edited",
-    value: {
-      fandom: storyContext.fandom,
-      ships: storyContext.ships,
-      tags: storyContext.tags,
-      tone: storyContext.tone,
-      characters: storyContext.characters.map((c) => ({
-        name: c.name,
-        personality: c.personality,
-      })),
-      currentChapter: storyContext.currentChapter,
-      plotPoints: storyContext.plotPoints,
-    },
-  });
-
-  useCopilotReadable({
-    description: "Current editor content",
-    value: content,
-  });
+  const { isLoading: isAILoading, requestContinuation, requestExpansion, requestPolish, requestOOCCheck } = useEditorAI({ storyContext });
 
   // Handle text selection
   const handleSelect = useCallback(() => {
@@ -68,140 +47,6 @@ export function SmartEditor({
     [onContentChange]
   );
 
-  // AI action: Generate continuation
-  useCopilotAction({
-    name: "continue_story",
-    description: "Continue the story from where the user left off",
-    parameters: [
-      {
-        name: "continuation",
-        type: "string",
-        description: "The generated story continuation",
-        required: true,
-      },
-    ],
-    handler: async ({ continuation }) => {
-      setPendingContent({
-        type: "continuation",
-        content: continuation,
-      });
-    },
-    render: ({ status, args }) => {
-      if (status === "inProgress") {
-        return (
-          <div className="flex items-center gap-2 p-3 bg-ai-surface border border-accent/30 rounded-xl ai-glow">
-            <div className="animate-spin h-4 w-4 border-2 border-accent border-t-transparent rounded-full" />
-            <span className="text-sm text-accent-foreground">Writing continuation...</span>
-          </div>
-        );
-      }
-      return <></>;
-    },
-  });
-
-  // AI action: Expand text
-  useCopilotAction({
-    name: "expand_text",
-    description: "Expand the selected text with more detail",
-    parameters: [
-      {
-        name: "expanded",
-        type: "string",
-        description: "The expanded version of the text",
-        required: true,
-      },
-    ],
-    handler: async ({ expanded }) => {
-      setPendingContent({
-        type: "expansion",
-        content: expanded,
-      });
-    },
-    render: ({ status }) => {
-      if (status === "inProgress") {
-        return (
-          <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/30 rounded-xl">
-            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-            <span className="text-sm text-primary">Expanding text...</span>
-          </div>
-        );
-      }
-      return <></>;
-    },
-  });
-
-  // AI action: Polish prose
-  useCopilotAction({
-    name: "polish_prose",
-    description: "Polish and improve the selected text",
-    parameters: [
-      {
-        name: "polished",
-        type: "string",
-        description: "The polished version of the text",
-        required: true,
-      },
-    ],
-    handler: async ({ polished }) => {
-      setPendingContent({
-        type: "expansion",
-        content: polished,
-      });
-    },
-    render: ({ status }) => {
-      if (status === "inProgress") {
-        return (
-          <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-xl">
-            <div className="animate-spin h-4 w-4 border-2 border-success border-t-transparent rounded-full" />
-            <span className="text-sm text-success">Polishing prose...</span>
-          </div>
-        );
-      }
-      return <></>;
-    },
-  });
-
-  // AI action: Check OOC
-  useCopilotAction({
-    name: "check_ooc",
-    description: "Check story content for out-of-character moments",
-    parameters: [
-      {
-        name: "issues",
-        type: "object[]",
-        description: "Array of OOC issues found",
-        required: true,
-      },
-    ],
-    handler: async ({ issues }) => {
-      const mappedIssues: OOCIssue[] = (issues as unknown[]).map((issue: unknown) => {
-        const i = issue as Record<string, unknown>;
-        return {
-          characterId: String(i.characterId || ""),
-          characterName: String(i.characterName || "Unknown"),
-          issueType: (i.issueType as OOCIssue["issueType"]) || "behavior",
-          excerpt: String(i.excerpt || ""),
-          explanation: String(i.explanation || ""),
-          suggestion: String(i.suggestion || ""),
-          severity: (i.severity as OOCIssue["severity"]) || "medium",
-        };
-      });
-      setOocResults(mappedIssues);
-      setIsCheckingOOC(false);
-    },
-    render: ({ status }) => {
-      if (status === "inProgress") {
-        setIsCheckingOOC(true);
-        return (
-          <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-xl">
-            <div className="animate-spin h-4 w-4 border-2 border-warning border-t-transparent rounded-full" />
-            <span className="text-sm text-warning">Checking for OOC moments...</span>
-          </div>
-        );
-      }
-      return <></>;
-    },
-  });
 
   // Handle approval of pending content
   const handleApprove = useCallback(() => {
@@ -224,24 +69,21 @@ export function SmartEditor({
     setPendingContent(null);
   }, []);
 
-  // Build autosuggest context
-  const autosuggestContext = `
-You are helping write a ${storyContext.fandom} fanfiction.
-Tone: ${storyContext.tone}
-Ships: ${storyContext.ships.join(", ") || "None"}
-Characters: ${storyContext.characters.map((c) => c.name).join(", ") || "None"}
-
-Continue the story naturally, maintaining character voices and the established tone.
-Write in the same style as the existing content.
-`.trim();
-
   return (
     <div className="flex flex-col h-full">
       {/* AI Toolbar */}
       <AIToolbar
         selectedText={selectedText}
-        isProcessing={isProcessing}
+        isProcessing={isAILoading}
         storyContext={storyContext}
+        content={content}
+        onResult={(result) => {
+          setPendingContent({ type: "continuation", content: result });
+        }}
+        requestContinuation={requestContinuation}
+        requestExpansion={requestExpansion}
+        requestPolish={requestPolish}
+        requestOOCCheck={requestOOCCheck}
       />
 
       {/* OOC Results */}
@@ -296,16 +138,12 @@ Write in the same style as the existing content.
 
       {/* Main Editor */}
       <Card className="flex-1 p-4 border-border">
-        <CopilotTextarea
+        <textarea
           className="w-full h-full min-h-[500px] resize-none border-none focus:outline-none focus:ring-0 text-lg leading-relaxed font-prose bg-transparent text-foreground placeholder:text-muted-foreground"
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           onSelect={handleSelect}
           placeholder="Start writing your story here..."
-          autosuggestionsConfig={{
-            textareaPurpose: autosuggestContext,
-            chatApiConfigs: {},
-          }}
         />
       </Card>
 

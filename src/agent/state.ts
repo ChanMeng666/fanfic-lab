@@ -1,24 +1,24 @@
 /**
  * FanFic Lab LangGraph Agent State
- * Defines the state annotation for the LangGraph.js agent
+ * Defines the state annotation for the 7-node pipeline
+ * No CopilotKit dependency - uses native LangGraph state management
  */
 
-import { Annotation } from "@langchain/langgraph";
+import { Annotation, MessagesAnnotation } from "@langchain/langgraph";
 import type {
   StoryContext,
   WizardSession,
   PendingContent,
   OOCCheckResult,
   GeneratedImage,
+  PipelineStage,
+  StoryRequest,
+  WritingPlan,
+  StoryDeliverable,
 } from "../lib/types/agent-state";
 
-// Import CopilotKit state annotation for integration
-// Note: CopilotKitStateAnnotation provides the 'copilotkit' property
-// which includes frontend actions and other CopilotKit-specific state
-import { CopilotKitStateAnnotation } from "@copilotkit/sdk-js/langgraph";
-
 /**
- * Log entry for tracking agent progress (used by frontend via useCoAgentStateRender)
+ * Log entry for tracking agent progress
  */
 export interface AgentLog {
   message: string;
@@ -27,60 +27,88 @@ export interface AgentLog {
 
 /**
  * FanFic Agent State Annotation
- * Extends CopilotKitStateAnnotation to include CopilotKit integration
+ * Extends MessagesAnnotation for native LangGraph message handling
  */
 export const FanficAgentStateAnnotation = Annotation.Root({
-  // Inherit CopilotKit state (messages, actions, etc.)
-  ...CopilotKitStateAnnotation.spec,
+  // Inherit LangGraph message state
+  ...MessagesAnnotation.spec,
 
-  // Story context for AI continuity
+  // ============================================
+  // Pipeline State (Quick Generate flow)
+  // ============================================
+
+  pipelineStage: Annotation<PipelineStage>({
+    reducer: (_, update) => update,
+    default: () => "idle" as PipelineStage,
+  }),
+
+  storyRequest: Annotation<StoryRequest | null>({
+    reducer: (_, update) => update,
+    default: () => null,
+  }),
+
+  writingPlan: Annotation<WritingPlan | null>({
+    reducer: (_, update) => update,
+    default: () => null,
+  }),
+
+  storyDraft: Annotation<string>({
+    reducer: (_, update) => update,
+    default: () => "",
+  }),
+
+  deliverable: Annotation<StoryDeliverable | null>({
+    reducer: (_, update) => update,
+    default: () => null,
+  }),
+
+  // ============================================
+  // Legacy State (Wizard/Editor backward compat)
+  // ============================================
+
   storyContext: Annotation<StoryContext | null>({
     reducer: (_, update) => update,
     default: () => null,
   }),
 
-  // Current editor content
   editorContent: Annotation<string>({
     reducer: (_, update) => update,
     default: () => "",
   }),
 
-  // Wizard session state
   wizardSession: Annotation<WizardSession | null>({
     reducer: (_, update) => update,
     default: () => null,
   }),
 
-  // Pending content awaiting approval
   pendingContent: Annotation<PendingContent | null>({
     reducer: (_, update) => update,
     default: () => null,
   }),
 
-  // OOC check results
   oocCheckResults: Annotation<OOCCheckResult[]>({
     reducer: (_, update) => update,
     default: () => [],
   }),
 
-  // Generated images
   generatedImages: Annotation<GeneratedImage[]>({
     reducer: (prev, update) => [...prev, ...update],
     default: () => [],
   }),
 
-  // Agent progress logs (used by useCoAgentStateRender on frontend)
+  // ============================================
+  // Shared State
+  // ============================================
+
   logs: Annotation<AgentLog[]>({
     reducer: (_, update) => update,
     default: () => [],
   }),
 
-  // Research sources (URLs -> source data)
   sources: Annotation<Record<string, { title: string; content: string; url: string; score?: number }>>({
     reducer: (prev, update) => ({ ...prev, ...update }),
     default: () => ({}),
   }),
 });
 
-// Type for the agent state
 export type FanficAgentState = typeof FanficAgentStateAnnotation.State;

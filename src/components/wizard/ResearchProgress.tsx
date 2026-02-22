@@ -11,11 +11,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
-import { TextMessage, MessageRole } from "@copilotkit/runtime-client-gql";
 import Lottie from "lottie-react";
 import loadingAnimation from "@/../public/lottie/loading.json";
-import type { SourceType, SourceResearchData, FanficAgentState } from "@/lib/types/agent-state";
+import type { SourceType, SourceResearchData } from "@/lib/types/agent-state";
 
 interface ResearchProgressProps {
   sourceName: string;
@@ -52,18 +50,9 @@ export function ResearchProgress({
   const hasCompletedRef = useRef(false);
   const hasInitializedRef = useRef(false);
 
-  // Get agent state via useCoAgent for polling
-  const { state: agentState } = useCoAgent<FanficAgentState>({
-    name: "fanfic_agent",
-  });
-
-  // Get CopilotChat to trigger research
-  const { appendMessage } = useCopilotChat();
-
   // Store callbacks in refs to avoid effect dependency issues
   const onCompleteRef = useRef(onComplete);
   const onErrorRef = useRef(onError);
-  const appendMessageRef = useRef(appendMessage);
 
   // Keep refs updated
   useEffect(() => {
@@ -73,10 +62,6 @@ export function ResearchProgress({
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
-
-  useEffect(() => {
-    appendMessageRef.current = appendMessage;
-  }, [appendMessage]);
 
   // Save research to cache (frontend-side)
   const saveToCache = useCallback(async (data: SourceResearchData) => {
@@ -167,18 +152,32 @@ export function ResearchProgress({
     const triggerAgent = async () => {
       if (hasTriggeredRef.current) return;
       hasTriggeredRef.current = true;
-
       setStatus("researching");
 
-      const messageContent = `Please use the research_source_materials tool to research "${sourceName}" (${sourceType}) for fanfiction writing. Search for characters, plot, world settings, and popular ships.`;
-
       try {
-        await appendMessageRef.current(
-          new TextMessage({
-            role: MessageRole.User,
-            content: messageContent,
-          })
-        );
+        const response = await fetch("/api/agent/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "continue",
+            content: `Research "${sourceName}" (${sourceType}) for fanfiction writing. Provide main characters, relationships, plot summary, world settings, and popular ships.`,
+            storyContext: { fandom: sourceName, ships: [], tags: [], plotPoints: [], currentChapter: 1, characters: [], tone: "neutral" },
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.result) {
+            try {
+              const parsed = JSON.parse(data.result);
+              completeResearchRef.current(parsed, false);
+            } catch {
+              onErrorRef.current?.("Failed to parse research results");
+            }
+          }
+        } else {
+          onErrorRef.current?.("Research request failed");
+        }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error";
         onErrorRef.current?.(`Failed to start research: ${errorMsg}`);
@@ -194,22 +193,6 @@ export function ResearchProgress({
       }
     };
   }, [sourceName, sourceType]);
-
-  // Poll agent state for research completion
-  useEffect(() => {
-    if (status === "loading_cache" || status === "complete") return;
-
-    const researchData = agentState?.wizardSession?.researchData;
-    const hasResearchData = researchData && (
-      researchData.mainCharacters !== undefined ||
-      researchData.originalPlot !== undefined ||
-      researchData.worldSettings !== undefined
-    );
-
-    if (!hasCompletedRef.current && hasResearchData) {
-      completeResearch(researchData, false);
-    }
-  }, [agentState, status, completeResearch]);
 
   // Timeout fallback - if no response in 90 seconds
   useEffect(() => {

@@ -2,10 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CopilotChat, CopilotPopup } from "@copilotkit/react-ui";
-import { useCopilotAction, useCopilotReadable, useCoAgentStateRender, useCopilotChat } from "@copilotkit/react-core";
-import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
-import { Sparkles, ArrowLeft, ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Wizard components
@@ -15,7 +13,6 @@ import { StoryConfigurator } from "@/components/wizard/StoryConfigurator";
 import { ResearchProgress } from "@/components/wizard/ResearchProgress";
 import { ResearchResultsCard } from "@/components/wizard/ResearchResultsCard";
 import { CharacterSetupV2 } from "@/components/wizard/CharacterSetupV2";
-import { OutlineApprovalCard } from "@/components/hitl/OutlineApprovalCard";
 import { InlineWritingArea } from "@/components/wizard/InlineWritingArea";
 
 // Types and actions
@@ -31,15 +28,6 @@ import type {
 import { INITIAL_WIZARD_SESSION } from "@/lib/types/agent-state";
 import { saveDraft, saveWizardProgress, loadWizardProgress } from "@/lib/actions/user";
 
-// Custom AI thinking animation - three bouncing dots
-const ThinkingDots = (
-  <div className="flex items-center gap-1.5">
-    <span className="thinking-dot" style={{ animationDelay: "0s" }} />
-    <span className="thinking-dot" style={{ animationDelay: "0.15s" }} />
-    <span className="thinking-dot" style={{ animationDelay: "0.3s" }} />
-  </div>
-);
-
 export default function WizardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,59 +41,6 @@ export default function WizardPage() {
   // Research state
   const [isResearching, setIsResearching] = useState(false);
   const [researchComplete, setResearchComplete] = useState(false);
-
-  // CopilotChat hook for sending messages programmatically
-  const { appendMessage } = useCopilotChat();
-
-  // Handler for floating "Generate Outline" button
-  const handleGenerateOutline = useCallback(async () => {
-    await appendMessage(
-      new TextMessage({
-        role: Role.User,
-        content: "Please generate a formal outline based on our discussion",
-      })
-    );
-  }, [appendMessage]);
-
-  // HITL: Use useCoAgentStateRender to detect pendingContent from agent state
-  // When agent emits pendingContent with type "outline", render OutlineApprovalCard inline in chat
-  useCoAgentStateRender<{
-    pendingContent?: { type: string; content: string } | null;
-  }>({
-    name: "fanfic_agent",
-    render: ({ state }) => {
-      console.log("[Wizard] useCoAgentStateRender called, state:", !!state);
-
-      // Check if there's a pending outline from agent state
-      if (state?.pendingContent?.type === "outline" && state.pendingContent.content) {
-        console.log("[Wizard] Rendering OutlineApprovalCard from agent state");
-        console.log("[Wizard] Outline content length:", state.pendingContent.content.length);
-
-        const outlineContent = state.pendingContent.content;
-
-        // Render OutlineApprovalCard inline in the chat
-        return (
-          <OutlineApprovalCard
-            outline={outlineContent}
-            onApprove={() => {
-              console.log("[Wizard] User APPROVED outline via state-based HITL");
-              handleOutlineApproved(outlineContent);
-            }}
-            onReject={(feedback?: string) => {
-              console.log("[Wizard] User REJECTED outline, feedback:", feedback);
-              // User will type regeneration request in chat
-            }}
-            onEdit={(editedOutline) => {
-              console.log("[Wizard] User EDITED and approved outline");
-              handleOutlineApproved(editedOutline);
-            }}
-          />
-        );
-      }
-
-      return null;
-    },
-  });
 
   // Debug: Track mode and session changes
   useEffect(() => {
@@ -180,12 +115,6 @@ export default function WizardPage() {
     },
     [draftId]
   );
-
-  // Share wizard state with AI
-  useCopilotReadable({
-    description: "Current wizard session state",
-    value: session,
-  });
 
   // Step 1: Source Selection Handler
   const handleSourceComplete = async (data: { sourceType: SourceType; sourceName: string }) => {
@@ -314,68 +243,6 @@ export default function WizardPage() {
     }
   };
 
-  // HITL: Present outline for approval
-  useCopilotAction({
-    name: "present_outline",
-    description: "Present the generated story outline for approval",
-    parameters: [
-      {
-        name: "outline",
-        type: "string",
-        description: "The generated story outline",
-        required: true,
-      },
-    ],
-    renderAndWaitForResponse: ({ args, respond }) => {
-      console.log("[Wizard] present_outline action RENDERED");
-      console.log("[Wizard] Outline arg length:", args.outline?.length || 0);
-      return (
-        <OutlineApprovalCard
-          outline={args.outline || ""}
-          onApprove={() => {
-            console.log("[Wizard] User clicked APPROVE in OutlineApprovalCard");
-            handleOutlineApproved(args.outline || "");
-            respond?.({ approved: true, outline: args.outline });
-          }}
-          onReject={(feedback?: string) => {
-            console.log("[Wizard] User clicked REJECT in OutlineApprovalCard");
-            respond?.({
-              approved: false,
-              feedback: feedback || "Please regenerate with different ideas",
-            });
-          }}
-          onEdit={(editedOutline) => {
-            console.log("[Wizard] User clicked EDIT in OutlineApprovalCard");
-            handleOutlineApproved(editedOutline);
-            respond?.({ approved: true, outline: editedOutline });
-          }}
-        />
-      );
-    },
-  });
-
-  // HITL: Start writing action
-  useCopilotAction({
-    name: "start_writing",
-    description: "User is ready to start writing their story",
-    parameters: [],
-    handler: async () => {
-      console.log("[Wizard] start_writing action CALLED");
-      console.log("[Wizard] Current mode:", mode);
-      if (mode !== "writing") {
-        setMode("writing");
-      }
-    },
-    render: () => (
-      <div className="flex items-center gap-2 p-4 bg-primary/10 border border-primary/30 rounded-xl">
-        <Sparkles className="size-4 text-primary" />
-        <span className="text-primary font-medium">
-          Ready to start writing! Your draft has been saved.
-        </span>
-      </div>
-    ),
-  });
-
   // Render step content
   const renderStepContent = () => {
     switch (session.step) {
@@ -436,90 +303,26 @@ export default function WizardPage() {
         );
 
       case "outline":
-        // Outline step uses CopilotChat for AI generation
-        // Build explicit context instructions for the AI - VERY STRONG enforcement
-        const characterNames = session.characters.map((c) => c.name).join(", ") || "Not selected";
-        const outlineInstructions = `## ABSOLUTE RULES - FOLLOW THESE WITHOUT EXCEPTION
-
-### Rule 1: NEVER ASK FOR INFORMATION
-The user has ALREADY provided everything through the wizard. DO NOT ask for:
-- Fandom/source material (it's ${session.sourceName})
-- Character names (they are: ${characterNames})
-- Settings, ships, or tags (all provided below)
-
-### Rule 2: ADAPT ALL REQUESTS TO THIS CONTEXT
-When user asks for ANY type of story, use ONLY these characters:
-${characterNames}
-
-Examples:
-- "Write a school story" → Write school AU with ${characterNames}
-- "Write a gangster story" → Write gangster AU with ${characterNames}
-- "Make it fluffy" → Write fluffy romance with ${characterNames}
-
-### Rule 3: START IMMEDIATELY
-When asked to write, START WRITING. Don't confirm, don't ask questions.
-
-## YOUR MANDATORY CONTEXT
-- **FANDOM**: ${session.sourceName} (${session.sourceType})
-- **CHARACTERS**: ${characterNames}
-- **SHIP TYPE**: ${session.shipType?.toUpperCase() || "Not specified"}
-- **SETTING**: ${session.setting || "Not specified"}
-- **TAGS**: ${session.additionalTags.join(", ") || "None"}
-${session.researchData ? `- **AVAILABLE CHARACTERS**: ${session.researchData.mainCharacters.map(c => c.name).join(", ")}` : ""}
-${session.researchData?.popularShips?.length ? `- **POPULAR SHIPS**: ${session.researchData.popularShips.join(", ")}` : ""}`;
-
-        // Use a stable key based on session data to start fresh conversation for outline
-        const outlineChatKey = `outline-${session.sourceName}-${session.characters.length}`;
-
         return (
-          <div className="flex-1 flex flex-col overflow-hidden bg-background">
-            {/* Visible Context Banner - Shows users what context AI has */}
-            <div className="flex-shrink-0 border-b border-border bg-surface/50 px-4 py-3">
-              <div className="max-w-3xl mx-auto">
-                <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center size-8 rounded-lg bg-accent/15 text-accent flex-shrink-0">
-                    <Sparkles className="size-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-foreground mb-1">Story Context</h3>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p><span className="font-medium">Fandom:</span> {session.sourceName} ({session.sourceType})</p>
-                      <p><span className="font-medium">Characters:</span> {characterNames}</p>
-                      <p><span className="font-medium">Ship:</span> {session.shipType?.toUpperCase() || "General"} | <span className="font-medium">Setting:</span> {session.setting || "Canon"}</p>
-                      {session.additionalTags.length > 0 && (
-                        <p><span className="font-medium">Tags:</span> {session.additionalTags.join(", ")}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
+            <div className="flex items-center justify-center size-12 rounded-xl bg-accent/15 text-accent">
+              <Sparkles className="size-6" />
             </div>
-
-            {/* Chat Area */}
-            <div className="flex-1 overflow-hidden wizard-chat-cream">
-              <CopilotChat
-                key={outlineChatKey}
-                instructions={outlineInstructions}
-                labels={{
-                  title: "Story Outline",
-                  initial: `Let's create your ${session.sourceName} story outline!\n\n**Your setup:**\n- Characters: ${characterNames}\n- Ship: ${session.shipType?.toUpperCase() || "General"}\n- Setting: ${session.setting || "Canon"}\n${session.additionalTags.length > 0 ? `- Tags: ${session.additionalTags.join(", ")}\n` : ""}\n**What you can do:**\n1. Tell me what kind of story you want (e.g., "Write a sweet school romance")\n2. Discuss plot ideas with me to refine your vision\n3. When ready, click the **"Generate Outline"** button in the bottom right\n\nI'll create a chapter-by-chapter outline for you to review!`,
-                }}
-                icons={{
-                  activityIcon: ThinkingDots,
-                }}
-                className="h-full"
-              />
-            </div>
-
-            {/* Floating "Generate Outline" Button */}
-            <div className="fixed bottom-24 right-8 z-50">
-              <Button
-                onClick={handleGenerateOutline}
-                className="gap-2 shadow-lg ai-glow bg-accent hover:bg-accent/90 text-accent-foreground"
-                size="lg"
-              >
-                <ClipboardList className="size-4" />
-                Generate Outline
+            <h2 className="font-display text-2xl font-semibold">Generate Your Outline</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+              For the best AI-powered story generation experience, try our new Quick Generate mode.
+            </p>
+            <div className="flex gap-3">
+              <Link href="/generate">
+                <Button className="gap-1.5">
+                  <Sparkles className="size-4" />
+                  Quick Generate
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={() => {
+                handleOutlineApproved("User chose to write freely without an outline.");
+              }}>
+                Skip to Writing
               </Button>
             </div>
           </div>
@@ -596,14 +399,6 @@ ${session.researchData?.popularShips?.length ? `- **POPULAR SHIPS**: ${session.r
           />
         </div>
 
-        {/* AI Assistant Popup */}
-        <CopilotPopup
-          labels={{
-            title: "Writing Assistant",
-            initial:
-              "Need help with your story? I can help you continue writing, expand scenes, or polish your prose.",
-          }}
-        />
       </div>
     );
   }

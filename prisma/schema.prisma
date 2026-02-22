@@ -25,14 +25,16 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  stories     Story[]
-  characters  Character[]
-  drafts      Draft[]
-  likes       Like[]
-  comments    Comment[]
-  follows     Follow[]      @relation("follower")
-  followers   Follow[]      @relation("following")
-  preferences UserPreferences?
+  stories      Story[]
+  characters   Character[]
+  drafts       Draft[]
+  likes        Like[]
+  comments     Comment[]
+  follows      Follow[]      @relation("follower")
+  followers    Follow[]      @relation("following")
+  preferences  UserPreferences?
+  generations  Generation[]
+  credits      UserCredits?
 
   @@index([stackAuthId])
   @@index([email])
@@ -73,10 +75,11 @@ model Story {
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  chapters   Chapter[]
-  characters StoryCharacter[]
-  likes      Like[]
-  comments   Comment[]
+  chapters    Chapter[]
+  characters  StoryCharacter[]
+  likes       Like[]
+  comments    Comment[]
+  generations Generation[]
 
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -297,6 +300,54 @@ model Tag {
 
   @@index([category])
   @@index([usageCount])
+}
+
+// ============================================
+// AI GENERATION & CREDITS
+// ============================================
+
+model Generation {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           GenerationType
+  status         GenerationStatus @default(PENDING)
+  request        Json             // StoryRequest
+  plan           Json?            // WritingPlan (after planning stage)
+  deliverable    Json?            // StoryDeliverable (after delivery)
+  wordCount      Int              @default(0)
+  tokensUsed     Int              @default(0)
+  creditsCharged Int              @default(0)
+  durationMs     Int?
+  storyId        String?          // Link to saved Story if user saves it
+  story          Story?           @relation(fields: [storyId], references: [id])
+  createdAt      DateTime         @default(now())
+  completedAt    DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model UserCredits {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Int      @default(0)
+  totalUsed Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+enum GenerationType {
+  STORY
+  CONTINUATION
+}
+
+enum GenerationStatus {
+  PENDING
+  GENERATING
+  COMPLETE
+  FAILED
 }
 
 // ============================================

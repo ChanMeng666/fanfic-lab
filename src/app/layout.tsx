@@ -7,7 +7,6 @@ import {
 } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { CopilotProvider } from "@/components/providers/CopilotProvider";
 import { StackProvider } from "@/components/providers/StackProvider";
 import { ConditionalHeader } from "@/components/layout";
 import "./globals.css";
@@ -81,10 +80,8 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <ConditionalHeader />
           </Suspense>
-          <CopilotProvider>
-            {children}
-            <Toaster />
-          </CopilotProvider>
+          {children}
+          <Toaster />
         </StackProvider>
       </body>
     </html>

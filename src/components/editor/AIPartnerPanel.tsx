@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { CopilotChat } from "@copilotkit/react-ui";
-import { useCopilotChat } from "@copilotkit/react-core";
 import {
   Sparkles,
   BookOpen,
@@ -27,15 +25,16 @@ interface AIPartnerPanelProps {
   };
   wordCount?: number;
   className?: string;
+  isLoading?: boolean;
 }
 
 export function AIPartnerPanel({
   storyContext,
   wordCount = 0,
   className,
+  isLoading = false,
 }: AIPartnerPanelProps) {
   const [isContextExpanded, setIsContextExpanded] = useState(true);
-  const { isLoading } = useCopilotChat();
 
   // Quick action suggestions
   const quickActions = [
@@ -134,20 +133,14 @@ export function AIPartnerPanel({
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-hidden">
-        <CopilotChat
-          className="h-full [&_.copilotKitMessages]:px-3 [&_.copilotKitMessages]:py-3"
-          labels={{
-            title: "",
-            initial: "Hi! I'm your writing partner. How can I help with your story?",
-            placeholder: "Ask me anything about your story...",
-          }}
-          instructions={`You are a creative writing partner helping with fanfiction.
-            ${storyContext?.fandom ? `The story is set in the ${storyContext.fandom} fandom.` : ""}
-            ${storyContext?.tone ? `The tone should be ${storyContext.tone}.` : ""}
-            Be helpful, creative, and encouraging. Focus on character consistency and engaging storytelling.`}
-        />
+      {/* Chat Area - Placeholder */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="text-center space-y-2">
+          <Sparkles className="size-6 text-accent mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            AI chat coming soon. Use the toolbar actions above.
+          </p>
+        </div>
       </div>
 
       {/* Footer - Stats */}

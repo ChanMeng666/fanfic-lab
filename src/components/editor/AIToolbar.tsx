@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useCopilotChat } from "@copilotkit/react-core";
-import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import { Wand2, FileText, Sparkles, Theater, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +16,12 @@ interface AIToolbarProps {
   selectedText: string;
   isProcessing: boolean;
   storyContext: StoryContext;
+  content: string;
+  onResult: (result: string) => void;
+  requestContinuation: (content: string) => Promise<string | null>;
+  requestExpansion: (content: string, selectedText: string, focusArea: string) => Promise<string | null>;
+  requestPolish: (content: string, selectedText: string, intensity: string) => Promise<string | null>;
+  requestOOCCheck: (content: string) => Promise<string | null>;
 }
 
 type ActionType = "continue" | "expand" | "polish" | "ooc" | null;
@@ -26,53 +30,42 @@ export function AIToolbar({
   selectedText,
   isProcessing,
   storyContext,
+  content,
+  onResult,
+  requestContinuation,
+  requestExpansion,
+  requestPolish,
+  requestOOCCheck,
 }: AIToolbarProps) {
-  const { appendMessage } = useCopilotChat();
   const [activeAction, setActiveAction] = useState<ActionType>(null);
 
   const handleMagicContinue = async () => {
     setActiveAction("continue");
-    await appendMessage(
-      new TextMessage({
-        role: Role.User,
-        content: `Continue the story naturally from where it left off. Write about 200-300 words that flow naturally from the current content. Maintain the ${storyContext.tone} tone and keep characters in voice.`,
-      })
-    );
+    const result = await requestContinuation(content);
+    if (result) onResult(result);
     setActiveAction(null);
   };
 
   const handleExpand = async (focus: string) => {
     if (!selectedText) return;
     setActiveAction("expand");
-    await appendMessage(
-      new TextMessage({
-        role: Role.User,
-        content: `Expand the following text with more ${focus}. Keep the same style and tone:\n\n"${selectedText}"`,
-      })
-    );
+    const result = await requestExpansion(content, selectedText, focus);
+    if (result) onResult(result);
     setActiveAction(null);
   };
 
   const handlePolish = async (level: string) => {
     if (!selectedText) return;
     setActiveAction("polish");
-    await appendMessage(
-      new TextMessage({
-        role: Role.User,
-        content: `Polish this text with a ${level} level of editing. Improve prose quality while preserving the author's voice:\n\n"${selectedText}"`,
-      })
-    );
+    const result = await requestPolish(content, selectedText, level);
+    if (result) onResult(result);
     setActiveAction(null);
   };
 
   const handleOOCCheck = async () => {
     setActiveAction("ooc");
-    await appendMessage(
-      new TextMessage({
-        role: Role.User,
-        content: `Check the current story content for any out-of-character (OOC) moments. For each character (${storyContext.characters.map((c) => c.name).join(", ")}), identify any dialogue or actions that seem inconsistent with their established personality and provide suggestions for fixes.`,
-      })
-    );
+    const result = await requestOOCCheck(content);
+    if (result) onResult(result);
     setActiveAction(null);
   };
 

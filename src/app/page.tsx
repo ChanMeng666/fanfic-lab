@@ -6,7 +6,7 @@ import Image from "next/image";
 import { motion, stagger, useAnimate } from "motion/react";
 import {
   BookOpen,
-  PenLine,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
@@ -150,16 +150,15 @@ export default function Home() {
 
           {/* Description */}
           <p className="text-base md:text-lg text-muted-foreground/80 max-w-lg mx-auto leading-relaxed">
-            Write fanfiction with an AI partner that understands your characters
-            and helps bring your stories to life.
+            Describe your dream fanfic. We'll write it for you.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
-            <Link href="/wizard">
+            <Link href="/generate">
               <Button size="lg" className="gap-2 min-w-[180px] shadow-lg">
-                <PenLine className="size-5" />
-                Start Writing
+                <Sparkles className="size-5" />
+                Generate a Story
               </Button>
             </Link>
             <Link href="/feed">
@@ -171,6 +170,11 @@ export default function Home() {
                 <BookOpen className="size-5" />
                 Explore Stories
               </Button>
+            </Link>
+          </div>
+          <div className="pt-2">
+            <Link href="/wizard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Advanced: Start writing with the Creative Wizard
             </Link>
           </div>
         </motion.div>

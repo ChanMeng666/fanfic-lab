@@ -6,7 +6,6 @@
     "start:agent": "langgraphjs dev --host 0.0.0.0 --port ${PORT:-8123} --config src/agent/langgraph.json"
   },
   "dependencies": {
-    "@copilotkit/sdk-js": "1.50.1",
     "@langchain/core": "1.1.8",
     "@langchain/langgraph": "1.0.7",
     "@langchain/langgraph-cli": "1.1.2",

@@ -4,7 +4,7 @@
  */
 
 // ============================================
-// Source & Configuration Types (Wizard Steps 1-2)
+// Source & Configuration Types
 // ============================================
 
 export type SourceType =
@@ -32,16 +32,72 @@ export type StorySetting =
   | "office"
   | "other";
 
-export type WizardStep =
-  | "source"
-  | "config"
+// ============================================
+// Pipeline Types (Quick Generate Flow)
+// ============================================
+
+export type PipelineStage =
+  | "idle"
+  | "intake"
   | "research"
-  | "characters"
-  | "outline"
-  | "complete";
+  | "planning"
+  | "hitl_wait"
+  | "writing"
+  | "polishing"
+  | "delivery"
+  | "complete"
+  | "error";
+
+export interface StoryRequest {
+  fandom: string;
+  cp: string[];
+  theme: string;
+  setting: string;
+  constraints: {
+    length: "short" | "medium" | "long"; // ~1000 / ~3000 / ~6000 words
+    rating: string;
+    ending: "happy" | "sad" | "open";
+    pov: "first" | "third";
+    language: "en" | "zh";
+  };
+}
+
+export interface WritingPlan {
+  title: string;
+  elements: string; // CP / Theme / Timeline / Rating summary
+  emotionalArc: string[]; // 2-4 beats
+  sceneOutline: string[]; // 3-5 scene beats
+  constraints: string[]; // Setting rules to follow
+}
+
+export interface StoryDeliverable {
+  title: string;
+  elements: string;
+  writingPlan: string;
+  body: string;
+  continuationHooks: string[];
+  metadata: {
+    wordCount: number;
+    rating: string;
+    generationTimeMs: number;
+  };
+}
+
+// SSE event sent from /api/generate to frontend
+export interface PipelineEvent {
+  stage: PipelineStage;
+  data?: {
+    researchData?: SourceResearchData;
+    plan?: WritingPlan;
+    deliverable?: StoryDeliverable;
+    progress?: string; // Human-readable progress message
+    error?: string;
+    threadId?: string; // For resuming after HITL
+  };
+}
 
 // ============================================
-// Research Data Types (Wizard Step 3)
+// Research Data Types
 // ============================================
 
 export interface ResearchCharacter {
@@ -64,7 +120,6 @@ export interface SourceResearchData {
 // Character Types
 // ============================================
 
-// Character type for story context
 export interface StoryCharacter {
   id: string;
   name: string;
@@ -75,7 +130,6 @@ export interface StoryCharacter {
   isOriginal?: boolean;
 }
 
-// Story context for AI continuity
 export interface StoryContext {
   id?: string;
   title?: string;
@@ -85,64 +139,56 @@ export interface StoryContext {
   plotPoints: string[];
   currentChapter: number;
   characters: StoryCharacter[];
-  tone: string; // "fluff", "angst", "humor", "dark", etc.
+  tone: string;
   setting?: string;
 }
 
-// Wizard session state for Creative Wizard
+// ============================================
+// Wizard Session (Advanced Mode - kept for backward compat)
+// ============================================
+
+export type WizardStep =
+  | "source"
+  | "config"
+  | "research"
+  | "characters"
+  | "outline"
+  | "complete";
+
 export interface WizardSession {
   step: WizardStep;
-
-  // Step 1: Source Selection
   sourceType: SourceType | null;
   sourceName: string | null;
-
-  // Step 2: Story Configuration
   shipType: ShipType | null;
   setting: StorySetting | null;
   additionalTags: string[];
-
-  // Step 3: AI Research Results
   researchData: SourceResearchData | null;
   researchProgress?: {
     status: "idle" | "searching" | "complete" | "error";
     currentTask?: string;
     completedTasks: string[];
   };
-
-  // Step 4: Characters
   characters: StoryCharacter[];
-
-  // Step 5: Outline
   outline: string;
-
-  // User Preferences
   userPreferences: {
     tone?: string;
     length?: "short" | "medium" | "long";
     rating?: string;
   };
-
-  // Draft tracking
   draftId?: string;
   lastSavedAt?: Date;
-
-  // Legacy fields for backward compatibility
-  fandom?: string;
-  ship?: string;
-  ships?: string[];
-  tags?: string[];
-  plotIdeas?: string[];
 }
 
-// Pending content awaiting approval
+// ============================================
+// HITL & Content Types
+// ============================================
+
 export interface PendingContent {
   type: "outline" | "continuation" | "expansion" | "image";
   content: string;
   approved?: boolean;
 }
 
-// OOC check result for a character
 export interface OOCCheckResult {
   characterId: string;
   characterName: string;
@@ -150,7 +196,6 @@ export interface OOCCheckResult {
   suggestions: string[];
 }
 
-// Generated image
 export interface GeneratedImage {
   id: string;
   type: "character_portrait" | "scene_illustration" | "cover";
@@ -158,13 +203,15 @@ export interface GeneratedImage {
   prompt: string;
 }
 
-// Agent progress log entry (used by useCoAgentStateRender for progress display)
+// ============================================
+// Agent State Types
+// ============================================
+
 export interface AgentLog {
   message: string;
   done: boolean;
 }
 
-// Research source from Tavily search
 export interface ResearchSource {
   title: string;
   content: string;
@@ -172,35 +219,34 @@ export interface ResearchSource {
   score?: number;
 }
 
-// Main agent state - shared with frontend via useCoAgent
+// Main agent state - used by LangGraph pipeline
 export interface FanficAgentState {
-  // Story context
+  // Pipeline state (Quick Generate)
+  pipelineStage: PipelineStage;
+  storyRequest: StoryRequest | null;
+  writingPlan: WritingPlan | null;
+  storyDraft: string;
+  deliverable: StoryDeliverable | null;
+
+  // Legacy state (Wizard/Editor mode - kept for backward compat)
   storyContext: StoryContext | null;
-
-  // Current editor content
   editorContent: string;
-
-  // Wizard session
   wizardSession: WizardSession | null;
-
-  // Generated content awaiting approval
   pendingContent: PendingContent | null;
-
-  // OOC check results
   oocCheckResults: OOCCheckResult[];
-
-  // Generated images
   generatedImages: GeneratedImage[];
 
-  // Agent progress logs (for useCoAgentStateRender display)
+  // Shared state
   logs: AgentLog[];
-
-  // Research sources from Tavily search
   sources: Record<string, ResearchSource>;
 }
 
-// Initial state for useCoAgent
 export const INITIAL_AGENT_STATE: FanficAgentState = {
+  pipelineStage: "idle",
+  storyRequest: null,
+  writingPlan: null,
+  storyDraft: "",
+  deliverable: null,
   storyContext: null,
   editorContent: "",
   wizardSession: null,
@@ -211,7 +257,6 @@ export const INITIAL_AGENT_STATE: FanficAgentState = {
   sources: {},
 };
 
-// Initial wizard session state
 export const INITIAL_WIZARD_SESSION: WizardSession = {
   step: "source",
   sourceType: null,
@@ -224,6 +269,29 @@ export const INITIAL_WIZARD_SESSION: WizardSession = {
   outline: "",
   userPreferences: {},
 };
+
+// ============================================
+// Editor AI Types (for /api/agent/chat)
+// ============================================
+
+export type EditorAction = "continue" | "expand" | "polish" | "ooc_check";
+
+export interface EditorAIRequest {
+  action: EditorAction;
+  content: string;
+  selectedText?: string;
+  storyContext: StoryContext;
+  options?: {
+    targetLength?: "short" | "medium" | "long";
+    focusArea?: "dialogue" | "description" | "emotion" | "action" | "atmosphere" | "general";
+    intensity?: "light" | "medium" | "heavy";
+  };
+}
+
+export interface EditorAIResponse {
+  result: string;
+  type: EditorAction;
+}
 
 // ============================================
 // Static Data Constants

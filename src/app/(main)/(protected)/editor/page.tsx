@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Feather, Sparkles, Save, Send } from "lucide-react";
-import { CopilotSidebar } from "@copilotkit/react-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -284,15 +283,6 @@ export default function NewEditorPage() {
           </div>
         </main>
 
-        {/* CopilotKit Sidebar */}
-        <CopilotSidebar
-          defaultOpen={false}
-          labels={{
-            title: "Writing Assistant",
-            initial: "How can I help with your story?",
-          }}
-          className="w-80"
-        />
       </div>
     </div>
   );

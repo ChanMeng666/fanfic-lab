@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { CopilotTextarea } from "@copilotkit/react-textarea";
-import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { Sparkles, PenLine, FileText, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ContentApprovalCard } from "@/components/hitl/ContentApprovalCard";
@@ -67,27 +65,6 @@ export function InlineWritingArea({
     };
   }, [localContent, onContentChange]);
 
-  // Share story context with AI
-  useCopilotReadable({
-    description: "Story context for the current story being written",
-    value: {
-      fandom: storyContext.fandom,
-      ships: storyContext.ships,
-      tone: storyContext.tone,
-      characters: storyContext.characters.map((c) => ({
-        name: c.name,
-        personality: c.personality,
-        speechPattern: c.speechPattern,
-      })),
-      outline: storyContext.outline,
-    },
-  });
-
-  useCopilotReadable({
-    description: "Current story content being written",
-    value: localContent,
-  });
-
   // Handle content change from textarea
   const handleChange = useCallback((value: string) => {
     setLocalContent(value);
@@ -106,68 +83,6 @@ export function InlineWritingArea({
     setLocalContent((prev) => prev + "\n\n" + newContent);
     setPendingContent(null);
   }, []);
-
-  // AI Action: Continue story
-  useCopilotAction({
-    name: "continue_story",
-    description: "Continue writing the story from where the user left off",
-    parameters: [
-      {
-        name: "continuation",
-        type: "string",
-        description: "The generated story continuation",
-        required: true,
-      },
-    ],
-    handler: async ({ continuation }) => {
-      setPendingContent({
-        type: "continuation",
-        content: continuation,
-      });
-    },
-    render: ({ status }) => {
-      if (status === "inProgress") {
-        return (
-          <div className="flex items-center gap-2 p-3 bg-ai-surface border border-accent/30 rounded-xl ai-glow">
-            <div className="animate-spin h-4 w-4 border-2 border-accent border-t-transparent rounded-full" />
-            <span className="text-sm text-accent-foreground">Writing continuation...</span>
-          </div>
-        );
-      }
-      return <></>;
-    },
-  });
-
-  // AI Action: Expand scene
-  useCopilotAction({
-    name: "expand_scene",
-    description: "Expand a scene with more detail and description",
-    parameters: [
-      {
-        name: "expanded",
-        type: "string",
-        description: "The expanded scene content",
-        required: true,
-      },
-    ],
-    handler: async ({ expanded }) => {
-      setPendingContent({
-        type: "expansion",
-        content: expanded,
-      });
-    },
-    render: ({ status }) => {
-      if (status === "inProgress") {
-        return (
-          <div className="flex items-center gap-2 p-3 bg-ai-surface border border-accent/30 rounded-xl ai-glow">
-            <div className="animate-spin h-4 w-4 border-2 border-accent border-t-transparent rounded-full" />
-            <span className="text-sm text-accent-foreground">Expanding scene...</span>
-          </div>
-        );
-      }
-      return <></>;
-    },
-  });
 
   return (
     <div className="h-full flex flex-col">
@@ -287,24 +202,12 @@ export function InlineWritingArea({
             </div>
           )}
 
-          {/* CopilotTextarea for AI-assisted writing */}
-          <CopilotTextarea
+          {/* Writing textarea */}
+          <textarea
             value={localContent}
-            onValueChange={handleChange}
-            placeholder="Start writing your story here... Press Tab to accept AI suggestions as you type."
+            onChange={(e) => handleChange(e.target.value)}
+            placeholder="Start writing your story here..."
             className="min-h-[400px] w-full resize-none rounded-xl border border-border bg-surface p-4 font-prose text-base leading-relaxed focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            autosuggestionsConfig={{
-              textareaPurpose: `Help me write a ${storyContext.fandom} fanfiction story.
-Story context:
-- Fandom: ${storyContext.fandom}
-- Ships/Pairings: ${storyContext.ships.join(", ") || "None specified"}
-- Tone/Setting: ${storyContext.tone}
-- Characters: ${storyContext.characters.map(c => c.name).join(", ") || "None specified"}
-${storyContext.outline ? `- Story Outline: ${storyContext.outline.slice(0, 500)}` : ""}
-
-Continue the story naturally, maintaining character voices and the established tone. Write engaging prose that matches the style of fanfiction.`,
-              chatApiConfigs: {},
-            }}
           />
 
           {/* Pending AI Content Approval */}
