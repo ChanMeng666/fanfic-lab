@@ -92,11 +92,7 @@ export function useEditorAI({
           selectedText,
           storyContext,
           options: {
-            focusArea: focusArea as EditorAIRequest["options"] extends
-              | undefined
-              | infer O
-              ? NonNullable<O>["focusArea"]
-              : never,
+            focusArea: focusArea as NonNullable<EditorAIRequest["options"]>["focusArea"],
           },
         });
         return res.result;
@@ -127,11 +123,7 @@ export function useEditorAI({
           selectedText,
           storyContext,
           options: {
-            intensity: intensity as EditorAIRequest["options"] extends
-              | undefined
-              | infer O
-              ? NonNullable<O>["intensity"]
-              : never,
+            intensity: intensity as NonNullable<EditorAIRequest["options"]>["intensity"],
           },
         });
         return res.result;

@@ -128,28 +128,16 @@ export async function POST(req: NextRequest) {
                   };
 
                   if (nodeUpdates.researchData) {
-                    pipelineEvent.data!.researchData =
-                      nodeUpdates.researchData as PipelineEvent["data"] extends
-                        | undefined
-                        | infer D
-                        ? NonNullable<D>["researchData"]
-                        : never;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    pipelineEvent.data!.researchData = nodeUpdates.researchData as any;
                   }
                   if (nodeUpdates.writingPlan) {
-                    pipelineEvent.data!.plan =
-                      nodeUpdates.writingPlan as PipelineEvent["data"] extends
-                        | undefined
-                        | infer D
-                        ? NonNullable<D>["plan"]
-                        : never;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    pipelineEvent.data!.plan = nodeUpdates.writingPlan as any;
                   }
                   if (nodeUpdates.deliverable) {
-                    pipelineEvent.data!.deliverable =
-                      nodeUpdates.deliverable as PipelineEvent["data"] extends
-                        | undefined
-                        | infer D
-                        ? NonNullable<D>["deliverable"]
-                        : never;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    pipelineEvent.data!.deliverable = nodeUpdates.deliverable as any;
                   }
                   if (nodeUpdates.pipelineStage === "hitl_wait") {
                     pipelineEvent.data!.threadId = activeThreadId;

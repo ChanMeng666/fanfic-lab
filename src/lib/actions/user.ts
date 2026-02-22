@@ -504,7 +504,7 @@ export async function saveWizardProgress(input: {
       data: {
         title,
         fandom: input.sessionData.sourceName || undefined,
-        ships: input.sessionData.ships || [],
+        ships: input.sessionData.shipType ? [input.sessionData.shipType] : [],
         tags: input.sessionData.additionalTags || [],
         aiContext,
       },
@@ -517,7 +517,7 @@ export async function saveWizardProgress(input: {
         title,
         content: "",
         fandom: input.sessionData.sourceName || null,
-        ships: input.sessionData.ships || [],
+        ships: input.sessionData.shipType ? [input.sessionData.shipType] : [],
         tags: input.sessionData.additionalTags || [],
         aiContext,
         userId: user.id,

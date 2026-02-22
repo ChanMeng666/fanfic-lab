@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { POPULAR_SOURCES, type SourceType } from "@/lib/types/agent-state";
 
 interface FandomInputProps {
-  onSubmit: (fandom: string) => void;
+  onSelect: (fandom: string) => void;
   isLoading?: boolean;
 }
 
@@ -23,7 +23,7 @@ const CATEGORY_LABELS: Record<SourceType, string> = {
   other: "Other",
 };
 
-export function FandomInput({ onSubmit, isLoading }: FandomInputProps) {
+export function FandomInput({ onSelect, isLoading }: FandomInputProps) {
   const [input, setInput] = useState("");
 
   const filteredSources = useMemo(() => {
@@ -47,8 +47,8 @@ export function FandomInput({ onSubmit, isLoading }: FandomInputProps) {
 
   const handleSubmit = useCallback(() => {
     const trimmed = input.trim();
-    if (trimmed) onSubmit(trimmed);
-  }, [input, onSubmit]);
+    if (trimmed) onSelect(trimmed);
+  }, [input, onSelect]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -118,7 +118,7 @@ export function FandomInput({ onSubmit, isLoading }: FandomInputProps) {
                   className="cursor-pointer px-3 py-1.5 text-sm hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                   onClick={() => {
                     setInput(source.name);
-                    onSubmit(source.name);
+                    onSelect(source.name);
                   }}
                 >
                   {source.displayName}

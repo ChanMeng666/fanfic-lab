@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { stackServerApp } from "@/lib/stack";
 import type { StoryRequest, WritingPlan, StoryDeliverable } from "@/lib/types/agent-state";
 
@@ -31,7 +32,7 @@ export async function createGeneration(
       userId,
       type,
       status: "GENERATING",
-      request: request as unknown as Record<string, unknown>,
+      request: request as unknown as Prisma.InputJsonValue,
     },
   });
 
@@ -47,7 +48,7 @@ export async function updateGenerationPlan(
 ): Promise<void> {
   await prisma.generation.update({
     where: { id: generationId },
-    data: { plan: plan as unknown as Record<string, unknown> },
+    data: { plan: plan as unknown as Prisma.InputJsonValue },
   });
 }
 
@@ -62,7 +63,7 @@ export async function completeGeneration(
     where: { id: generationId },
     data: {
       status: "COMPLETE",
-      deliverable: deliverable as unknown as Record<string, unknown>,
+      deliverable: deliverable as unknown as Prisma.InputJsonValue,
       wordCount: deliverable.metadata.wordCount,
       durationMs: deliverable.metadata.generationTimeMs,
       completedAt: new Date(),

@@ -33,12 +33,18 @@ export function QuickGenerator() {
   const [themeOptions, setThemeOptions] = useState<ThemeOption[]>([]);
   const [selectedCP, setSelectedCP] = useState<string[]>([]);
   const [selectedTheme, setSelectedTheme] = useState("");
-  const [constraints, setConstraints] = useState({
-    length: "medium" as const,
+  const [constraints, setConstraints] = useState<{
+    length: "short" | "medium" | "long";
+    rating: string;
+    ending: "happy" | "sad" | "open";
+    pov: "first" | "third";
+    language: "en" | "zh";
+  }>({
+    length: "medium",
     rating: "General",
-    ending: "happy" as const,
-    pov: "third" as const,
-    language: "en" as const,
+    ending: "happy",
+    pov: "third",
+    language: "en",
   });
 
   const {

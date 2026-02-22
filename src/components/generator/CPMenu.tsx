@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CPOption {
-  names: string;
+  names: string[];
   description: string;
 }
 
 interface CPMenuProps {
   options: CPOption[];
   onSelect: (cp: string[]) => void;
-  fandom: string;
+  fandom?: string;
 }
 
 export function CPMenu({ options, onSelect, fandom }: CPMenuProps) {
@@ -22,11 +22,11 @@ export function CPMenu({ options, onSelect, fandom }: CPMenuProps) {
   const [customPairing, setCustomPairing] = useState("");
   const [showCustom, setShowCustom] = useState(false);
 
-  const handleSelect = (names: string) => {
-    setSelected(names);
+  const handleSelect = (names: string[]) => {
+    const label = names.join(" x ");
+    setSelected(label);
     setShowCustom(false);
-    // Split "Character A x Character B" into array
-    onSelect(names.split(/\s*x\s*/i).map((n) => n.trim()));
+    onSelect(names);
   };
 
   const handleCustomSubmit = () => {
@@ -51,29 +51,34 @@ export function CPMenu({ options, onSelect, fandom }: CPMenuProps) {
           Choose a Pairing
         </h2>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Popular pairings from {fandom}
-      </p>
+      {fandom && (
+        <p className="text-sm text-muted-foreground">
+          Popular pairings from {fandom}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {options.map((option) => (
+        {options.map((option) => {
+          const label = option.names.join(" x ");
+          return (
           <Card
-            key={option.names}
+            key={label}
             className={`cursor-pointer transition-all hover-lift ${
-              selected === option.names
+              selected === label
                 ? "border-primary ring-2 ring-primary/20"
                 : "border-border hover:border-primary/50"
             }`}
             onClick={() => handleSelect(option.names)}
           >
             <CardContent className="p-4">
-              <p className="font-medium text-foreground">{option.names}</p>
+              <p className="font-medium text-foreground">{label}</p>
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                 {option.description}
               </p>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
 
         {/* Custom pairing card */}
         <Card

@@ -105,8 +105,6 @@ export async function deductCredits(
   const userId = await getCurrentUserId();
   const cost = CREDIT_COSTS[length];
 
-  if (cost === 0) return { newBalance: 0 };
-
   const credits = await prisma.userCredits.upsert({
     where: { userId },
     create: { userId, balance: -cost, totalUsed: cost },
