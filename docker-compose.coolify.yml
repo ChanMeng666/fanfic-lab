@@ -1,0 +1,66 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        - NEXT_PUBLIC_STACK_PROJECT_ID=${NEXT_PUBLIC_STACK_PROJECT_ID}
+        - NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}
+        - STACK_SECRET_SERVER_KEY=${STACK_SECRET_SERVER_KEY}
+        - DATABASE_URL=${DATABASE_URL}
+        - REDIS_URL=${REDIS_URL}
+        - OPENAI_API_KEY=${OPENAI_API_KEY}
+        - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+        - LANGGRAPH_URL=http://agent:8123
+        - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+        - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+        - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+        - ADMIN_SECRET=${ADMIN_SECRET}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - LANGGRAPH_URL=http://agent:8123
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - STACK_SECRET_SERVER_KEY=${STACK_SECRET_SERVER_KEY}
+      - NEXT_PUBLIC_STACK_PROJECT_ID=${NEXT_PUBLIC_STACK_PROJECT_ID}
+      - NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+    depends_on:
+      - agent
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "8123:8123"
+    environment:
+      - NODE_ENV=production
+      - PORT=8123
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8123/info').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
