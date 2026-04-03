@@ -20,7 +20,7 @@ export function StoryResult({
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
       {/* Story Card */}
-      <Card className="border-accent/30 bg-ai-surface ai-glow">
+      <Card className="border-accent/30 bg-surface shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2.5">
