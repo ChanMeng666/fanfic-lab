@@ -2,46 +2,7 @@ import { FandomKnowledge } from '../base/types';
 import { HSR_CHARACTERS } from './characters';
 import { HSR_RELATIONSHIPS } from './relationships';
 import { HSR_WORLD_RULES } from './world';
-
-// Common tropes and themes in HSR fandom
-const HSR_TROPES = [
-  {
-    name: '前世今生',
-    description: '角色跨越世界或时间维度的羁绊，如丹恒与饮月君、景元与云骑军的联系',
-    characterAdaptations: {
-      丹恒: '饮月君记忆觉醒、前后人生的撕裂与融合',
-      景元: '云骑军统领的重压与对故人的等待',
-      开拓者: '多世界间的共鸣，与各人命运的交织',
-    },
-  },
-  {
-    name: '救赎弧',
-    description: '角色通过他人或旅途逐渐原谅自己、找到新生意义',
-    characterAdaptations: {
-      丹恒: '从自我审判走向接纳自己的两面性',
-      布洛妮娅: '从被命运束缚走向选择自己的人生',
-      星元: '作为治愈者本身也被治愈',
-    },
-  },
-  {
-    name: '秘密与揭示',
-    description: '角色隐藏的身份、过去或能力逐渐浮出水面',
-    characterAdaptations: {
-      砂金: '珀内科尼的掌权者秘密、对黑天鹅的执念',
-      丹恒: '饮月君身份的苏醒与他人的反应',
-      藿藿: '身上封印的贊泽与天选者的身份',
-    },
-  },
-  {
-    name: '日常温暖',
-    description: '在星穹列车上的日常互动、团队间的温馨时刻',
-    characterAdaptations: {
-      全员: '列车上的共餐、互相照顾、玩笑打闹的日常',
-      布洛妮娅: '化学反应十足的伙伴互动',
-      开拓者: '作为新人融入团队的过程',
-    },
-  },
-];
+import { HSR_TROPES } from './tropes';
 
 export const hsrKnowledge: FandomKnowledge = {
   fandomId: 'hsr',
