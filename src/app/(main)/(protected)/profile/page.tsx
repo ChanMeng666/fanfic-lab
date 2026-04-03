@@ -437,7 +437,7 @@ export default function ProfilePage() {
                       <p className="text-muted-foreground mb-6">
                         You haven't created any stories yet.
                       </p>
-                      <Link href="/wizard">
+                      <Link href="/create">
                         <Button className="gap-2">
                           <PenLine className="size-4" />
                           Start Writing

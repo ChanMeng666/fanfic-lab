@@ -194,7 +194,7 @@ export default function FeedPage() {
               </Button>
             ) : (
               <Button asChild>
-                <Link href="/wizard" className="gap-1.5">
+                <Link href="/create" className="gap-1.5">
                   <PenLine className="size-4" />
                   Create Your First Story
                 </Link>
