@@ -156,7 +156,8 @@
       "Bash(grep:*)",
       "Bash(gh repo view:*)",
       "Bash(gh repo edit:*)",
-      "Bash(npx langgraphjs up --help:*)"
+      "Bash(npx langgraphjs up --help:*)",
+      "Bash(npx langgraphjs:*)"
     ]
   }
 }
