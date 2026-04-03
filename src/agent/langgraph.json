@@ -3,6 +3,9 @@
   "graphs": {
     "fanfic_agent": {
       "path": "./agent.ts:graph"
+    },
+    "dreamwriter": {
+      "path": "./dreamwriter/graph.ts:graph"
     }
   }
 }
