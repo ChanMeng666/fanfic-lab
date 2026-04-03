@@ -8,31 +8,33 @@ Essential design system rules and coding patterns for Claude Code. For detailed 
 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
-| Frontend | Next.js 16, React 19, TailwindCSS 4 | Railway |
-| AI Runtime | CopilotKit 1.x | Railway |
-| AI Agent | LangGraph.js 1.0 | Railway |
+| Frontend | Next.js 16, React 19, TailwindCSS 4 | DigitalOcean + Coolify |
+| AI Agent | LangGraph.js 1.0 | DigitalOcean + Coolify |
+| Reverse Proxy | Traefik (via Coolify) | DigitalOcean |
+| SSL / CDN | Cloudflare (proxy mode) | Cloudflare |
 | Database | Prisma 7 + Neon PostgreSQL | Neon |
 | Cache | Redis (ioredis) | Upstash |
 | Storage | Cloudinary | Cloudinary |
 
 **Production URLs:**
-- Frontend: `https://www.fanfic-lab.tech`
-- Agent: `http://agent.railway.internal:8123` (Railway private network)
+- Frontend: `https://fanfic-lab.tech` (Cloudflare → DigitalOcean)
+- Agent: `http://agent:8123` (Docker Compose internal network)
+- Coolify Dashboard: `http://159.223.173.17:8000`
 
-**Deployment (Railway CLI):**
-```bash
-# Deploy web service
-railway service link web
-railway up
-
-# Deploy agent service
-railway service link agent
-railway up
-```
+**Deployment:**
+- **Auto-deploy:** `git push origin master` triggers GitHub webhook → Coolify auto-builds
+- **Manual deploy (API):**
+  ```bash
+  curl -X POST "http://159.223.173.17:8000/api/v1/applications/wea94e791gdrn59xv4tqnxdm/restart" \
+    -H "Authorization: Bearer 3|coolify-claude-code-token-2026" \
+    -H "Accept: application/json"
+  ```
+- **SSH access:** `ssh -i ~/.ssh/id_ed25519 root@159.223.173.17`
 
 **Dockerfile Structure:**
 - `Dockerfile.web` - Full Next.js build for web service
 - `Dockerfile.agent` - Lightweight build for LangGraph agent
+- `docker-compose.coolify.yml` - Coolify deployment definition (both services)
 
 ---
 

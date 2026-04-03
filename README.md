@@ -4,7 +4,7 @@
 
 <h3>AI-Powered Fanfiction Writing Platform</h3>
 
-An innovative AI-powered fanfiction writing platform built with **Next.js 16**, **CopilotKit**, and **LangGraph.js**.<br/>
+An innovative AI-powered fanfiction writing platform built with **Next.js 16** and **LangGraph.js**.<br/>
 Create amazing fanfiction with an AI assistant that understands your characters, respects canon, and helps bring your stories to life.<br/>
 Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop approval workflows.
 
@@ -22,7 +22,7 @@ Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop
 [![][github-forks-shield]][github-forks-link]
 [![][github-issues-shield]][github-issues-link]
 [![][github-license-shield]][github-license-link]<br/>
-[![][railway-shield]][railway-link]
+[![][digitalocean-shield]][digitalocean-link]
 [![][nextjs-shield]][nextjs-link]
 [![][typescript-shield]][typescript-link]
 [![][tailwind-shield]][tailwind-link]
@@ -51,7 +51,7 @@ Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop
 </div>
 
 > [!IMPORTANT]
-> FanFic Lab combines cutting-edge AI technology with a deep understanding of fanfiction culture. It features CopilotKit for real-time AI suggestions, LangGraph.js for intelligent agent workflows, Tavily for fandom research, and a beautiful "Literary Atelier" design system with Teal + Amber color palette.
+> FanFic Lab combines cutting-edge AI technology with a deep understanding of fanfiction culture. It features LangGraph.js for intelligent agent workflows with Human-in-the-Loop approval, Tavily for fandom research, and a beautiful "Literary Atelier" design system with Teal + Amber color palette.
 
 <details>
 <summary><kbd>Table of Contents</kbd></summary>
@@ -204,7 +204,7 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 
 ### `*` Additional Features
 
-- [x] 💨 **Quick Setup**: Deploy in under 5 minutes with Railway deployment
+- [x] 💨 **Quick Setup**: Auto-deploy via `git push` with Coolify on DigitalOcean
 - [x] 🌐 **Responsive Design**: Beautiful UI on desktop and mobile
 - [x] 🔒 **Authentication**: Stack Auth for secure user management
 - [x] 💎 **Literary Atelier Design**: Teal + Amber color palette with elegant typography
@@ -260,10 +260,11 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
-| **Framework** | Next.js 16 (App Router, Turbopack) | Railway |
-| **UI** | React 19, TailwindCSS 4, shadcn/ui | Railway |
-| **AI Runtime** | CopilotKit 1.x | Railway |
-| **AI Agent** | LangGraph.js 1.0 | Railway |
+| **Framework** | Next.js 16 (App Router, Turbopack) | DigitalOcean + Coolify |
+| **UI** | React 19, TailwindCSS 4, shadcn/ui | DigitalOcean + Coolify |
+| **AI Agent** | LangGraph.js 1.0 | DigitalOcean + Coolify |
+| **Reverse Proxy** | Traefik (via Coolify) | DigitalOcean |
+| **SSL / CDN** | Cloudflare (proxy mode) | Cloudflare |
 | **LLM** | OpenAI GPT-4o / GPT-4o-mini | OpenAI API |
 | **Search** | Tavily API | Tavily |
 | **Database** | Neon PostgreSQL + Prisma 7 | Neon |
@@ -282,22 +283,24 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 ### System Architecture
 
 > [!TIP]
-> FanFic Lab uses a **unified Railway deployment**: Both the Next.js frontend and LangGraph agent run on Railway, communicating via private networking for low latency and no timeout limits.
+> FanFic Lab runs on a **DigitalOcean VPS with Coolify** (self-hosted PaaS). Both the Next.js frontend and LangGraph agent are deployed as Docker Compose services, communicating via Docker internal networking. Cloudflare provides SSL and CDN.
 
 ```mermaid
 graph TB
-    subgraph "Railway (Web Service)"
-        A[Next.js 16] --> B[React 19]
-        B --> C[CopilotKit 1.x]
-        C --> D[API Routes]
-        D --> E[Prisma 7]
+    subgraph "Cloudflare"
+        CF[SSL + CDN + DNS]
     end
 
-    subgraph "Railway (Agent Service)"
-        F[LangGraph.js 1.0] --> G[chat_node]
-        F --> H[research_node]
-        F --> I[outline_node]
-        F --> J[tool_node]
+    subgraph "DigitalOcean VPS (Coolify)"
+        T[Traefik Reverse Proxy]
+        subgraph "Docker Compose"
+            A[Next.js 16 - Web] --> D[API Routes]
+            D --> E[Prisma 7]
+            F[LangGraph.js 1.0 - Agent] --> G[chat_node]
+            F --> H[research_node]
+            F --> I[outline_node]
+            F --> J[tool_node]
+        end
     end
 
     subgraph "External Services"
@@ -312,7 +315,9 @@ graph TB
         P[Cloudinary]
     end
 
-    D -->|Private Network| F
+    CF -->|HTTP| T
+    T --> A
+    D -->|Docker Network| F
     G --> K
     H --> L
     F --> M
@@ -463,7 +468,7 @@ NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=pck_...
 # OpenAI (required for AI features)
 OPENAI_API_KEY=sk-...
 
-# LangGraph (local development)
+# LangGraph (local dev: localhost, production: http://agent:8123 via Docker Compose)
 LANGGRAPH_URL=http://localhost:8123
 
 # Redis (for research caching)
@@ -492,12 +497,12 @@ ADMIN_SECRET=...
 | `STACK_SECRET_SERVER_KEY` | Stack Auth server key | ✅ |
 | `NEXT_PUBLIC_STACK_PROJECT_ID` | Stack Auth project ID | ✅ |
 | `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Stack Auth client key | ✅ |
-| `LANGGRAPH_URL` | Railway agent URL | ✅ |
+| `LANGGRAPH_URL` | Agent URL (`http://agent:8123` in Docker Compose) | ✅ |
 | `OPENAI_API_KEY` | OpenAI API key | ✅ |
 | `REDIS_URL` | Redis connection string | ✅ |
 | `CLOUDINARY_*` | Cloudinary credentials | ✅ |
 | `LANGSMITH_API_KEY` | LangSmith API key | 🔶 |
-| `TAVILY_API_KEY` | Tavily API key (Railway) | ✅ |
+| `TAVILY_API_KEY` | Tavily API key (agent service) | ✅ |
 | `ADMIN_SECRET` | Admin endpoint protection | 🔶 |
 
 > ✅ Required, 🔶 Optional
@@ -621,7 +626,8 @@ fanfic-lab/
 │   └── migrations/                  # Migrations
 │
 ├── docs/
-│   └── COPILOTKIT_LANGGRAPH_HITL_GUIDE.md
+│   ├── COPILOTKIT_LANGGRAPH_HITL_GUIDE.md
+│   └── MIGRATION_RAILWAY_TO_DIGITALOCEAN.md
 │
 └── public/                          # Static assets
 ```
@@ -690,42 +696,64 @@ Cover image upload endpoint.
 
 ## 🛳 Deployment
 
-### Cloud Deployment (Railway)
+### Cloud Deployment (DigitalOcean + Coolify)
 
-FanFic Lab runs entirely on Railway with two services communicating via private networking.
+FanFic Lab runs on a DigitalOcean VPS with Coolify (self-hosted PaaS), using Docker Compose for both services. Cloudflare handles SSL and CDN.
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template)
+**Services:**
 
-**Railway Services:**
+| Service | Dockerfile | Port | Health Check |
+|---------|-----------|------|-------------|
+| **Web** (Next.js) | `Dockerfile.web` | 3000 | `/api/health` |
+| **Agent** (LangGraph) | `Dockerfile.agent` | 8123 | `/info` |
 
-| Service | Config File | Start Command |
-|---------|------------|---------------|
-| **Web** (Next.js) | `railway.json` + `nixpacks.toml` | `npm run start` |
-| **Agent** (LangGraph) | `railway-agent.json` + `nixpacks-agent.toml` | `npm run start:agent` |
+**Deployment Compose:** `docker-compose.coolify.yml`
 
 ### Production URLs
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://www.fanfic-lab.tech |
-| Agent (Internal) | http://fanfic-lab.railway.internal:8123 |
+| Frontend | https://fanfic-lab.tech |
+| www (redirect) | https://www.fanfic-lab.tech → https://fanfic-lab.tech |
+| Agent (Internal) | http://agent:8123 (Docker Compose network) |
+| Coolify Dashboard | http://159.223.173.17:8000 |
+
+### Deployment Methods
+
+| Method | Command |
+|--------|---------|
+| **Auto-deploy** | `git push origin master` (GitHub webhook → Coolify) |
+| **Manual (API)** | `curl -X POST http://159.223.173.17:8000/api/v1/applications/wea94e791gdrn59xv4tqnxdm/restart -H "Authorization: Bearer <token>"` |
+| **Dashboard** | Open Coolify → Deploy button |
 
 ### Architecture Diagram
 
 ```
-┌───────────────────────────────────────────────────┐
-│                  Railway Project                   │
-│  ┌─────────────────────┐  ┌─────────────────────┐ │
-│  │    Web Service      │  │   Agent Service     │ │
-│  │    (Next.js 16)     │  │   (LangGraph.js)    │ │
-│  │                     │  │                     │ │
-│  │  • React 19         │  │  • chat_node        │ │
-│  │  • CopilotKit 1.x   │  │  • research_node    │ │
-│  │  • Prisma 7         │  │  • outline_node     │ │
-│  │  • Stack Auth       │  │  • tool_node        │ │
-│  └──────────┬──────────┘  └──────────┬──────────┘ │
-│             │    Private Network     │            │
-│             └────────────┬───────────┘            │
+                    ┌──────────────┐
+                    │  Cloudflare  │
+                    │  SSL + CDN   │
+                    └──────┬───────┘
+                           │ HTTP
+┌──────────────────────────┼────────────────────────┐
+│          DigitalOcean VPS (Coolify)                │
+│                  ┌───────┴───────┐                 │
+│                  │    Traefik    │                 │
+│                  │ Reverse Proxy │                 │
+│                  └───────┬───────┘                 │
+│  ┌───────────────────────┼───────────────────────┐│
+│  │            Docker Compose Network             ││
+│  │  ┌─────────────────────┐ ┌──────────────────┐ ││
+│  │  │    Web Service      │ │  Agent Service   │ ││
+│  │  │    (Next.js 16)     │ │  (LangGraph.js)  │ ││
+│  │  │                     │ │                  │ ││
+│  │  │  • React 19         │ │  • chat_node     │ ││
+│  │  │  • Prisma 7         │ │  • research_node │ ││
+│  │  │  • Stack Auth       │ │  • outline_node  │ ││
+│  │  │  • Port 3000        │ │  • Port 8123     │ ││
+│  │  └──────────┬──────────┘ └────────┬─────────┘ ││
+│  │             │  http://agent:8123  │           ││
+│  │             └─────────────────────┘           ││
+│  └───────────────────────────────────────────────┘│
 └──────────────────────────┼────────────────────────┘
                            │
          ┌─────────────────┼─────────────────┐
@@ -735,6 +763,8 @@ FanFic Lab runs entirely on Railway with two services communicating via private 
    │PostgreSQL│      │  Redis   │      │  Images  │
    └──────────┘      └──────────┘      └──────────┘
 ```
+
+> For detailed migration history and Coolify setup guide, see [docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md](./docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md).
 
 <div align="right">
 
@@ -852,7 +882,7 @@ AI-powered, community-driven.
 [github-license-link]: https://github.com/ChanMeng666/fanfic-lab/blob/main/LICENSE
 
 <!-- External Links -->
-[railway-link]: https://www.fanfic-lab.tech
+[digitalocean-link]: https://fanfic-lab.tech
 [nextjs-link]: https://nextjs.org
 [typescript-link]: https://www.typescriptlang.org
 [tailwind-link]: https://tailwindcss.com
@@ -862,7 +892,7 @@ AI-powered, community-driven.
 [github-forks-shield]: https://img.shields.io/github/forks/ChanMeng666/fanfic-lab?color=8ae8ff&labelColor=black&style=flat-square
 [github-issues-shield]: https://img.shields.io/github/issues/ChanMeng666/fanfic-lab?color=ff80eb&labelColor=black&style=flat-square
 [github-license-shield]: https://img.shields.io/github/license/ChanMeng666/fanfic-lab?color=white&labelColor=black&style=flat-square
-[railway-shield]: https://img.shields.io/badge/railway-online-55b467?labelColor=black&logo=railway&style=flat-square
+[digitalocean-shield]: https://img.shields.io/badge/digitalocean-online-0080FF?labelColor=black&logo=digitalocean&style=flat-square
 [nextjs-shield]: https://img.shields.io/badge/Next.js-16-black?labelColor=black&logo=nextdotjs&style=flat-square
 [typescript-shield]: https://img.shields.io/badge/TypeScript-5-3178C6?labelColor=black&logo=typescript&style=flat-square
 [tailwind-shield]: https://img.shields.io/badge/TailwindCSS-4-38B2AC?labelColor=black&logo=tailwindcss&style=flat-square
