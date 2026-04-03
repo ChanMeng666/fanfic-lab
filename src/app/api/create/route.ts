@@ -10,20 +10,33 @@ export async function POST(req: NextRequest) {
     if (!prompt?.trim()) {
       return new Response(JSON.stringify({ error: "请描述你想看的故事" }), { status: 400, headers: { "Content-Type": "application/json" } });
     }
-    const threadRes = await fetch(`${LANGGRAPH_URL}/threads`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    let threadRes;
+    try {
+      threadRes = await fetch(`${LANGGRAPH_URL}/threads`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    } catch (fetchErr) {
+      console.error("[create] Thread creation fetch failed:", fetchErr);
+      return new Response(JSON.stringify({ error: `Agent 连接失败: ${fetchErr instanceof Error ? fetchErr.message : "unknown"}`, url: LANGGRAPH_URL }), { status: 503, headers: { "Content-Type": "application/json" } });
+    }
+    if (!threadRes.ok) {
+      console.error("[create] Thread creation failed:", threadRes.status);
+      return new Response(JSON.stringify({ error: `Thread 创建失败: ${threadRes.status}` }), { status: 503, headers: { "Content-Type": "application/json" } });
+    }
     const thread = await threadRes.json();
     const threadId = thread.thread_id;
+    console.log("[create] Thread created:", threadId, "URL:", LANGGRAPH_URL);
     const runRes = await fetch(`${LANGGRAPH_URL}/threads/${threadId}/runs/stream`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assistant_id: "dreamwriter", input: { messages: [{ role: "human", content: prompt }] }, stream_mode: ["updates"] }),
     });
     if (!runRes.ok || !runRes.body) {
-      return new Response(JSON.stringify({ error: "Agent 服务不可用" }), { status: 503, headers: { "Content-Type": "application/json" } });
+      console.error("[create] Run stream failed:", runRes.status);
+      return new Response(JSON.stringify({ error: `Agent 运行失败: ${runRes.status}` }), { status: 503, headers: { "Content-Type": "application/json" } });
     }
     const encoder = new TextEncoder();
     const reader = runRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let currentEventType = "";
     const stream = new ReadableStream({
       async pull(controller) {
         try {
@@ -33,14 +46,29 @@ export async function POST(req: NextRequest) {
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
           for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEventType = line.slice(7).trim();
+              continue;
+            }
             if (!line.startsWith("data: ")) continue;
             const dataStr = line.slice(6).trim();
             if (!dataStr || dataStr === "[DONE]") continue;
             try {
               const data = JSON.parse(dataStr);
+              // Handle LangGraph error events
+              if (currentEventType === "error" || data.error) {
+                const errorEvent: CreationProgressEvent = {
+                  stage: "error",
+                  error: data.message || data.error || "Agent 执行出错",
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+                controller.close();
+                return;
+              }
               const event = parseNodeUpdate(data);
               if (event) { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); }
             } catch { /* skip */ }
+            currentEventType = "";
           }
         } catch (err) {
           const errorEvent: CreationProgressEvent = { stage: "error", error: err instanceof Error ? err.message : "未知错误" };
