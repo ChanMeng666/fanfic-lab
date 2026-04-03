@@ -80,7 +80,15 @@ export function useStoryCreation(): UseStoryCreationReturn {
             setStage(event.stage);
             if (event.message) setMessage(event.message);
             if (event.outline) setOutline(event.outline);
-            if (event.result) setResult(event.result);
+            if (event.result) {
+              setResult(event.result);
+              // Auto-save story to database
+              fetch("/api/stories", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ result: event.result, prompt }),
+              }).catch(() => {/* silent fail on save */});
+            }
             if (event.error) setError(event.error);
           } catch {
             // Skip unparseable events
