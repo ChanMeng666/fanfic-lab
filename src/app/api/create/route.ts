@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     const decoder = new TextDecoder();
     let buffer = "";
     let currentEventType = "";
+    let dataLines: string[] = [];
     const stream = new ReadableStream({
       async pull(controller) {
         try {
@@ -50,25 +51,34 @@ export async function POST(req: NextRequest) {
               currentEventType = line.slice(7).trim();
               continue;
             }
-            if (!line.startsWith("data: ")) continue;
-            const dataStr = line.slice(6).trim();
-            if (!dataStr || dataStr === "[DONE]") continue;
-            try {
-              const data = JSON.parse(dataStr);
-              // Handle LangGraph error events
-              if (currentEventType === "error" || data.error) {
-                const errorEvent: CreationProgressEvent = {
-                  stage: "error",
-                  error: data.message || data.error || "Agent 执行出错",
-                };
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
-                controller.close();
-                return;
-              }
-              const event = parseNodeUpdate(data);
-              if (event) { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); }
-            } catch { /* skip */ }
-            currentEventType = "";
+            if (line.startsWith("data: ")) {
+              dataLines.push(line.slice(6));
+              continue;
+            }
+            if (line.startsWith("id: ") || line.trim() === "") {
+              // End of SSE event — process accumulated data lines
+              if (dataLines.length === 0) continue;
+              const jsonStr = dataLines.join("\n").trim();
+              dataLines = [];
+              if (!jsonStr || jsonStr === "[DONE]") continue;
+              try {
+                const data = JSON.parse(jsonStr);
+                if (currentEventType === "error" || data.error) {
+                  const errorEvent: CreationProgressEvent = {
+                    stage: "error",
+                    error: data.message || data.error || "Agent 执行出错",
+                  };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+                  controller.close();
+                  return;
+                }
+                if (currentEventType === "updates") {
+                  const event = parseNodeUpdate(data);
+                  if (event) { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); }
+                }
+              } catch { /* skip unparseable */ }
+              currentEventType = "";
+            }
           }
         } catch (err) {
           const errorEvent: CreationProgressEvent = { stage: "error", error: err instanceof Error ? err.message : "未知错误" };
