@@ -5,54 +5,87 @@ import { HSR_WORLD_RULES } from './world';
 import { HSR_TROPES } from './tropes';
 
 export const hsrKnowledge: FandomKnowledge = {
-  fandomId: 'hsr',
-  displayName: '崩坏·星穹铁道',
+  fandomId: 'honkai-star-rail',
+  displayName: '崩坏：星穹铁道',
   characters: HSR_CHARACTERS,
   relationships: HSR_RELATIONSHIPS,
   worldRules: HSR_WORLD_RULES,
   tropes: HSR_TROPES,
   toSystemPrompt(): string {
-    const characterSummary = this.characters
-      .map(
-        (c) =>
-          `## ${c.name}（别名：${c.aliases.join('、')}）\n` +
-          `**性格特点**: ${c.personality.join('；')}\n` +
-          `**说话方式**: ${c.speechPatterns}\n` +
-          `**情感触发点**: ${c.emotionalTriggers.join('、')}\n` +
-          `**重要关系**: ${Object.entries(c.relationships).map(([name, desc]) => `${name}（${desc}）`).join('；')}`
-      )
-      .join('\n\n');
+    const lines: string[] = [];
 
-    const relationshipSummary = this.relationships
-      .map((r) => `### ${r.characters.join(' × ')}\n${r.dynamic}\n常见梗: ${r.commonFanficTropes.join('、')}`)
-      .join('\n\n');
+    lines.push(`【同人知识库：${this.displayName}】`);
+    lines.push('');
+    lines.push('以下是本次创作的角色设定与世界观参考资料，请严格遵守角色性格与世界规则。');
+    lines.push('');
 
-    const worldRulesSummary = this.worldRules.map((wr) => `**${wr.category}**: ${wr.rules.join('；')}`).join('\n\n');
+    // Characters section
+    lines.push('【角色设定】');
+    lines.push('');
+    for (const char of this.characters) {
+      const aliasStr = char.aliases.length > 0 ? `（${char.aliases.join(' / ')}）` : '';
+      lines.push(`▎${char.name}${aliasStr}`);
+      lines.push(`性格特征：${char.personality.join('；')}`);
+      lines.push(`说话方式：${char.speechPatterns}`);
+      lines.push(`情感触发点：${char.emotionalTriggers.join('、')}`);
+      const relEntries = Object.entries(char.relationships);
+      if (relEntries.length > 0) {
+        lines.push(
+          `人际关系：${relEntries.map(([name, desc]) => `${name}——${desc}`).join('；')}`
+        );
+      }
+      const stateEntries = Object.entries(char.timelineStates);
+      if (stateEntries.length > 0) {
+        lines.push(
+          `时间线状态：${stateEntries.map(([time, state]) => `[${time}] ${state}`).join('；')}`
+        );
+      }
+      lines.push('');
+    }
 
-    return `# 崩坏·星穹铁道 角色与剧情参考知识库
+    // Relationships section
+    lines.push('【热门CP与人物关系】');
+    lines.push('');
+    for (const rel of this.relationships) {
+      lines.push(`▎${rel.characters.join(' × ')}（${rel.type}）`);
+      lines.push(`关系描述：${rel.dynamic}`);
+      lines.push(`关键时刻：${rel.keyMoments.join('；')}`);
+      lines.push(`常见同人套路：${rel.commonFanficTropes.join('；')}`);
+      lines.push('');
+    }
 
-## 核心角色档案
+    // World rules section
+    lines.push('【世界观与规则】');
+    lines.push('');
+    for (const worldRule of this.worldRules) {
+      lines.push(`▎${worldRule.category}`);
+      for (const rule of worldRule.rules) {
+        lines.push(`• ${rule}`);
+      }
+      lines.push('');
+    }
 
-${characterSummary}
+    // Tropes section
+    lines.push('【常用同人套路】');
+    lines.push('');
+    for (const trope of this.tropes) {
+      lines.push(`▎${trope.name}`);
+      lines.push(`说明：${trope.description}`);
+      lines.push('角色适配：');
+      for (const [charName, adaptation] of Object.entries(trope.characterAdaptations)) {
+        lines.push(`  ${charName}：${adaptation}`);
+      }
+      lines.push('');
+    }
 
-## 重要关系与CP动态
+    lines.push('【创作原则】');
+    lines.push('');
+    lines.push('• 角色发言和行为须符合上述性格设定，避免崩人（OOC）');
+    lines.push('• 世界观细节须与崩坏：星穹铁道官方设定保持一致');
+    lines.push('• 情感描写应细腻真实，避免刻意煽情或情感断层');
+    lines.push('• 中文写作时注意语言风格与角色气质匹配');
+    lines.push('• 涉及前世今生、命途等设定时需保持内在逻辑自洽');
 
-${relationshipSummary}
-
-## 世界观与创作规则
-
-${worldRulesSummary}
-
-## 常见创意梗与主题
-
-${this.tropes.map((t) => `**${t.name}**: ${t.description}`).join('\n\n')}
-
-## 创作指南
-
-1. **角色还原是第一要务** - 确保每个角色的言行举止符合上述档案
-2. **尊重角色背景** - 理解他们背负的秘密、伤痛与救赎之路
-3. **梗的运用** - 常见梗都有深层逻辑，不可生硬拼凑
-4. **AU设定的底线** - 改动设定时需保留角色内核特质
-5. **情感真实性** - 角色间的互动需要符合他们的成长状态与心理`;
+    return lines.join('\n');
   },
 };
