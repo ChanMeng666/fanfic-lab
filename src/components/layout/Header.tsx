@@ -75,9 +75,9 @@ export function Header({ className }: { className?: string }) {
 
         {/* Desktop Navigation */}
         <nav className="hidden sm:flex items-center">
-          <NavLink href="/generate">Generate</NavLink>
+          <NavLink href="/create">Create</NavLink>
+          <NavLink href="/shelf">Shelf</NavLink>
           <NavLink href="/feed">Explore</NavLink>
-          <NavLink href="/wizard">Write</NavLink>
         </nav>
 
         {/* Divider before auth */}
@@ -152,7 +152,7 @@ export function Header({ className }: { className?: string }) {
                   Sign In
                 </Button>
               </Link>
-              <Link href="/generate">
+              <Link href="/create">
                 <Button size="sm" className="h-8 px-3 text-sm rounded-full gap-1">
                   <span className="hidden sm:inline">Get Started</span>
                   <span className="sm:hidden">Start</span>
@@ -184,11 +184,18 @@ export function Header({ className }: { className?: string }) {
           <div className="bg-surface/95 backdrop-blur-lg border border-border/50 rounded-2xl shadow-lg p-2 animate-fade-slide-in">
             <nav className="flex flex-col gap-1">
               <Link
-                href="/generate"
+                href="/create"
                 className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Generate
+                Create
+              </Link>
+              <Link
+                href="/shelf"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Shelf
               </Link>
               <Link
                 href="/feed"
@@ -196,13 +203,6 @@ export function Header({ className }: { className?: string }) {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Explore
-              </Link>
-              <Link
-                href="/wizard"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Write
               </Link>
               {isLoggedIn && (
                 <>

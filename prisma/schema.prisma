@@ -52,6 +52,13 @@ model UserPreferences {
   aiPersonality   String   @default("helpful") // AI writing style preference
   darkMode        Boolean  @default(false)
 
+  // DreamWriter preference learning
+  preferredCPs    String[] // Learned from generation history
+  preferredTropes String[] // e.g., ["现代AU", "甜饼", "ABO"]
+  avoidTropes     String[] // e.g., ["主要角色死亡", "NTR"]
+  tonePreference  String?  // e.g., "偏虐带HE", "纯甜"
+  lengthPreference String? // "short" | "medium" | "long"
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -348,6 +355,22 @@ enum GenerationStatus {
   GENERATING
   COMPLETE
   FAILED
+}
+
+// ============================================
+// KNOWLEDGE BASE (RAG for DreamWriter)
+// ============================================
+
+model KnowledgeChunk {
+  id        String   @id @default(cuid())
+  fandom    String   @default("hsr")
+  content   String   @db.Text
+  embedding Unsupported("vector(1536)")
+  metadata  Json     // { chapter?, characters?, location?, version? }
+
+  createdAt DateTime @default(now())
+
+  @@index([fandom])
 }
 
 // ============================================
