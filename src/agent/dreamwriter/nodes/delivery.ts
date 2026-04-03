@@ -3,7 +3,7 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { DreamWriterState } from "../state";
 import { DELIVERY_PROMPT } from "../prompts/system";
-import type { StoryResult } from "@/lib/types/dreamwriter";
+import type { StoryResult } from "../../../lib/types/dreamwriter";
 
 function parseJsonSafe(text: string): unknown {
   const cleaned = text.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();

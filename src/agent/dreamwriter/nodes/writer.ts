@@ -4,7 +4,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 import type { DreamWriterState } from "../state";
 import { WRITER_PROMPT } from "../prompts/system";
 import { getHSRKnowledgePrompt, buildRAGContext } from "../prompts/hsr";
-import { retrieveRelevantChunks } from "@/knowledge/base/rag";
+import { retrieveRelevantChunks } from "../../../knowledge/base/rag";
 
 export async function writerNode(state: DreamWriterState, _config: RunnableConfig): Promise<Partial<DreamWriterState>> {
   console.log("[DreamWriter] ========== WRITER ==========");

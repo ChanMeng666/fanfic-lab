@@ -4,7 +4,7 @@ import type {
   QualityReport,
   StoryResult,
   DreamWriterStage,
-} from "@/lib/types/dreamwriter";
+} from "../../lib/types/dreamwriter";
 
 export const DreamWriterStateAnnotation = Annotation.Root({
   ...MessagesAnnotation.spec,

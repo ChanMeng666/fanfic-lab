@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma } from "../../lib/db";
 import { OpenAI } from "openai";
 
 const openai = new OpenAI();

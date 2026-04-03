@@ -1,4 +1,4 @@
-import { hsrKnowledge } from "@/knowledge/hsr";
+import { hsrKnowledge } from "../../../knowledge/hsr";
 
 export function getHSRKnowledgePrompt(): string {
   return hsrKnowledge.toSystemPrompt();

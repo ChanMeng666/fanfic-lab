@@ -1,9 +1,6 @@
 {
   "$schema": "https://langchain-ai.github.io/langgraph/schemas/langgraph.config.schema.json",
   "graphs": {
-    "fanfic_agent": {
-      "path": "./agent.ts:graph"
-    },
     "dreamwriter": {
       "path": "./dreamwriter/graph.ts:graph"
     }

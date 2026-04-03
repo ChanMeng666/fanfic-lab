@@ -4,7 +4,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
 import type { DreamWriterState } from "../state";
 import { QUALITY_GUARD_PROMPT } from "../prompts/system";
 import { getHSRKnowledgePrompt } from "../prompts/hsr";
-import type { QualityReport } from "@/lib/types/dreamwriter";
+import type { QualityReport } from "../../../lib/types/dreamwriter";
 
 function parseJsonSafe(text: string): Record<string, unknown> {
   const cleaned = text.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
