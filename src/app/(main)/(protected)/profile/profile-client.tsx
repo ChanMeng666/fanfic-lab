@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Heart,
   MessageSquare,
-  Users,
   FileText,
   Trash2,
   Edit,
@@ -32,7 +31,6 @@ import {
 } from "@/components/ui/dialog";
 import { updateProfile } from "@/lib/actions/user";
 import { deleteStory } from "@/lib/actions/story";
-import { deleteDraft } from "@/lib/actions/user";
 import { toast } from "sonner";
 
 interface UserProfile {
@@ -76,15 +74,6 @@ interface Story {
   };
 }
 
-interface Draft {
-  id: string;
-  title: string | null;
-  content: string;
-  fandom: string | null;
-  ships: string[];
-  updatedAt: string;
-}
-
 interface UserStats {
   totalStories: number;
   publishedStories: number;
@@ -97,7 +86,6 @@ interface UserStats {
 interface ProfileClientProps {
   profile: UserProfile;
   stories: Story[];
-  drafts: Draft[];
   likedStories: Story[];
   stats: UserStats;
 }
@@ -105,20 +93,17 @@ interface ProfileClientProps {
 export function ProfileClient({
   profile: initialProfile,
   stories: initialStories,
-  drafts: initialDrafts,
   likedStories,
   stats,
 }: ProfileClientProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [profile, setProfile] = useState(initialProfile);
   const [stories, setStories] = useState(initialStories);
-  const [drafts, setDrafts] = useState(initialDrafts);
 
   const tabParam = searchParams.get("tab");
   const initialTab =
-    tabParam && ["stories", "drafts", "liked"].includes(tabParam)
+    tabParam && ["stories", "liked"].includes(tabParam)
       ? tabParam
       : "stories";
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -160,16 +145,6 @@ export function ProfileClient({
       toast.success("故事已删除");
     } catch {
       toast.error("删除故事失败");
-    }
-  };
-
-  const handleDeleteDraft = async (draftId: string) => {
-    try {
-      await deleteDraft(draftId);
-      setDrafts((prev) => prev.filter((d) => d.id !== draftId));
-      toast.success("草稿已删除");
-    } catch {
-      toast.error("删除草稿失败");
     }
   };
 
@@ -365,14 +340,10 @@ export function ProfileClient({
           {/* Main Content */}
           <div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 max-w-md">
+              <TabsList className="grid w-full grid-cols-2 max-w-sm">
                 <TabsTrigger value="stories" className="gap-1.5">
                   <BookOpen className="size-4" />
                   作品 ({stories.length})
-                </TabsTrigger>
-                <TabsTrigger value="drafts" className="gap-1.5">
-                  <FileText className="size-4" />
-                  草稿 ({drafts.length})
                 </TabsTrigger>
                 <TabsTrigger value="liked" className="gap-1.5">
                   <Heart className="size-4" />
@@ -480,73 +451,6 @@ export function ProfileClient({
                                 {story._count.comments}
                               </span>
                             </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="drafts" className="mt-6">
-                {drafts.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
-                        <FileText className="size-8 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-2">
-                        暂无草稿
-                      </h3>
-                      <p className="text-muted-foreground">
-                        还没有保存的草稿
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {drafts.map((draft) => (
-                      <Card key={draft.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-medium text-foreground">
-                              {draft.title || "未命名草稿"}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              {draft.fandom && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {draft.fandom}
-                                </Badge>
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                更新于{" "}
-                                {new Date(
-                                  draft.updatedAt
-                                ).toLocaleDateString("zh-CN")}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5"
-                              onClick={() => router.push("/create")}
-                            >
-                              <Edit className="size-3.5" />
-                              继续创作
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteDraft(draft.id)}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
                           </div>
                         </div>
                       </Card>

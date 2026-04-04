@@ -32,7 +32,7 @@ export default async function ProfilePage() {
   }
 
   // Fetch all data server-side in a single pass (no race conditions)
-  const [profile, stories, drafts, likedStories, statsRaw] = await Promise.all([
+  const [profile, stories, likedStories, statsRaw] = await Promise.all([
     prisma.user.findUnique({
       where: { id: dbUser.id },
       include: {
@@ -57,10 +57,6 @@ export default async function ProfilePage() {
           },
         },
       },
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.draft.findMany({
-      where: { userId: dbUser.id },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.like.findMany({
@@ -107,7 +103,6 @@ export default async function ProfilePage() {
     ? JSON.parse(JSON.stringify(profile))
     : null;
   const serializedStories = JSON.parse(JSON.stringify(stories));
-  const serializedDrafts = JSON.parse(JSON.stringify(drafts));
   const serializedLikedStories = JSON.parse(
     JSON.stringify(likedStories.map((l) => l.story))
   );
@@ -131,7 +126,6 @@ export default async function ProfilePage() {
       <ProfileClient
         profile={serializedProfile}
         stories={serializedStories}
-        drafts={serializedDrafts}
         likedStories={serializedLikedStories}
         stats={stats}
       />

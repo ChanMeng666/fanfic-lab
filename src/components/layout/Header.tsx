@@ -8,7 +8,6 @@ import {
   Settings,
   LogOut,
   BookOpen,
-  FileText,
   Menu,
   X,
   ArrowRight,
@@ -75,9 +74,9 @@ export function Header({ className }: { className?: string }) {
 
         {/* Desktop Navigation */}
         <nav className="hidden sm:flex items-center">
-          <NavLink href="/create">Create</NavLink>
-          <NavLink href="/shelf">Shelf</NavLink>
-          <NavLink href="/feed">Explore</NavLink>
+          <NavLink href="/create">创作</NavLink>
+          <NavLink href="/feed">发现</NavLink>
+          <NavLink href="/profile">我的</NavLink>
         </nav>
 
         {/* Divider before auth */}
@@ -119,20 +118,14 @@ export function Header({ className }: { className?: string }) {
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer gap-2">
                     <BookOpen className="size-4" />
-                    My Stories
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile?tab=drafts" className="cursor-pointer gap-2">
-                    <FileText className="size-4" />
-                    Drafts
+                    我的作品
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/handler/account-settings" className="cursor-pointer gap-2">
                     <Settings className="size-4" />
-                    Settings
+                    设置
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -141,7 +134,7 @@ export function Header({ className }: { className?: string }) {
                   className="cursor-pointer gap-2 text-destructive focus:text-destructive"
                 >
                   <LogOut className="size-4" />
-                  Sign Out
+                  退出登录
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -188,21 +181,14 @@ export function Header({ className }: { className?: string }) {
                 className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Create
-              </Link>
-              <Link
-                href="/shelf"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Shelf
+                创作
               </Link>
               <Link
                 href="/feed"
                 className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Explore
+                发现
               </Link>
               {isLoggedIn && (
                 <>
@@ -212,14 +198,7 @@ export function Header({ className }: { className?: string }) {
                     className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    My Stories
-                  </Link>
-                  <Link
-                    href="/profile?tab=drafts"
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Drafts
+                    我的作品
                   </Link>
                 </>
               )}
@@ -231,7 +210,7 @@ export function Header({ className }: { className?: string }) {
                     className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Sign In
+                    登录
                   </Link>
                 </>
               )}

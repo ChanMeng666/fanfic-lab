@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
         ships: result.cp,
         tags: result.tags,
         rating: "GENERAL",
-        status: "DRAFT",
+        status: "PUBLISHED",
+        publishedAt: new Date(),
         wordCount: result.wordCount,
         authorId: dbUser.id,
         chapters: {
