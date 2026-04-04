@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { stackServerApp } from "@/lib/auth";
+import { stackServerApp } from "@/lib/stack";
 import type { StoryResult } from "@/lib/types/dreamwriter";
 
 export async function POST(req: NextRequest) {
