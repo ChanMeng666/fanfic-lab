@@ -27,7 +27,7 @@ export async function deliveryNode(state: DreamWriterState, _config: RunnableCon
     const model = new ChatOpenAI({ temperature: 0.7, model: "gpt-4o-mini" });
     const response = await model.invoke([new SystemMessage(DELIVERY_PROMPT), new HumanMessage(`当前故事：${outline.title}\nCP: ${outline.cp.join(" × ")}\n设定: ${outline.setting}\n基调: ${outline.tone}`)]);
     const content = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-    suggestions = parseJsonSafe(content) as string[];
+    suggestions = parseJsonSafe(content) as unknown as string[];
   } catch { suggestions = ["换一个设定试试？", "试试不同的情感基调？", "看看其他CP？"]; }
 
   const result: StoryResult = { title: outline.title, body: story, cp: outline.cp, tags: [outline.setting, outline.tone], setting: outline.setting, wordCount: countWords(story), qualityScore: state.qualityReport?.overallScore ?? 7, language: state.detectedLanguage, suggestions };

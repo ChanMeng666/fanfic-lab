@@ -21,7 +21,7 @@ export async function qualityGuardNode(state: DreamWriterState, _config: Runnabl
   const response = await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(checkInput)]);
   const content = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
   try {
-    const report = parseJsonSafe(content) as QualityReport;
+    const report = parseJsonSafe(content) as unknown as QualityReport;
     return { stage: "checking", qualityReport: report, logs: [{ message: report.passesThreshold ? `质量检查通过 (${report.overallScore}/10)` : `质量检查未通过 (${report.overallScore}/10)，正在修改...`, done: true }] };
   } catch {
     return { stage: "checking", qualityReport: { overallScore: 7, oocIssues: [], consistencyIssues: [], proseNotes: [], passesThreshold: true }, logs: [{ message: "质量检查完成", done: true }] };

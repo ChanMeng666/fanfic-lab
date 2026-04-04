@@ -20,7 +20,7 @@ export async function storyArchitectNode(state: DreamWriterState, _config: Runna
   const response = await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(requestSummary)]);
   const content = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
   try {
-    const parsed = parseJsonSafe(content) as StoryOutline;
+    const parsed = parseJsonSafe(content) as unknown as StoryOutline;
     return { stage: "planning", outline: parsed, logs: [{ message: `故事构思完成：${parsed.title}`, done: true }] };
   } catch {
     const fallbackOutline: StoryOutline = { title: `${state.parsedCP.join("×")}的故事`, cp: state.parsedCP, setting: state.parsedSetting, tone: state.parsedTone, wordTarget: 3000, scenes: [{ summary: "完整短篇", characters: state.parsedCP, emotion: state.parsedTone }], emotionalArc: "起承转合" };
