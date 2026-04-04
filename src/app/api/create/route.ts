@@ -23,7 +23,6 @@ export async function POST(req: NextRequest) {
     }
     const thread = await threadRes.json();
     const threadId = thread.thread_id;
-    console.log("[create] Thread created:", threadId, "URL:", LANGGRAPH_URL);
     const runRes = await fetch(`${LANGGRAPH_URL}/threads/${threadId}/runs/stream`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assistant_id: "dreamwriter", input: { messages: [{ role: "human", content: prompt }] }, stream_mode: ["updates"] }),

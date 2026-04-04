@@ -1,22 +1,42 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sparkles, BookOpen, RefreshCw, Heart } from "lucide-react";
+import { toggleLike } from "@/lib/actions/story";
 import type { StoryResult as StoryResultType } from "@/lib/types/dreamwriter";
 
 interface StoryResultProps {
   result: StoryResultType;
+  storyId: string | null;
   onCreateAnother: () => void;
   onSuggestionClick: (suggestion: string) => void;
 }
 
 export function StoryResult({
   result,
+  storyId,
   onCreateAnother,
   onSuggestionClick,
 }: StoryResultProps) {
+  const [liked, setLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
+
+  async function handleLike() {
+    if (!storyId || liking) return;
+    setLiking(true);
+    try {
+      const res = await toggleLike(storyId);
+      setLiked(res.liked);
+    } catch {
+      // silent fail
+    } finally {
+      setLiking(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
       {/* Story Card */}
@@ -63,9 +83,14 @@ export function StoryResult({
           <RefreshCw className="size-3.5" />
           再来一篇
         </Button>
-        <Button variant="ghost" className="gap-1.5">
-          <Heart className="size-3.5" />
-          收藏
+        <Button
+          variant={liked ? "default" : "ghost"}
+          className="gap-1.5"
+          onClick={handleLike}
+          disabled={!storyId || liking}
+        >
+          <Heart className={`size-3.5 ${liked ? "fill-current" : ""}`} />
+          {liked ? "已收藏" : "收藏"}
         </Button>
       </div>
 

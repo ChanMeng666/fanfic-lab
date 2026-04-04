@@ -13,6 +13,7 @@ interface UseStoryCreationReturn {
   message: string | null;
   outline: StoryOutline | null;
   result: StoryResult | null;
+  storyId: string | null;
   error: string | null;
   isCreating: boolean;
   create: (prompt: string) => Promise<void>;
@@ -24,6 +25,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
   const [message, setMessage] = useState<string | null>(null);
   const [outline, setOutline] = useState<StoryOutline | null>(null);
   const [result, setResult] = useState<StoryResult | null>(null);
+  const [storyId, setStoryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -35,6 +37,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     setMessage("正在理解你的创作需求...");
     setOutline(null);
     setResult(null);
+    setStoryId(null);
     setError(null);
 
     // Abort any previous request
@@ -87,7 +90,10 @@ export function useStoryCreation(): UseStoryCreationReturn {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ result: event.result, prompt }),
-              }).catch(() => {/* silent fail on save */});
+              })
+                .then((r) => r.json())
+                .then((data) => { if (data.storyId) setStoryId(data.storyId); })
+                .catch(() => {/* silent fail on save */});
             }
             if (event.error) setError(event.error);
           } catch {
@@ -108,8 +114,9 @@ export function useStoryCreation(): UseStoryCreationReturn {
     setMessage(null);
     setOutline(null);
     setResult(null);
+    setStoryId(null);
     setError(null);
   }, []);
 
-  return { stage, message, outline, result, error, isCreating, create, reset };
+  return { stage, message, outline, result, storyId, error, isCreating, create, reset };
 }

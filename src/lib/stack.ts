@@ -8,7 +8,7 @@ export const stackServerApp = new StackServerApp({
     signIn: "/handler/sign-in",
     signUp: "/handler/sign-up",
     afterSignIn: "/",
-    afterSignUp: "/wizard",
+    afterSignUp: "/create",
     afterSignOut: "/",
     signOut: "/handler/sign-out",
     emailVerification: "/handler/email-verification",

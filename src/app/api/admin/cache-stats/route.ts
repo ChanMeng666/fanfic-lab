@@ -64,8 +64,6 @@ export async function GET(request: NextRequest) {
     const researchPattern = `${REDIS_CONFIG.KEY_PREFIX.RESEARCH}*`;
     const keys = await client.keys(researchPattern);
 
-    console.log(`[CacheStats] Found ${keys.length} cache entries`);
-
     const entries: CacheEntry[] = [];
     let totalSearches = 0;
 

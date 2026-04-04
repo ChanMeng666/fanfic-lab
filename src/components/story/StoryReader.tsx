@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
+import { toggleLike } from "@/lib/actions/story";
 
 interface StoryReaderProps {
   story: {
@@ -31,6 +32,8 @@ interface StoryReaderProps {
       wordCount: number;
     }>;
   };
+  initialLikeCount?: number;
+  initialLiked?: boolean;
 }
 
 const ratingLabels: Record<string, string> = {
@@ -47,16 +50,31 @@ const ratingVariants: Record<string, "default" | "secondary" | "destructive" | "
   EXPLICIT: "destructive",
 };
 
-export function StoryReader({ story }: StoryReaderProps) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+export function StoryReader({ story, initialLikeCount = 0, initialLiked = false }: StoryReaderProps) {
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [liking, setLiking] = useState(false);
 
   const chapter = story.chapters[0];
   const displayDate = story.publishedAt ?? story.createdAt;
 
-  function handleLike() {
-    setLiked((prev) => !prev);
-    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  async function handleLike() {
+    if (liking) return;
+    setLiking(true);
+    // Optimistic update
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikeCount((prev) => (wasLiked ? prev - 1 : prev + 1));
+    try {
+      const res = await toggleLike(story.id);
+      setLiked(res.liked);
+    } catch {
+      // Revert on error
+      setLiked(wasLiked);
+      setLikeCount((prev) => (wasLiked ? prev + 1 : prev - 1));
+    } finally {
+      setLiking(false);
+    }
   }
 
   return (

@@ -6,7 +6,7 @@ import { CreationProgress } from "@/components/create/CreationProgress";
 import { StoryResult } from "@/components/create/StoryResult";
 
 export default function CreatePage() {
-  const { stage, message, result, isCreating, create, reset } =
+  const { stage, message, result, storyId, isCreating, create, reset } =
     useStoryCreation();
 
   return (
@@ -34,6 +34,7 @@ export default function CreatePage() {
         <div className="animate-ai-reveal">
           <StoryResult
             result={result}
+            storyId={storyId}
             onCreateAnother={reset}
             onSuggestionClick={(s) => {
               reset();

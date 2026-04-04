@@ -11,6 +11,7 @@ export {
   updateChapter,
   deleteChapter,
   toggleLike,
+  getLikedStories,
   addComment,
   getComments,
 } from "./story";

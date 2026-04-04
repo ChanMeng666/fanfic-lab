@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { StoryCard } from "@/components/feed";
 import { getProfile, updateProfile, getUserStats } from "@/lib/actions/user";
-import { getMyStories, deleteStory } from "@/lib/actions/story";
+import { getMyStories, deleteStory, getLikedStories } from "@/lib/actions/story";
 import { getMyDrafts, deleteDraft } from "@/lib/actions/user";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -105,6 +105,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [likedStories, setLikedStories] = useState<Story[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("stories");
@@ -120,16 +121,18 @@ export default function ProfilePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [profileData, storiesData, draftsData, statsData] = await Promise.all([
+        const [profileData, storiesData, draftsData, likedData, statsData] = await Promise.all([
           getProfile(),
           getMyStories(),
           getMyDrafts(),
+          getLikedStories(),
           getUserStats(),
         ]);
 
         setProfile(profileData as UserProfile);
         setStories(storiesData as Story[]);
         setDrafts(draftsData as Draft[]);
+        setLikedStories(likedData as Story[]);
         setStats(statsData);
 
         if (profileData) {
@@ -453,7 +456,7 @@ export default function ProfilePage() {
                           <div className="flex-1 p-4">
                             <div className="flex items-start justify-between">
                               <div>
-                                <Link href={`/editor/${story.id}`}>
+                                <Link href={`/story/${story.id}`}>
                                   <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
                                     {story.title}
                                   </h3>
@@ -475,10 +478,10 @@ export default function ProfilePage() {
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <Link href={`/editor/${story.id}`}>
+                                <Link href={`/story/${story.id}`}>
                                   <Button variant="outline" size="sm" className="gap-1.5">
-                                    <Edit className="size-3.5" />
-                                    Edit
+                                    <BookOpen className="size-3.5" />
+                                    View
                                   </Button>
                                 </Link>
                                 <Button
@@ -558,7 +561,7 @@ export default function ProfilePage() {
                               variant="outline"
                               size="sm"
                               className="gap-1.5"
-                              onClick={() => router.push(`/wizard?draftId=${draft.id}`)}
+                              onClick={() => router.push("/create")}
                             >
                               <Edit className="size-3.5" />
                               Continue
@@ -580,19 +583,61 @@ export default function ProfilePage() {
               </TabsContent>
 
               <TabsContent value="liked" className="mt-6">
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <div className="flex items-center justify-center size-16 rounded-2xl bg-accent/10 mx-auto mb-4">
-                      <Heart className="size-8 text-accent" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Liked stories
-                    </h3>
-                    <p className="text-muted-foreground">
-                      Liked stories will appear here
-                    </p>
-                  </CardContent>
-                </Card>
+                {likedStories.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <div className="flex items-center justify-center size-16 rounded-2xl bg-accent/10 mx-auto mb-4">
+                        <Heart className="size-8 text-accent" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        还没有收藏的故事
+                      </h3>
+                      <p className="text-muted-foreground">
+                        浏览故事并点击收藏，你喜欢的故事会出现在这里
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {likedStories.map((story) => (
+                      <Card key={story.id} variant="story">
+                        <div className="p-4">
+                          <Link href={`/story/${story.id}`}>
+                            <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
+                              {story.title}
+                            </h3>
+                          </Link>
+                          {story.summary && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {story.summary}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              {story.fandom}
+                            </Badge>
+                            {story.ships.slice(0, 2).map((ship) => (
+                              <Badge key={ship} variant="secondary" className="text-xs">
+                                {ship}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Heart className="size-3" />
+                              {story._count.likes}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageSquare className="size-3" />
+                              {story._count.comments}
+                            </span>
+                            <span>{story.wordCount.toLocaleString()} 字</span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>

@@ -65,13 +65,12 @@ export async function GET(request: NextRequest) {
     const cacheKey = getResearchKey(normalizedName);
     const statsKey = getStatsKey(normalizedName);
 
-    console.log("[ResearchCache] GET request for:", normalizedName);
 
     // Fetch from Redis
     const cached = await redisCache.get<CachedResearchData>(cacheKey);
 
     if (!cached) {
-      console.log("[ResearchCache] Cache MISS");
+
       return NextResponse.json({
         cached: false,
         latency: Date.now() - startTime,
@@ -83,12 +82,6 @@ export async function GET(request: NextRequest) {
 
     // Get remaining TTL for info
     const ttlRemaining = await redisCache.ttl(cacheKey);
-
-    console.log("[ResearchCache] Cache HIT!", {
-      searchCount,
-      ttlRemaining: ttlRemaining ? `${Math.round(ttlRemaining / 86400)} days` : "unknown",
-      latency: `${Date.now() - startTime}ms`,
-    });
 
     return NextResponse.json({
       cached: true,
@@ -133,8 +126,6 @@ export async function POST(request: NextRequest) {
     const cacheKey = getResearchKey(normalizedName);
     const statsKey = getStatsKey(normalizedName);
 
-    console.log("[ResearchCache] POST request for:", normalizedName);
-
     // Prepare cache data with metadata
     const cacheData: CachedResearchData = {
       sourceName,
@@ -164,13 +155,6 @@ export async function POST(request: NextRequest) {
 
     // Initialize or increment counter
     const searchCount = await redisCache.increment(statsKey) || 1;
-
-    console.log("[ResearchCache] Successfully cached!", {
-      normalizedName,
-      searchCount,
-      ttl: `${REDIS_CONFIG.RESEARCH_CACHE_TTL / 86400} days`,
-      latency: `${Date.now() - startTime}ms`,
-    });
 
     return NextResponse.json({
       success: true,
@@ -209,8 +193,6 @@ export async function DELETE(request: NextRequest) {
 
     const normalizedName = normalizeSourceName(sourceName);
     const cacheKey = getResearchKey(normalizedName);
-
-    console.log("[ResearchCache] DELETE request for:", normalizedName);
 
     const deleted = await redisCache.delete(cacheKey);
 

@@ -139,7 +139,7 @@ export async function updateStory(input: UpdateStoryInput) {
   });
 
   revalidatePath("/feed");
-  revalidatePath(`/editor/${input.id}`);
+  revalidatePath(`/story/${input.id}`);
 
   return story;
 }
@@ -194,7 +194,7 @@ export async function publishStory(storyId: string) {
   });
 
   revalidatePath("/feed");
-  revalidatePath(`/editor/${storyId}`);
+  revalidatePath(`/story/${storyId}`);
 
   return updatedStory;
 }
@@ -354,7 +354,7 @@ export async function createChapter(input: CreateChapterInput) {
     },
   });
 
-  revalidatePath(`/editor/${input.storyId}`);
+  revalidatePath(`/story/${input.storyId}`);
 
   return chapter;
 }
@@ -396,7 +396,7 @@ export async function updateChapter(input: UpdateChapterInput) {
     });
   }
 
-  revalidatePath(`/editor/${chapter.storyId}`);
+  revalidatePath(`/story/${chapter.storyId}`);
 
   return updatedChapter;
 }
@@ -437,7 +437,7 @@ export async function deleteChapter(chapterId: string) {
     });
   });
 
-  revalidatePath(`/editor/${chapter.storyId}`);
+  revalidatePath(`/story/${chapter.storyId}`);
 
   return { success: true };
 }
@@ -474,6 +474,30 @@ export async function toggleLike(storyId: string) {
     revalidatePath("/feed");
     return { liked: true };
   }
+}
+
+export async function getLikedStories() {
+  const user = await getCurrentUser();
+
+  const likes = await prisma.like.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    include: {
+      story: {
+        include: {
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+              chapters: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return likes.map((like) => like.story);
 }
 
 export async function addComment(storyId: string, content: string, parentId?: string) {

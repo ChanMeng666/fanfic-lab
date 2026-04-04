@@ -45,7 +45,6 @@
     "cmdk": "^1.1.1",
     "concurrently": "^9.2.1",
     "ioredis": "^5.8.2",
-    "lottie-react": "^2.4.1",
     "lucide-react": "^0.562.0",
     "motion": "^12.23.26",
     "next": "16.1.1",
