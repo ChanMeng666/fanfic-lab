@@ -29,6 +29,14 @@ export default async function ShelfPage() {
           wordCount: true,
           createdAt: true,
           fandom: true,
+          status: true,
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+              chapters: true,
+            },
+          },
         },
       })
     : [];

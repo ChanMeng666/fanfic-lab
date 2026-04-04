@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sparkles, BookOpen, RefreshCw, Heart } from "lucide-react";
 import { toggleLike } from "@/lib/actions/story";
+import { toast } from "sonner";
 import type { StoryResult as StoryResultType } from "@/lib/types/dreamwriter";
 
 interface StoryResultProps {
@@ -31,7 +32,7 @@ export function StoryResult({
       const res = await toggleLike(storyId);
       setLiked(res.liked);
     } catch {
-      // silent fail
+      toast.error("收藏失败，请重试");
     } finally {
       setLiking(false);
     }

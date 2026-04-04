@@ -43,6 +43,13 @@ const ratingStyles = {
   EXPLICIT: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
+const ratingLabels: Record<string, string> = {
+  GENERAL: "全年龄",
+  TEEN: "青少年",
+  MATURE: "成熟",
+  EXPLICIT: "限制级",
+};
+
 const statusStyles = {
   DRAFT: { label: "Draft", className: "bg-muted text-muted-foreground" },
   PUBLISHED: { label: "In Progress", className: "bg-primary/10 text-primary" },
@@ -128,10 +135,7 @@ export function StoryCard({ story, variant = "full", onLike }: StoryCardProps) {
               </h3>
             </Link>
             <div className="flex items-center gap-2 mt-1.5">
-              <Link
-                href={`/profile/${story.author.id}`}
-                className="flex items-center gap-1.5 hover:underline"
-              >
+              <div className="flex items-center gap-1.5">
                 <Avatar className="size-5">
                   <AvatarImage src={story.author.avatarUrl} />
                   <AvatarFallback className="text-xs bg-secondary">
@@ -141,7 +145,7 @@ export function StoryCard({ story, variant = "full", onLike }: StoryCardProps) {
                 <span className="text-sm text-muted-foreground">
                   {story.author.username}
                 </span>
-              </Link>
+              </div>
               <span className="text-border">|</span>
               <span className="text-xs text-muted-foreground">
                 {formatDate(story.updatedAt)}
@@ -150,7 +154,7 @@ export function StoryCard({ story, variant = "full", onLike }: StoryCardProps) {
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant="outline" className={cn("text-xs", ratingStyles[story.rating])}>
-              {story.rating}
+              {ratingLabels[story.rating] ?? story.rating}
             </Badge>
             <Badge variant="secondary" className={cn("text-xs", statusStyles[story.status].className)}>
               {statusStyles[story.status].label}

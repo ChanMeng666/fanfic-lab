@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { toggleLike } from "@/lib/actions/story";
+import { toast } from "sonner";
 
 interface StoryReaderProps {
   story: {
@@ -68,10 +69,15 @@ export function StoryReader({ story, initialLikeCount = 0, initialLiked = false 
     try {
       const res = await toggleLike(story.id);
       setLiked(res.liked);
-    } catch {
+    } catch (err) {
       // Revert on error
       setLiked(wasLiked);
       setLikeCount((prev) => (wasLiked ? prev + 1 : prev - 1));
+      if (err instanceof Error && err.message.includes("Unauthorized")) {
+        toast.error("请先登录后再点赞");
+      } else {
+        toast.error("操作失败，请重试");
+      }
     } finally {
       setLiking(false);
     }

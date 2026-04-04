@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { StoryCard, FilterBar, StoryCardSkeleton } from "@/components/feed";
 import type { StoryCardData } from "@/components/feed";
 import { useFeedStories, useInfiniteScroll, useDebounce } from "@/lib/hooks";
+import { toggleLike } from "@/lib/actions/story";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 8;
 
@@ -69,6 +71,14 @@ export default function FeedPage() {
       })),
     [stories]
   );
+
+  const handleLike = async (storyId: string) => {
+    try {
+      await toggleLike(storyId);
+    } catch {
+      toast.error("请先登录后再收藏");
+    }
+  };
 
   const hasActiveFilters = selectedFandom || selectedStatus || searchQuery;
 
@@ -151,7 +161,7 @@ export default function FeedPage() {
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {displayedStories.map((story) => (
-                <StoryCard key={story.id} story={story} />
+                <StoryCard key={story.id} story={story} onLike={() => handleLike(story.id)} />
               ))}
             </div>
 

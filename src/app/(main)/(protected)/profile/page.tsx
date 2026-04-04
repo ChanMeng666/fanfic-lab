@@ -121,13 +121,20 @@ export default function ProfilePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [profileData, storiesData, draftsData, likedData, statsData] = await Promise.all([
+        // Use Promise.allSettled so one failure doesn't block everything
+        const [profileRes, storiesRes, draftsRes, likedRes, statsRes] = await Promise.allSettled([
           getProfile(),
           getMyStories(),
           getMyDrafts(),
           getLikedStories(),
           getUserStats(),
         ]);
+
+        const profileData = profileRes.status === "fulfilled" ? profileRes.value : null;
+        const storiesData = storiesRes.status === "fulfilled" ? storiesRes.value : [];
+        const draftsData = draftsRes.status === "fulfilled" ? draftsRes.value : [];
+        const likedData = likedRes.status === "fulfilled" ? likedRes.value : [];
+        const statsData = statsRes.status === "fulfilled" ? statsRes.value : null;
 
         setProfile(profileData as UserProfile);
         setStories(storiesData as Story[]);
@@ -141,6 +148,14 @@ export default function ProfilePage() {
             bio: profileData.bio || "",
           });
         }
+
+        // Log any individual failures for debugging
+        [profileRes, storiesRes, draftsRes, likedRes, statsRes].forEach((res, i) => {
+          if (res.status === "rejected") {
+            const names = ["getProfile", "getMyStories", "getMyDrafts", "getLikedStories", "getUserStats"];
+            console.error(`${names[i]} failed:`, res.reason);
+          }
+        });
       } catch (error) {
         console.error("Failed to fetch profile data:", error);
       } finally {
@@ -176,9 +191,9 @@ export default function ProfilePage() {
           : null
       );
       setIsEditingProfile(false);
-      toast.success("Profile updated successfully");
+      toast.success("资料更新成功");
     } catch (error) {
-      toast.error("Failed to update profile");
+      toast.error("更新资料失败");
     } finally {
       setIsSaving(false);
     }
@@ -192,9 +207,9 @@ export default function ProfilePage() {
     try {
       await deleteStory(storyId);
       setStories((prev) => prev.filter((s) => s.id !== storyId));
-      toast.success("Story deleted");
+      toast.success("故事已删除");
     } catch (error) {
-      toast.error("Failed to delete story");
+      toast.error("删除故事失败");
     }
   };
 
@@ -202,9 +217,9 @@ export default function ProfilePage() {
     try {
       await deleteDraft(draftId);
       setDrafts((prev) => prev.filter((d) => d.id !== draftId));
-      toast.success("Draft deleted");
+      toast.success("草稿已删除");
     } catch (error) {
-      toast.error("Failed to delete draft");
+      toast.error("删除草稿失败");
     }
   };
 
@@ -233,14 +248,12 @@ export default function ProfilePage() {
               <Users className="size-8 text-muted-foreground" />
             </div>
             <h2 className="text-xl font-display font-bold text-foreground mb-2">
-              Sign in required
+              加载失败
             </h2>
             <p className="text-muted-foreground mb-6">
-              Please sign in to view your profile
+              无法加载个人资料，请刷新页面重试
             </p>
-            <Link href="/handler/sign-in">
-              <Button>Sign In</Button>
-            </Link>
+            <Button onClick={() => window.location.reload()}>刷新页面</Button>
           </CardContent>
         </Card>
       </div>
@@ -276,37 +289,37 @@ export default function ProfilePage() {
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="mt-4 gap-1.5">
                         <Edit className="size-3.5" />
-                        Edit Profile
+                        编辑资料
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle className="font-display">Edit Profile</DialogTitle>
+                        <DialogTitle className="font-display">编辑资料</DialogTitle>
                         <DialogDescription>
-                          Update your display name and bio
+                          修改你的昵称和个人简介
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-foreground">
-                            Display Name
+                            昵称
                           </label>
                           <Input
                             value={editForm.displayName}
                             onChange={(e) =>
                               setEditForm({ ...editForm, displayName: e.target.value })
                             }
-                            placeholder="Your display name"
+                            placeholder="输入你的昵称"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Bio</label>
+                          <label className="text-sm font-medium text-foreground">个人简介</label>
                           <Textarea
                             value={editForm.bio}
                             onChange={(e) =>
                               setEditForm({ ...editForm, bio: e.target.value })
                             }
-                            placeholder="Tell us about yourself..."
+                            placeholder="介绍一下自己吧..."
                             rows={3}
                           />
                         </div>
@@ -316,10 +329,10 @@ export default function ProfilePage() {
                           variant="outline"
                           onClick={() => setIsEditingProfile(false)}
                         >
-                          Cancel
+                          取消
                         </Button>
                         <Button onClick={handleSaveProfile} disabled={isSaving}>
-                          {isSaving ? "Saving..." : "Save Changes"}
+                          {isSaving ? "保存中..." : "保存"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -332,19 +345,19 @@ export default function ProfilePage() {
                     <div className="text-xl font-bold text-foreground">
                       {profile._count.stories}
                     </div>
-                    <div className="text-xs text-muted-foreground">Stories</div>
+                    <div className="text-xs text-muted-foreground">作品</div>
                   </div>
                   <div>
                     <div className="text-xl font-bold text-foreground">
                       {profile._count.followers}
                     </div>
-                    <div className="text-xs text-muted-foreground">Followers</div>
+                    <div className="text-xs text-muted-foreground">粉丝</div>
                   </div>
                   <div>
                     <div className="text-xl font-bold text-foreground">
                       {profile._count.follows}
                     </div>
-                    <div className="text-xs text-muted-foreground">Following</div>
+                    <div className="text-xs text-muted-foreground">关注</div>
                   </div>
                 </div>
               </CardContent>
@@ -358,26 +371,26 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-center size-8 rounded-xl bg-secondary text-secondary-foreground">
                       <BarChart3 className="size-4" />
                     </div>
-                    Writing Stats
+                    创作统计
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Total Words</span>
+                    <span className="text-muted-foreground">总字数</span>
                     <span className="font-medium text-foreground">
                       {stats.totalWords.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Published Stories</span>
+                    <span className="text-muted-foreground">已发布</span>
                     <span className="font-medium text-foreground">{stats.publishedStories}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Total Likes</span>
+                    <span className="text-muted-foreground">获赞</span>
                     <span className="font-medium text-foreground">{stats.totalLikes}</span>
                   </div>
                   <div className="flex justify-between py-2">
-                    <span className="text-muted-foreground">Total Comments</span>
+                    <span className="text-muted-foreground">评论</span>
                     <span className="font-medium text-foreground">{stats.totalComments}</span>
                   </div>
                 </CardContent>
@@ -393,7 +406,7 @@ export default function ProfilePage() {
                       <div className="flex items-center justify-center size-8 rounded-xl bg-accent/15 text-accent">
                         <Heart className="size-4" />
                       </div>
-                      Favorite Fandoms
+                      喜欢的作品
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -415,15 +428,15 @@ export default function ProfilePage() {
               <TabsList className="grid w-full grid-cols-3 max-w-md">
                 <TabsTrigger value="stories" className="gap-1.5">
                   <BookOpen className="size-4" />
-                  Stories ({stories.length})
+                  作品 ({stories.length})
                 </TabsTrigger>
                 <TabsTrigger value="drafts" className="gap-1.5">
                   <FileText className="size-4" />
-                  Drafts ({drafts.length})
+                  草稿 ({drafts.length})
                 </TabsTrigger>
                 <TabsTrigger value="liked" className="gap-1.5">
                   <Heart className="size-4" />
-                  Liked
+                  收藏
                 </TabsTrigger>
               </TabsList>
 
@@ -435,15 +448,15 @@ export default function ProfilePage() {
                         <BookOpen className="size-8 text-muted-foreground" />
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-2">
-                        No stories yet
+                        还没有作品
                       </h3>
                       <p className="text-muted-foreground mb-6">
-                        You haven't created any stories yet.
+                        你还没有创作过故事，开始你的创作之旅吧
                       </p>
                       <Link href="/create">
                         <Button className="gap-2">
                           <PenLine className="size-4" />
-                          Start Writing
+                          开始创作
                         </Button>
                       </Link>
                     </CardContent>
@@ -473,7 +486,7 @@ export default function ProfilePage() {
                                     }
                                     className="text-xs"
                                   >
-                                    {story.status === "PUBLISHED" ? "Published" : story.status}
+                                    {story.status === "PUBLISHED" ? "已发布" : story.status === "DRAFT" ? "草稿" : story.status}
                                   </Badge>
                                 </div>
                               </div>
@@ -481,7 +494,7 @@ export default function ProfilePage() {
                                 <Link href={`/story/${story.id}`}>
                                   <Button variant="outline" size="sm" className="gap-1.5">
                                     <BookOpen className="size-3.5" />
-                                    View
+                                    查看
                                   </Button>
                                 </Link>
                                 <Button
@@ -531,9 +544,9 @@ export default function ProfilePage() {
                         <FileText className="size-8 text-muted-foreground" />
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-2">
-                        No drafts
+                        暂无草稿
                       </h3>
-                      <p className="text-muted-foreground">No drafts saved</p>
+                      <p className="text-muted-foreground">还没有保存的草稿</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -564,7 +577,7 @@ export default function ProfilePage() {
                               onClick={() => router.push("/create")}
                             >
                               <Edit className="size-3.5" />
-                              Continue
+                              继续创作
                             </Button>
                             <Button
                               variant="ghost"
