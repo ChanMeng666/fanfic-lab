@@ -1,0 +1,164 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [master]
+
+env:
+  REGISTRY: ghcr.io
+  WEB_IMAGE: ghcr.io/${{ github.repository }}/web
+  AGENT_IMAGE: ghcr.io/${{ github.repository }}/agent
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Agent image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.agent
+          push: true
+          tags: |
+            ${{ env.AGENT_IMAGE }}:${{ github.sha }}
+            ${{ env.AGENT_IMAGE }}:latest
+          cache-from: type=gha,scope=agent
+          cache-to: type=gha,mode=max,scope=agent
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.web
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE }}:${{ github.sha }}
+            ${{ env.WEB_IMAGE }}:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          build-args: |
+            NEXT_PUBLIC_STACK_PROJECT_ID=${{ secrets.NEXT_PUBLIC_STACK_PROJECT_ID }}
+            NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${{ secrets.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY }}
+            STACK_SECRET_SERVER_KEY=${{ secrets.STACK_SECRET_SERVER_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            LANGSMITH_API_KEY=${{ secrets.LANGSMITH_API_KEY }}
+            LANGGRAPH_URL=http://agent:8123
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            ADMIN_SECRET=${{ secrets.ADMIN_SECRET }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          AGENT_TAG: ${{ env.AGENT_IMAGE }}:${{ github.sha }}
+          WEB_TAG: ${{ env.WEB_IMAGE }}:${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          STACK_SECRET_SERVER_KEY: ${{ secrets.STACK_SECRET_SERVER_KEY }}
+          NEXT_PUBLIC_STACK_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_STACK_PROJECT_ID }}
+          NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY: ${{ secrets.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: AGENT_TAG,WEB_TAG,GH_TOKEN,GH_ACTOR,OPENAI_API_KEY,TAVILY_API_KEY,LANGSMITH_API_KEY,DATABASE_URL,REDIS_URL,STACK_SECRET_SERVER_KEY,NEXT_PUBLIC_STACK_PROJECT_ID,NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,ADMIN_SECRET
+          script: |
+            set -e
+
+            # Login to GHCR
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            # Pull new images (old containers keep running)
+            docker pull "$AGENT_TAG"
+            docker pull "$WEB_TAG"
+
+            # Stop old containers gracefully
+            docker stop agent-dreamwriter web-dreamwriter 2>/dev/null || true
+            docker rm agent-dreamwriter web-dreamwriter 2>/dev/null || true
+
+            # Also stop Coolify-managed containers if they exist
+            docker ps --filter "name=web-wea94e" --filter "name=agent-wea94e" -q | xargs -r docker stop 2>/dev/null || true
+
+            # Start agent first
+            docker run -d \
+              --name agent-dreamwriter \
+              --network coolify \
+              --restart unless-stopped \
+              -e NODE_ENV=production \
+              -e PORT=8123 \
+              -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+              -e TAVILY_API_KEY="${TAVILY_API_KEY}" \
+              -e LANGSMITH_API_KEY="${LANGSMITH_API_KEY}" \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              "$AGENT_TAG"
+
+            # Wait for agent to be ready
+            echo "Waiting for agent to start..."
+            for i in $(seq 1 30); do
+              if docker exec agent-dreamwriter node -e "fetch('http://localhost:8123/info').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" 2>/dev/null; then
+                echo "Agent ready after ${i} attempts"
+                break
+              fi
+              sleep 2
+            done
+
+            # Start web with Traefik labels for reverse proxy
+            docker run -d \
+              --name web-dreamwriter \
+              --network coolify \
+              --restart unless-stopped \
+              -l "traefik.enable=true" \
+              -l "traefik.http.routers.dreamwriter.rule=Host(\`fanfic-lab.tech\`) || Host(\`www.fanfic-lab.tech\`)" \
+              -l "traefik.http.routers.dreamwriter.entrypoints=https" \
+              -l "traefik.http.routers.dreamwriter.tls.certresolver=letsencrypt" \
+              -l "traefik.http.services.dreamwriter.loadbalancer.server.port=3000" \
+              -e NODE_ENV=production \
+              -e LANGGRAPH_URL=http://agent-dreamwriter:8123 \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              -e REDIS_URL="${REDIS_URL}" \
+              -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+              -e LANGSMITH_API_KEY="${LANGSMITH_API_KEY}" \
+              -e STACK_SECRET_SERVER_KEY="${STACK_SECRET_SERVER_KEY}" \
+              -e NEXT_PUBLIC_STACK_PROJECT_ID="${NEXT_PUBLIC_STACK_PROJECT_ID}" \
+              -e NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY="${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}" \
+              -e CLOUDINARY_CLOUD_NAME="${CLOUDINARY_CLOUD_NAME}" \
+              -e CLOUDINARY_API_KEY="${CLOUDINARY_API_KEY}" \
+              -e CLOUDINARY_API_SECRET="${CLOUDINARY_API_SECRET}" \
+              -e ADMIN_SECRET="${ADMIN_SECRET}" \
+              "$WEB_TAG"
+
+            echo "Deployment complete!"

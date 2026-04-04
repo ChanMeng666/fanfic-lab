@@ -10,8 +10,13 @@
     "@langchain/langgraph": "1.0.7",
     "@langchain/langgraph-cli": "1.1.2",
     "@langchain/openai": "1.2.0",
+    "@neondatabase/serverless": "1.0.2",
+    "@prisma/adapter-pg": "7.2.0",
+    "@prisma/client": "7.2.0",
     "@tavily/core": "0.6.4",
     "cloudinary": "2.8.0",
+    "openai": "4.104.0",
+    "prisma": "7.2.0",
     "zod": "3.25.76"
   }
 }
