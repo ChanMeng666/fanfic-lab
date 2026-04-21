@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Story" ADD COLUMN "viewCount" INTEGER NOT NULL DEFAULT 0;

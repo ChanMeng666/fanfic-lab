@@ -91,6 +91,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     chapterCount: story._count.chapters,
     likes: story._count.likes,
     comments: story._count.comments,
+    views: story.viewCount,
     coverUrl: story.coverImageUrl ?? undefined,
     author: {
       id: profile.id,

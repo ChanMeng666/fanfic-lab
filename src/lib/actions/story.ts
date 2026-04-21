@@ -475,6 +475,18 @@ export async function toggleLike(storyId: string) {
   }
 }
 
+export async function recordStoryView(storyId: string) {
+  // Fire-and-forget. No auth required (anonymous reads count too).
+  // Client dedupes per session via sessionStorage; this server action
+  // is intentionally kept minimal — no rate limiting beyond that.
+  await prisma.story.update({
+    where: { id: storyId },
+    data: { viewCount: { increment: 1 } },
+    select: { id: true },
+  });
+  return { ok: true };
+}
+
 export async function getLikedStories() {
   const user = await getCurrentUser();
 

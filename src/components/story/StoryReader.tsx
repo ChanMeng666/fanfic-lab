@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -10,6 +10,7 @@ import { toggleLike } from "@/lib/actions/story";
 import { toast } from "sonner";
 import { CommentsSection } from "./CommentsSection";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
+import { ViewTracker } from "./ViewTracker";
 
 interface StoryReaderProps {
   story: {
@@ -21,6 +22,7 @@ interface StoryReaderProps {
     tags: string[];
     rating: string;
     wordCount: number;
+    viewCount: number;
     publishedAt: Date | null;
     createdAt: Date;
     author: {
@@ -40,6 +42,17 @@ interface StoryReaderProps {
   commentCount?: number;
   currentUserId?: string | null;
   isOwner?: boolean;
+}
+
+function formatCount(n: number): string {
+  if (n < 1000) return n.toString();
+  if (n < 10000) return (n / 1000).toFixed(1) + "k";
+  return Math.floor(n / 1000) + "k";
+}
+
+// Average reading speed: ~300 Chinese chars / minute
+function readingMinutes(wordCount: number): number {
+  return Math.max(1, Math.round(wordCount / 300));
 }
 
 const ratingLabels: Record<string, string> = {
@@ -136,7 +149,11 @@ export function StoryReader({
           </span>
           <span className="flex items-center gap-1.5">
             <BookOpen className="size-3.5" />
-            全文 {story.wordCount.toLocaleString()} 字 · 共 {chapterCount} 章
+            全文 {story.wordCount.toLocaleString()} 字 · 共 {chapterCount} 章 · 约 {readingMinutes(story.wordCount)} 分钟
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Eye className="size-3.5" />
+            {formatCount(story.viewCount)} 阅读
           </span>
         </div>
 
@@ -238,6 +255,8 @@ export function StoryReader({
           onOpenChange={setContinueOpen}
         />
       )}
+
+      <ViewTracker storyId={story.id} />
     </article>
   );
 }

@@ -23,6 +23,7 @@ interface Story {
   rating: Rating;
   status: StoryStatus;
   wordCount: number;
+  viewCount: number;
   coverImageUrl: string | null;
   authorId: string;
   publishedAt: Date | null;

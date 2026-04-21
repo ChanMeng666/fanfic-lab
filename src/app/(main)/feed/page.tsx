@@ -107,6 +107,7 @@ function FeedPageContent() {
         chapterCount: story._count?.chapters || 0,
         likes: story._count?.likes || 0,
         comments: story._count?.comments || 0,
+        views: story.viewCount,
         coverUrl: story.coverImageUrl || undefined,
         author: {
           id: story.author.id,

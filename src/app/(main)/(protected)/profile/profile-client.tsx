@@ -70,6 +70,7 @@ interface Story {
   rating: string;
   status: string;
   wordCount: number;
+  viewCount?: number;
   coverImageUrl: string | null;
   publishedAt: string | null;
   createdAt: string;
@@ -132,6 +133,7 @@ function toCardData(story: Story, fallbackAuthor: { id: string; username: string
     chapterCount: story._count.chapters,
     likes: story._count.likes,
     comments: story._count.comments,
+    views: story.viewCount ?? 0,
     coverUrl: story.coverImageUrl ?? undefined,
     author: {
       id: author.id,

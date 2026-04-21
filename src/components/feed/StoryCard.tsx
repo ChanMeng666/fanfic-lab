@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, MessageSquare, BookOpen } from "lucide-react";
+import { Heart, MessageSquare, BookOpen, Eye } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export interface StoryCardData {
   chapterCount: number;
   likes: number;
   comments: number;
+  views?: number;
   coverUrl?: string;
   author: {
     id: string;
@@ -177,12 +178,18 @@ export function StoryCard({ story, onLike }: StoryCardProps) {
       </CardContent>
 
       <CardFooter className="pt-2 border-t border-border flex items-center justify-between">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <BookOpen className="size-3.5" />
             {formatNumber(story.wordCount)} 字
           </span>
           <span>{story.chapterCount} 章</span>
+          {typeof story.views === "number" && (
+            <span className="flex items-center gap-1">
+              <Eye className="size-3.5" />
+              {formatNumber(story.views)}
+            </span>
+          )}
         </div>
         <div className="relative z-20 flex items-center gap-1">
           <Button

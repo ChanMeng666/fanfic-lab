@@ -77,6 +77,7 @@ model Story {
   rating        Rating      @default(GENERAL)
   status        StoryStatus @default(DRAFT)
   wordCount     Int         @default(0)
+  viewCount     Int         @default(0)
   coverImageUrl String?
 
   authorId String
