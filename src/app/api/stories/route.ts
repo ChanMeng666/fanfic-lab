@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import type { StoryResult } from "@/lib/types/dreamwriter";
+import {
+  embeddingTextForStory,
+  getStoryEmbedding,
+  setStoryEmbedding,
+} from "@/lib/story-embedding";
 
 // Defensive fallback when the agent payload is missing `summary` (older
 // in-flight requests that started before the summarize node was deployed,
@@ -79,6 +84,27 @@ export async function POST(req: NextRequest) {
         storyId: story.id,
       },
     });
+
+    // Generate recommendation embedding asynchronously so it never blocks
+    // the create-story response. The user gets their storyId immediately;
+    // the embedding lands a couple of seconds later.
+    void (async () => {
+      const text = embeddingTextForStory({
+        title: result.title,
+        summary,
+        fandom: "崩坏：星穹铁道",
+        ships: result.cp,
+        tags: result.tags,
+      });
+      const embedding = await getStoryEmbedding(text);
+      if (embedding) {
+        try {
+          await setStoryEmbedding(story.id, embedding);
+        } catch (e) {
+          console.warn("[stories] failed to persist embedding:", e);
+        }
+      }
+    })();
 
     return NextResponse.json({ storyId: story.id });
   } catch (err) {

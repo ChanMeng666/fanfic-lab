@@ -79,6 +79,7 @@ model Story {
   wordCount     Int         @default(0)
   viewCount     Int         @default(0)
   coverImageUrl String?
+  embedding     Unsupported("vector(1536)")?
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)

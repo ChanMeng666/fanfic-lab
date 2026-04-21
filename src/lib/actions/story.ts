@@ -475,6 +475,46 @@ export async function toggleLike(storyId: string) {
   }
 }
 
+/**
+ * Returns up to `limit` other PUBLISHED stories ranked by cosine
+ * distance against the source story's embedding. Stories without an
+ * embedding are excluded (they'll get one on next save / backfill).
+ */
+export async function getRelatedStories(storyId: string, limit = 4) {
+  // First check the source has an embedding; if not, nothing to compare.
+  const sourceCheck = await prisma.$queryRaw<{ has_embedding: boolean }[]>`
+    SELECT (embedding IS NOT NULL) AS has_embedding
+    FROM "Story" WHERE id = ${storyId}
+  `;
+  if (!sourceCheck[0]?.has_embedding) return [];
+
+  const ranked = await prisma.$queryRaw<{ id: string; distance: number }[]>`
+    SELECT id, embedding <=> (SELECT embedding FROM "Story" WHERE id = ${storyId}) AS distance
+    FROM "Story"
+    WHERE id != ${storyId}
+      AND status = 'PUBLISHED'
+      AND embedding IS NOT NULL
+    ORDER BY distance ASC
+    LIMIT ${limit}
+  `;
+  if (ranked.length === 0) return [];
+
+  const ids = ranked.map((r) => r.id);
+  const stories = await prisma.story.findMany({
+    where: { id: { in: ids } },
+    include: {
+      author: {
+        select: { id: true, username: true, displayName: true, avatarUrl: true },
+      },
+      _count: { select: { likes: true, comments: true, chapters: true } },
+    },
+  });
+
+  // Preserve cosine-distance ordering since findMany doesn't guarantee it.
+  const byId = new Map(stories.map((s) => [s.id, s]));
+  return ids.map((id) => byId.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
+}
+
 export async function recordStoryView(storyId: string) {
   // Fire-and-forget. No auth required (anonymous reads count too).
   // Client dedupes per session via sessionStorage; this server action

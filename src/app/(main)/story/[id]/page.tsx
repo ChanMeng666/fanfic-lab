@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { StoryReader } from "@/components/story/StoryReader";
+import { RelatedStories } from "@/components/story/RelatedStories";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
 interface StoryPageProps {
@@ -126,6 +128,11 @@ export default async function StoryPage({ params }: StoryPageProps) {
         currentUserId={currentUserId}
         isOwner={isOwner}
       />
+      <div className="max-w-3xl mx-auto px-4 pb-16">
+        <Suspense fallback={null}>
+          <RelatedStories storyId={id} />
+        </Suspense>
+      </div>
     </div>
   );
 }

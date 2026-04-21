@@ -15,7 +15,8 @@
     "start:agent": "langgraphjs dev --host 0.0.0.0 --port ${PORT:-8123} --config src/agent/langgraph.json",
     "start:all": "concurrently \"npm run start\" \"npm run start:agent\"",
     "lint": "eslint",
-    "regen-summaries": "dotenvx run --env-file=.env.local --env-file=.env -- tsx scripts/regen-summaries.ts"
+    "regen-summaries": "dotenvx run --env-file=.env.local --env-file=.env -- tsx scripts/regen-summaries.ts",
+    "backfill-embeddings": "dotenvx run --env-file=.env.local --env-file=.env -- tsx scripts/backfill-embeddings.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.1.8",
