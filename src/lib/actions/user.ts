@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/lib/actions/notification";
 
 // Types for user operations
 interface UpdateProfileInput {
@@ -227,6 +228,18 @@ export async function toggleFollow(targetUserId: string) {
         followingId: targetUserId,
       },
     });
+
+    await createNotification({
+      recipientId: targetUserId,
+      type: "follow",
+      payload: {
+        actorId: user.id,
+        actorName: user.displayName || user.username,
+        actorUsername: user.username,
+        actorAvatarUrl: user.avatarUrl,
+      },
+    });
+
     return { following: true };
   }
 }

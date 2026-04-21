@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FloatingNavbar, NavLink, NavDivider } from "@/components/ui/floating-navbar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { syncUser } from "@/lib/actions/user";
 
 export function Header({ className }: { className?: string }) {
@@ -87,6 +88,7 @@ export function Header({ className }: { className?: string }) {
         {/* Auth Section */}
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
+          {isLoggedIn && <NotificationBell />}
           {isLoading ? (
             <Skeleton className="size-8 rounded-full" />
           ) : isLoggedIn ? (

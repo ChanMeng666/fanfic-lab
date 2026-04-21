@@ -5,6 +5,7 @@ import { stackServerApp } from "@/lib/stack";
 import { revalidatePath } from "next/cache";
 import { Rating, StoryStatus } from "@prisma/client";
 import { countWords } from "@/lib/wordcount";
+import { createNotification } from "@/lib/actions/notification";
 
 // Types for action inputs
 interface CreateStoryInput {
@@ -470,6 +471,27 @@ export async function toggleLike(storyId: string) {
         storyId,
       },
     });
+
+    // Notify the story author (skips self-likes via createNotification check).
+    const story = await prisma.story.findUnique({
+      where: { id: storyId },
+      select: { authorId: true, title: true },
+    });
+    if (story) {
+      await createNotification({
+        recipientId: story.authorId,
+        type: "story_like",
+        payload: {
+          actorId: user.id,
+          actorName: user.displayName || user.username,
+          actorUsername: user.username,
+          actorAvatarUrl: user.avatarUrl,
+          storyId,
+          storyTitle: story.title,
+        },
+      });
+    }
+
     revalidatePath("/feed");
     return { liked: true };
   }
@@ -599,6 +621,53 @@ export async function addComment(storyId: string, content: string, parentId?: st
     },
   });
 
+  // Notification fan-out: comment author -> story author (always),
+  // and if this is a reply, also notify the parent comment author.
+  const story = await prisma.story.findUnique({
+    where: { id: storyId },
+    select: { authorId: true, title: true },
+  });
+  if (story) {
+    const snippet = trimmed.length > 100 ? trimmed.slice(0, 100) + "…" : trimmed;
+    await createNotification({
+      recipientId: story.authorId,
+      type: parentId ? "reply" : "comment",
+      payload: {
+        actorId: user.id,
+        actorName: user.displayName || user.username,
+        actorUsername: user.username,
+        actorAvatarUrl: user.avatarUrl,
+        storyId,
+        storyTitle: story.title,
+        commentId: comment.id,
+        snippet,
+      },
+    });
+
+    if (parentId) {
+      const parentComment = await prisma.comment.findUnique({
+        where: { id: parentId },
+        select: { userId: true },
+      });
+      if (parentComment && parentComment.userId !== story.authorId) {
+        await createNotification({
+          recipientId: parentComment.userId,
+          type: "reply",
+          payload: {
+            actorId: user.id,
+            actorName: user.displayName || user.username,
+            actorUsername: user.username,
+            actorAvatarUrl: user.avatarUrl,
+            storyId,
+            storyTitle: story.title,
+            commentId: comment.id,
+            snippet,
+          },
+        });
+      }
+    }
+  }
+
   revalidatePath(`/story/${storyId}`);
 
   return comment;
@@ -657,6 +726,38 @@ export async function toggleCommentLike(commentId: string) {
     await prisma.commentLike.create({
       data: { userId: user.id, commentId },
     });
+
+    // Notify the comment author.
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: {
+        userId: true,
+        storyId: true,
+        content: true,
+        story: { select: { title: true } },
+      },
+    });
+    if (comment) {
+      const snippet =
+        comment.content.length > 100
+          ? comment.content.slice(0, 100) + "…"
+          : comment.content;
+      await createNotification({
+        recipientId: comment.userId,
+        type: "comment_like",
+        payload: {
+          actorId: user.id,
+          actorName: user.displayName || user.username,
+          actorUsername: user.username,
+          actorAvatarUrl: user.avatarUrl,
+          storyId: comment.storyId,
+          storyTitle: comment.story.title,
+          commentId,
+          snippet,
+        },
+      });
+    }
+
     return { liked: true };
   }
 }

@@ -25,17 +25,18 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  stories      Story[]
-  characters   Character[]
-  drafts       Draft[]
-  likes        Like[]
-  comments     Comment[]
-  commentLikes CommentLike[]
-  follows      Follow[]      @relation("follower")
-  followers    Follow[]      @relation("following")
-  preferences  UserPreferences?
-  generations  Generation[]
-  credits      UserCredits?
+  stories       Story[]
+  characters    Character[]
+  drafts        Draft[]
+  likes         Like[]
+  comments      Comment[]
+  commentLikes  CommentLike[]
+  follows       Follow[]      @relation("follower")
+  followers     Follow[]      @relation("following")
+  notifications Notification[]
+  preferences   UserPreferences?
+  generations   Generation[]
+  credits       UserCredits?
 
   @@index([stackAuthId])
   @@index([email])
@@ -279,6 +280,19 @@ model CommentLike {
   @@unique([userId, commentId])
   @@index([commentId])
   @@index([userId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    // recipient
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // "comment" | "reply" | "story_like" | "comment_like" | "follow"
+  payload   Json      // actor + context (storyId, storyTitle, commentId, snippet, etc.)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
 }
 
 model Follow {
