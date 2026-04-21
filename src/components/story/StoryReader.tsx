@@ -12,6 +12,14 @@ import { formatError } from "@/lib/format-error";
 import { CommentsSection } from "./CommentsSection";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import { ViewTracker } from "./ViewTracker";
+import { ReadingPrefs } from "./ReadingPrefs";
+import { ReadingProgressBanner } from "./ReadingProgressBanner";
+import {
+  useReadingPrefs,
+  useReadingProgress,
+  FONT_SIZE_PX,
+  LINE_HEIGHT_VALUE,
+} from "@/lib/hooks";
 
 interface StoryReaderProps {
   story: {
@@ -98,7 +106,13 @@ const ChapterBody = memo(function ChapterBody({
           {chapterTitle && chapterTitle !== storyTitle ? `：${chapterTitle}` : ""}
         </h2>
       )}
-      <div className="font-prose text-foreground/90 leading-8 text-base md:text-lg whitespace-pre-wrap">
+      <div
+        className="font-prose text-foreground/90 whitespace-pre-wrap"
+        style={{
+          fontSize: "var(--reader-font-size, 1.075rem)",
+          lineHeight: "var(--reader-line-height, 1.85)",
+        }}
+      >
         {content}
       </div>
       {showSeparator && <Separator className="mt-12" />}
@@ -118,6 +132,9 @@ export function StoryReader({
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [liking, setLiking] = useState(false);
   const [continueOpen, setContinueOpen] = useState(false);
+
+  const { fontSize, lineHeight } = useReadingPrefs();
+  const { savedPercent, restore, dismiss } = useReadingProgress({ storyId: story.id });
 
   const displayDate = story.publishedAt ?? story.createdAt;
   const chapterCount = story.chapters.length;
@@ -141,7 +158,15 @@ export function StoryReader({
   }
 
   return (
-    <article className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
+    <article
+      className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10"
+      style={
+        {
+          "--reader-font-size": FONT_SIZE_PX[fontSize],
+          "--reader-line-height": LINE_HEIGHT_VALUE[lineHeight],
+        } as React.CSSProperties
+      }
+    >
       <header className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
         <div className="flex items-start justify-between gap-3">
           <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
@@ -285,6 +310,15 @@ export function StoryReader({
       )}
 
       <ViewTracker storyId={story.id} />
+
+      <ReadingPrefs />
+      {savedPercent !== null && (
+        <ReadingProgressBanner
+          percent={savedPercent}
+          onRestore={restore}
+          onDismiss={dismiss}
+        />
+      )}
     </article>
   );
 }
