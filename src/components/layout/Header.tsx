@@ -143,13 +143,13 @@ export function Header({ className }: { className?: string }) {
             <div className="flex items-center gap-1.5">
               <Link href="/handler/sign-in" className="hidden sm:block">
                 <Button variant="ghost" size="sm" className="h-8 px-3 text-sm rounded-full">
-                  Sign In
+                  登录
                 </Button>
               </Link>
-              <Link href="/create">
+              <Link href="/handler/sign-in?after_auth_return_to=/create">
                 <Button size="sm" className="h-8 px-3 text-sm rounded-full gap-1">
-                  <span className="hidden sm:inline">Get Started</span>
-                  <span className="sm:hidden">Start</span>
+                  <span className="hidden sm:inline">开始创作</span>
+                  <span className="sm:hidden">创作</span>
                   <ArrowRight className="size-3.5" />
                 </Button>
               </Link>
@@ -161,6 +161,9 @@ export function Header({ className }: { className?: string }) {
             variant="ghost"
             size="icon"
             className="sm:hidden size-8 rounded-full"
+            aria-label={mobileMenuOpen ? "关闭菜单" : "打开菜单"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -174,9 +177,12 @@ export function Header({ className }: { className?: string }) {
 
       {/* Mobile Navigation Dropdown */}
       {mobileMenuOpen && (
-        <div className="fixed top-16 inset-x-0 mx-auto max-w-[280px] z-40 sm:hidden">
+        <div
+          id="mobile-menu"
+          className="fixed top-16 inset-x-0 mx-auto max-w-[280px] z-40 sm:hidden"
+        >
           <div className="bg-surface/95 backdrop-blur-lg border border-border/50 rounded-2xl shadow-lg p-2 animate-fade-slide-in">
-            <nav className="flex flex-col gap-1">
+            <nav className="flex flex-col gap-1" aria-label="主导航">
               <Link
                 href="/create"
                 className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"

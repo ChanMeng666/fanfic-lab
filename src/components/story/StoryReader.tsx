@@ -1,13 +1,14 @@
 "use client";
 
-import { Heart, BookOpen, Calendar, User, Tag } from "lucide-react";
+import Link from "next/link";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { toggleLike } from "@/lib/actions/story";
 import { toast } from "sonner";
+import { CommentsSection } from "./CommentsSection";
 
 interface StoryReaderProps {
   story: {
@@ -35,6 +36,8 @@ interface StoryReaderProps {
   };
   initialLikeCount?: number;
   initialLiked?: boolean;
+  commentCount?: number;
+  currentUserId?: string | null;
 }
 
 const ratingLabels: Record<string, string> = {
@@ -51,18 +54,23 @@ const ratingVariants: Record<string, "default" | "secondary" | "destructive" | "
   EXPLICIT: "destructive",
 };
 
-export function StoryReader({ story, initialLikeCount = 0, initialLiked = false }: StoryReaderProps) {
+export function StoryReader({
+  story,
+  initialLikeCount = 0,
+  initialLiked = false,
+  commentCount = 0,
+  currentUserId = null,
+}: StoryReaderProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [liking, setLiking] = useState(false);
 
-  const chapter = story.chapters[0];
   const displayDate = story.publishedAt ?? story.createdAt;
+  const chapterCount = story.chapters.length;
 
   async function handleLike() {
     if (liking) return;
     setLiking(true);
-    // Optimistic update
     const wasLiked = liked;
     setLiked(!wasLiked);
     setLikeCount((prev) => (wasLiked ? prev - 1 : prev + 1));
@@ -70,7 +78,6 @@ export function StoryReader({ story, initialLikeCount = 0, initialLiked = false 
       const res = await toggleLike(story.id);
       setLiked(res.liked);
     } catch (err) {
-      // Revert on error
       setLiked(wasLiked);
       setLikeCount((prev) => (wasLiked ? prev + 1 : prev - 1));
       if (err instanceof Error && err.message.includes("Unauthorized")) {
@@ -85,29 +92,29 @@ export function StoryReader({ story, initialLikeCount = 0, initialLiked = false 
 
   return (
     <article className="max-w-3xl mx-auto px-4 py-10">
-      {/* Story header */}
       <header className="mb-8 space-y-4">
         <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
           {story.title}
         </h1>
 
-        {/* Meta row */}
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5">
+          <Link
+            href={`/users/${story.author.username}`}
+            className="flex items-center gap-1.5 hover:text-primary transition-colors"
+          >
             <User className="size-3.5" />
             {story.author.displayName || story.author.username}
-          </span>
+          </Link>
           <span className="flex items-center gap-1.5">
             <Calendar className="size-3.5" />
             {new Date(displayDate).toLocaleDateString("zh-CN")}
           </span>
           <span className="flex items-center gap-1.5">
             <BookOpen className="size-3.5" />
-            {story.wordCount.toLocaleString()} 字
+            全文 {story.wordCount.toLocaleString()} 字 · 共 {chapterCount} 章
           </span>
         </div>
 
-        {/* Badges row */}
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">{story.fandom}</Badge>
           <Badge variant={ratingVariants[story.rating] ?? "secondary"}>
@@ -125,33 +132,28 @@ export function StoryReader({ story, initialLikeCount = 0, initialLiked = false 
             </Badge>
           ))}
         </div>
-
-        {/* Summary */}
-        {story.summary && (
-          <Card className="bg-surface border-border">
-            <CardContent className="py-4 px-5">
-              <p className="text-muted-foreground text-sm leading-relaxed font-prose italic">
-                {story.summary}
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </header>
 
       <Separator className="mb-8" />
 
-      {/* Chapter content */}
-      {chapter ? (
-        <section className="space-y-4">
-          {chapter.title && (
-            <h2 className="font-display text-xl font-semibold text-foreground">
-              {chapter.title}
-            </h2>
-          )}
-          <div className="font-prose text-foreground/90 leading-8 text-base md:text-lg whitespace-pre-wrap">
-            {chapter.content}
-          </div>
-        </section>
+      {chapterCount > 0 ? (
+        <div className="space-y-12">
+          {story.chapters.map((chapter, idx) => (
+            <section key={chapter.id} className="space-y-4">
+              {(chapter.title || chapterCount > 1) && (
+                <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">
+                  {chapterCount > 1 ? `第 ${chapter.chapterNumber} 章` : null}
+                  {chapterCount > 1 && chapter.title ? "：" : ""}
+                  {chapter.title}
+                </h2>
+              )}
+              <div className="font-prose text-foreground/90 leading-8 text-base md:text-lg whitespace-pre-wrap">
+                {chapter.content}
+              </div>
+              {idx < story.chapters.length - 1 && <Separator className="mt-12" />}
+            </section>
+          ))}
+        </div>
       ) : (
         <div className="text-center py-16">
           <div className="flex items-center justify-center size-16 rounded-2xl bg-surface mx-auto mb-4">
@@ -163,22 +165,42 @@ export function StoryReader({ story, initialLikeCount = 0, initialLiked = false 
 
       <Separator className="my-10" />
 
-      {/* Footer actions */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant={liked ? "default" : "outline"}
-          size="sm"
-          className="gap-1.5"
-          onClick={handleLike}
-        >
-          <Heart className={`size-3.5 ${liked ? "fill-current" : ""}`} />
-          {likeCount > 0 ? likeCount : "喜欢"}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={liked ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={handleLike}
+            aria-label={liked ? "取消点赞" : "点赞"}
+          >
+            <Heart className={`size-3.5 ${liked ? "fill-current" : ""}`} />
+            {likeCount}
+          </Button>
+          <a
+            href="#comments"
+            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-colors"
+          >
+            <MessageSquare className="size-3.5" />
+            {commentCount}
+          </a>
+        </div>
 
-        <p className="text-xs text-muted-foreground">
-          {story.wordCount.toLocaleString()} 字 · {story.fandom}
+        <p className="text-xs text-muted-foreground flex items-center gap-2">
+          <Link
+            href={`/users/${story.author.username}`}
+            className="hover:text-primary transition-colors"
+          >
+            @{story.author.username}
+          </Link>
+          <span>·</span>
+          <span>{story.fandom}</span>
         </p>
       </div>
+
+      <Separator className="my-10" />
+
+      <CommentsSection storyId={story.id} isLoggedIn={!!currentUserId} />
     </article>
   );
 }

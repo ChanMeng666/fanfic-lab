@@ -72,15 +72,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body
         className={`${cormorant.variable} ${sourceSans.variable} ${lora.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-md"
+        >
+          跳到主内容
+        </a>
         <StackProvider>
           <Suspense fallback={null}>
             <ConditionalHeader />
           </Suspense>
-          {children}
+          <div id="main">{children}</div>
           <Toaster />
         </StackProvider>
       </body>

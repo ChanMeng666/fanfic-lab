@@ -253,10 +253,18 @@ export function useFeedStories(
     [filters, pageSize, offset]
   );
 
+  const tagsKey = filters?.tags?.join(",");
   useEffect(() => {
     fetchStories(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters?.fandom, filters?.rating, filters?.search, filters?.sortBy, JSON.stringify(filters?.tags)]);
+  }, [
+    filters?.fandom,
+    filters?.rating,
+    filters?.status,
+    filters?.search,
+    filters?.sortBy,
+    tagsKey,
+  ]);
 
   const loadMore = useCallback(async () => {
     if (!loading && hasMore) {

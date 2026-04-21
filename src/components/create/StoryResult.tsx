@@ -31,8 +31,12 @@ export function StoryResult({
     try {
       const res = await toggleLike(storyId);
       setLiked(res.liked);
-    } catch {
-      toast.error("收藏失败，请重试");
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthorized")) {
+        toast.error("请先登录后再收藏");
+      } else {
+        toast.error(err instanceof Error ? err.message : "收藏失败，请重试");
+      }
     } finally {
       setLiking(false);
     }

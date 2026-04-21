@@ -21,7 +21,6 @@ export default async function StoryPage({ params }: StoryPageProps) {
       },
       chapters: {
         orderBy: { chapterNumber: "asc" },
-        take: 1,
         select: {
           id: true,
           title: true,
@@ -31,7 +30,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         },
       },
       _count: {
-        select: { likes: true },
+        select: { likes: true, comments: true },
       },
     },
   });
@@ -40,8 +39,8 @@ export default async function StoryPage({ params }: StoryPageProps) {
     notFound();
   }
 
-  // Check if the current user has liked this story
   let initialLiked = false;
+  let currentUserId: string | null = null;
   try {
     const stackUser = await stackServerApp.getUser();
     if (stackUser) {
@@ -50,6 +49,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         select: { id: true },
       });
       if (dbUser) {
+        currentUserId = dbUser.id;
         const like = await prisma.like.findUnique({
           where: { userId_storyId: { userId: dbUser.id, storyId: id } },
         });
@@ -57,7 +57,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
       }
     }
   } catch {
-    // Not logged in, default to false
+    // Not logged in
   }
 
   return (
@@ -66,6 +66,8 @@ export default async function StoryPage({ params }: StoryPageProps) {
         story={story}
         initialLikeCount={story._count.likes}
         initialLiked={initialLiked}
+        commentCount={story._count.comments}
+        currentUserId={currentUserId}
       />
     </div>
   );

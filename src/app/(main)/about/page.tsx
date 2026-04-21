@@ -94,7 +94,7 @@ export default function AboutPage() {
             </h2>
           </div>
 
-          <Card className="border-accent/30 bg-ai-surface ai-glow">
+          <Card className="border-accent/30 bg-ai-surface">
             <CardContent className="p-6 md:p-8 space-y-5">
               <div className="flex items-start gap-4">
                 <div className="shrink-0 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-border">

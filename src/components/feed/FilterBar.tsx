@@ -37,24 +37,22 @@ interface FilterBarProps {
 }
 
 const DEFAULT_FANDOMS = [
+  "Honkai: Star Rail",
+  "Genshin Impact",
+  "Honkai Impact 3rd",
+  "Zenless Zone Zero",
+  "Arknights",
+  "Fate Series",
   "Harry Potter",
   "Marvel",
-  "BTS",
-  "Supernatural",
-  "Star Wars",
-  "Sherlock",
   "My Hero Academia",
   "Attack on Titan",
-  "Genshin Impact",
-  "Haikyuu!!",
-  "Stray Kids",
-  "The Witcher",
 ];
 
 const STATUS_OPTIONS = [
-  { value: undefined, label: "All" },
-  { value: "PUBLISHED", label: "In Progress" },
-  { value: "COMPLETE", label: "Complete" },
+  { value: undefined, label: "全部" },
+  { value: "PUBLISHED", label: "连载中" },
+  { value: "COMPLETE", label: "已完结" },
 ] as const;
 
 export function FilterBar({
@@ -74,26 +72,24 @@ export function FilterBar({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-center gap-2">
-        {/* Fandom Combobox */}
         <Popover open={fandomOpen} onOpenChange={setFandomOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
               aria-expanded={fandomOpen}
+              aria-label="选择作品"
               className="w-[180px] justify-between gap-2"
             >
-              <span className="truncate">
-                {selectedFandom ?? "All Fandoms"}
-              </span>
+              <span className="truncate">{selectedFandom ?? "全部作品"}</span>
               <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[220px] p-0" align="start">
             <Command>
-              <CommandInput placeholder="Search fandom..." />
+              <CommandInput placeholder="搜索作品名…" />
               <CommandList>
-                <CommandEmpty>No fandom found.</CommandEmpty>
+                <CommandEmpty>未找到匹配的作品</CommandEmpty>
                 <CommandGroup>
                   <CommandItem
                     value="all"
@@ -108,7 +104,7 @@ export function FilterBar({
                         selectedFandom === null ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    All Fandoms
+                    全部作品
                   </CommandItem>
                   {fandoms.map((fandom) => (
                     <CommandItem
@@ -134,14 +130,18 @@ export function FilterBar({
           </PopoverContent>
         </Popover>
 
-        {/* Status Toggle */}
-        <div className="flex items-center rounded-full border border-border bg-surface p-1">
+        <div
+          className="flex items-center rounded-full border border-border bg-surface p-1"
+          role="group"
+          aria-label="按状态筛选"
+        >
           {STATUS_OPTIONS.map((option) => (
             <button
               key={option.label}
               onClick={() => onStatusChange(option.value)}
+              aria-pressed={selectedStatus === option.value}
               className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
+                "rounded-full px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                 selectedStatus === option.value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -152,7 +152,6 @@ export function FilterBar({
           ))}
         </div>
 
-        {/* Clear Filters */}
         {hasActiveFilters && (
           <Button
             variant="ghost"
@@ -164,28 +163,26 @@ export function FilterBar({
             className="gap-1 text-muted-foreground hover:text-foreground"
           >
             <X className="size-3.5" />
-            Clear
+            清除
           </Button>
         )}
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Results Count */}
         <span className="text-sm text-muted-foreground">
-          {resultCount} {resultCount === 1 ? "story" : "stories"}
+          已加载 {resultCount} 篇
         </span>
 
-        {/* Sort Select */}
         <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[150px] gap-2">
+          <SelectTrigger className="w-[150px] gap-2" aria-label="排序方式">
             <ArrowUpDown className="size-4 text-muted-foreground" />
-            <SelectValue placeholder="Sort by" />
+            <SelectValue placeholder="排序" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recent">Most Recent</SelectItem>
-            <SelectItem value="popular">Most Popular</SelectItem>
-            <SelectItem value="comments">Most Comments</SelectItem>
-            <SelectItem value="words">Longest</SelectItem>
+            <SelectItem value="recent">最新发布</SelectItem>
+            <SelectItem value="popular">最受欢迎</SelectItem>
+            <SelectItem value="comments">评论最多</SelectItem>
+            <SelectItem value="words">字数最长</SelectItem>
           </SelectContent>
         </Select>
       </div>

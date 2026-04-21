@@ -17,7 +17,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         // Selection
         "selection:bg-primary selection:text-primary-foreground",
         // Focus state - Teal ring
-        "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15",
+        "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/50",
         // Dark mode
         "dark:bg-surface/50",
         // File input

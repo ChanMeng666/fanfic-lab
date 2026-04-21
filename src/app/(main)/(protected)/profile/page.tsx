@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,8 +8,8 @@ import { ProfileClient } from "./profile-client";
 export default async function ProfilePage() {
   const stackUser = await stackServerApp.getUser();
   if (!stackUser) {
-    // This shouldn't happen because the (protected) layout already checks
-    return null;
+    // (protected) layout should already redirect; this is a defensive fallback.
+    redirect("/handler/sign-in");
   }
 
   // Ensure user exists in database (auto-create if needed)
@@ -49,6 +50,9 @@ export default async function ProfilePage() {
     prisma.story.findMany({
       where: { authorId: dbUser.id },
       include: {
+        author: {
+          select: { id: true, username: true, avatarUrl: true },
+        },
         _count: {
           select: {
             likes: true,
@@ -65,6 +69,9 @@ export default async function ProfilePage() {
       include: {
         story: {
           include: {
+            author: {
+              select: { id: true, username: true, avatarUrl: true },
+            },
             _count: {
               select: {
                 likes: true,

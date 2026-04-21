@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, BookOpen, X, Loader2, PenLine } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,16 +15,37 @@ import { toast } from "sonner";
 
 const PAGE_SIZE = 8;
 
-export default function FeedPage() {
-  const [selectedFandom, setSelectedFandom] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
-  const [sortBy, setSortBy] = useState<"recent" | "popular" | "comments" | "words">("recent");
-  const [searchQuery, setSearchQuery] = useState("");
+type SortOption = "recent" | "popular" | "comments" | "words";
 
-  // Debounce search to avoid excessive API calls
+export default function FeedPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [selectedFandom, setSelectedFandom] = useState<string | null>(
+    searchParams.get("fandom") || null
+  );
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(
+    searchParams.get("status") || undefined
+  );
+  const [sortBy, setSortBy] = useState<SortOption>(
+    (searchParams.get("sort") as SortOption) || "recent"
+  );
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Build filters object
+  // Sync URL on filter change.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedFandom) params.set("fandom", selectedFandom);
+    if (selectedStatus) params.set("status", selectedStatus);
+    if (sortBy && sortBy !== "recent") params.set("sort", sortBy);
+    if (debouncedSearch) params.set("q", debouncedSearch);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [selectedFandom, selectedStatus, sortBy, debouncedSearch, pathname, router]);
+
   const filters = useMemo(
     () => ({
       fandom: selectedFandom || undefined,
@@ -34,10 +56,8 @@ export default function FeedPage() {
     [selectedFandom, selectedStatus, debouncedSearch, sortBy]
   );
 
-  // Fetch real data from database
   const { stories, loading, error, hasMore, loadMore } = useFeedStories(filters, PAGE_SIZE);
 
-  // Infinite scroll
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: loadMore,
     hasMore,
@@ -45,7 +65,6 @@ export default function FeedPage() {
     threshold: 300,
   });
 
-  // Transform database stories to StoryCardData format
   const displayedStories: StoryCardData[] = useMemo(
     () =>
       stories.map((story) => ({
@@ -56,7 +75,12 @@ export default function FeedPage() {
         ships: story.ships,
         tags: story.tags,
         rating: story.rating as "GENERAL" | "TEEN" | "MATURE" | "EXPLICIT",
-        status: story.status === "PUBLISHED" ? "PUBLISHED" : story.status === "ARCHIVED" ? "COMPLETE" : "DRAFT",
+        status:
+          story.status === "PUBLISHED"
+            ? "PUBLISHED"
+            : story.status === "ARCHIVED"
+              ? "COMPLETE"
+              : "DRAFT",
         wordCount: story.wordCount,
         chapterCount: story._count?.chapters || 0,
         likes: story._count?.likes || 0,
@@ -72,51 +96,60 @@ export default function FeedPage() {
     [stories]
   );
 
-  const handleLike = async (storyId: string) => {
+  const handleLike = useCallback(async (storyId: string) => {
     try {
       await toggleLike(storyId);
-    } catch {
-      toast.error("请先登录后再收藏");
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthorized")) {
+        toast.error("请先登录后再点赞");
+      } else {
+        toast.error("操作失败，请重试");
+      }
     }
-  };
+  }, []);
 
-  const hasActiveFilters = selectedFandom || selectedStatus || searchQuery;
+  const hasActiveFilters = !!(
+    selectedFandom ||
+    selectedStatus ||
+    searchQuery ||
+    sortBy !== "recent"
+  );
 
   const clearAllFilters = () => {
     setSelectedFandom(null);
     setSelectedStatus(undefined);
     setSearchQuery("");
+    setSortBy("recent");
   };
 
-  // Initial loading state (no stories yet)
   const isInitialLoading = loading && stories.length === 0;
 
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-6">
-        {/* Page Header */}
         <div className="mb-6">
           <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
-            Explore Stories
+            发现故事
           </h1>
           <p className="text-muted-foreground">
-            Discover fanfiction from your favorite fandoms
+            浏览社区中其他作者的同人创作
           </p>
         </div>
 
-        {/* Search Bar */}
         <div className="relative mb-4">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search stories..."
+            placeholder="搜索故事…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-12 text-base"
+            aria-label="搜索故事"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
+              aria-label="清除搜索"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="size-4" />
@@ -124,7 +157,6 @@ export default function FeedPage() {
           )}
         </div>
 
-        {/* Filter Bar */}
         <div className="mb-6">
           <FilterBar
             selectedFandom={selectedFandom}
@@ -132,31 +164,32 @@ export default function FeedPage() {
             selectedStatus={selectedStatus}
             onStatusChange={setSelectedStatus}
             sortBy={sortBy}
-            onSortChange={(sort) => setSortBy(sort as "recent" | "popular" | "comments" | "words")}
+            onSortChange={(sort) => setSortBy(sort as SortOption)}
             resultCount={displayedStories.length}
           />
         </div>
 
-        {/* Error State */}
         {error && (
-          <Card className="p-8 text-center border-destructive/50">
+          <Card className="p-8 text-center border-destructive/50" role="alert">
             <p className="text-destructive mb-4">{error}</p>
             <Button variant="outline" onClick={() => window.location.reload()}>
-              Try Again
+              重试
             </Button>
           </Card>
         )}
 
-        {/* Loading State (Initial) */}
         {isInitialLoading && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            role="status"
+            aria-label="加载中"
+          >
             {Array.from({ length: 6 }).map((_, i) => (
               <StoryCardSkeleton key={i} />
             ))}
           </div>
         )}
 
-        {/* Story Grid */}
         {!isInitialLoading && displayedStories.length > 0 && (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -165,48 +198,48 @@ export default function FeedPage() {
               ))}
             </div>
 
-            {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-4" />
 
-            {/* Loading indicator for infinite scroll */}
             {loading && stories.length > 0 && (
-              <div className="flex justify-center py-8">
+              <div
+                className="flex justify-center py-8"
+                role="status"
+                aria-label="加载更多"
+              >
                 <Loader2 className="size-6 animate-spin text-primary" />
               </div>
             )}
 
-            {/* End of list indicator */}
             {!hasMore && stories.length > 0 && (
               <p className="text-center text-sm text-muted-foreground py-8">
-                You&apos;ve reached the end
+                已经看到底啦
               </p>
             )}
           </>
         )}
 
-        {/* Empty State */}
         {!isInitialLoading && !error && displayedStories.length === 0 && (
           <Card className="p-12 text-center">
             <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary mx-auto mb-4">
               <BookOpen className="size-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              {hasActiveFilters ? "No stories found" : "No stories yet"}
+              {hasActiveFilters ? "没有符合条件的故事" : "暂无故事"}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
               {hasActiveFilters
-                ? "Try adjusting your filters or search query, or explore a different fandom"
-                : "Be the first to publish a story and share your creativity with the community!"}
+                ? "试试调整筛选条件或搜索关键词"
+                : "成为第一位发布故事的作者，与社区分享你的创意吧！"}
             </p>
             {hasActiveFilters ? (
               <Button variant="outline" onClick={clearAllFilters}>
-                Clear All Filters
+                清除筛选
               </Button>
             ) : (
               <Button asChild>
                 <Link href="/create" className="gap-1.5">
                   <PenLine className="size-4" />
-                  Create Your First Story
+                  开始创作
                 </Link>
               </Button>
             )}
