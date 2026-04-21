@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { StackProvider } from "@/components/providers/StackProvider";
 import { ConditionalHeader } from "@/components/layout";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Display font - Literary, elegant headers
@@ -45,24 +46,34 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FanFic Lab - Your AI Writing Partner",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "FanFic Lab - AI 协作的同人文创作工坊",
+    template: "%s | FanFic Lab",
+  },
   description:
-    "Write stories together with AI. FanFic Lab is your collaborative writing studio for fanfiction, featuring smart continuation, character consistency, and creative assistance.",
+    "FanFic Lab 是为崩坏：星穹铁道同人爱好者打造的 AI 协作创作工坊。用一句话描述想看的剧情，AI 帮你写出风格贴合、角色到位的同人短篇。",
   keywords: [
+    "同人文",
+    "崩坏星穹铁道",
+    "Honkai Star Rail",
+    "HSR",
+    "AI 写作",
     "fanfiction",
-    "fanfic",
-    "AI writing",
-    "creative writing",
-    "fandom",
-    "collaborative writing",
-    "story writing",
-    "AI assistant",
+    "AI fanfic",
   ],
   openGraph: {
-    title: "FanFic Lab - Your AI Writing Partner",
+    title: "FanFic Lab - AI 协作的同人文创作工坊",
     description:
-      "Write stories together with AI. Your collaborative writing studio for fanfiction.",
+      "用一句话描述想看的剧情，AI 帮你写出风格贴合、角色到位的同人短篇。",
     type: "website",
+    siteName: "FanFic Lab",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FanFic Lab",
+    description: "AI 协作的同人文创作工坊",
   },
 };
 

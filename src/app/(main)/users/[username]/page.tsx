@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,9 +9,58 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StoryCard, type StoryCardData } from "@/components/feed";
 import { Edit, Calendar, BookOpen } from "lucide-react";
 import { FollowButton } from "@/components/user/FollowButton";
+import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
 interface PublicProfilePageProps {
   params: Promise<{ username: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PublicProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: {
+      displayName: true,
+      username: true,
+      bio: true,
+      avatarUrl: true,
+      _count: { select: { stories: { where: { status: "PUBLISHED" } } } },
+    },
+  });
+
+  if (!user) {
+    return { title: "作者未找到", robots: { index: false, follow: false } };
+  }
+
+  const name = user.displayName || user.username;
+  const title = `${name} (@${user.username}) - ${SITE_NAME}`;
+  const description =
+    user.bio?.slice(0, 200) ??
+    `${name} 在 ${SITE_NAME} 发表的 ${user._count.stories} 篇同人文。`;
+  const url = absoluteUrl(`/users/${user.username}`);
+  const images = user.avatarUrl ? [{ url: user.avatarUrl }] : undefined;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: SITE_NAME,
+      type: "profile",
+      images,
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      images: user.avatarUrl ? [user.avatarUrl] : undefined,
+    },
+  };
 }
 
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
