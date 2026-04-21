@@ -30,6 +30,6 @@ export async function deliveryNode(state: DreamWriterState, _config: RunnableCon
     suggestions = parseJsonSafe(content) as unknown as string[];
   } catch { suggestions = ["换一个设定试试？", "试试不同的情感基调？", "看看其他CP？"]; }
 
-  const result: StoryResult = { title: outline.title, body: story, cp: outline.cp, tags: [outline.setting, outline.tone], setting: outline.setting, wordCount: countWords(story), qualityScore: state.qualityReport?.overallScore ?? 7, language: state.detectedLanguage, suggestions };
+  const result: StoryResult = { title: outline.title, body: story, summary: state.summary || "", cp: outline.cp, tags: [outline.setting, outline.tone], setting: outline.setting, wordCount: countWords(story), qualityScore: state.qualityReport?.overallScore ?? 7, language: state.detectedLanguage, suggestions };
   return { stage: "complete", result, logs: [{ message: `创作完成！《${result.title}》共 ${result.wordCount} 字`, done: true }] };
 }

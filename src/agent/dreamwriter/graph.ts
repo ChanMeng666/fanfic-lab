@@ -4,6 +4,7 @@ import { intentParserNode } from "./nodes/intent-parser";
 import { storyArchitectNode } from "./nodes/story-architect";
 import { writerNode } from "./nodes/writer";
 import { qualityGuardNode } from "./nodes/quality-guard";
+import { summarizeNode } from "./nodes/summarize";
 import { deliveryNode } from "./nodes/delivery";
 import type { DreamWriterState } from "./state";
 
@@ -11,12 +12,12 @@ const MAX_REVISIONS = 2;
 
 function routeAfterQualityCheck(state: DreamWriterState): string {
   const report = state.qualityReport;
-  if (!report) return "delivery_node";
+  if (!report) return "summarize_node";
   if (!report.passesThreshold && state.revisionCount < MAX_REVISIONS) {
     console.log(`[DreamWriter] Quality score ${report.overallScore}/10, revision ${state.revisionCount + 1}/${MAX_REVISIONS}`);
     return "writer_node";
   }
-  return "delivery_node";
+  return "summarize_node";
 }
 
 async function revisionCounterNode(state: DreamWriterState): Promise<Partial<DreamWriterState>> {
@@ -29,13 +30,15 @@ const workflow = new StateGraph(DreamWriterStateAnnotation)
   .addNode("writer_node", writerNode)
   .addNode("quality_guard_node", qualityGuardNode)
   .addNode("revision_counter_node", revisionCounterNode)
+  .addNode("summarize_node", summarizeNode)
   .addNode("delivery_node", deliveryNode)
   .addEdge(START, "intent_parser_node")
   .addEdge("intent_parser_node", "story_architect_node")
   .addEdge("story_architect_node", "writer_node")
   .addEdge("writer_node", "quality_guard_node")
-  .addConditionalEdges("quality_guard_node", routeAfterQualityCheck, { writer_node: "revision_counter_node", delivery_node: "delivery_node" })
+  .addConditionalEdges("quality_guard_node", routeAfterQualityCheck, { writer_node: "revision_counter_node", summarize_node: "summarize_node" })
   .addEdge("revision_counter_node", "writer_node")
+  .addEdge("summarize_node", "delivery_node")
   .addEdge("delivery_node", END);
 
 const memory = new MemorySaver();

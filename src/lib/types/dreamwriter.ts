@@ -48,6 +48,7 @@ export interface OOCIssue {
 export interface StoryResult {
   title: string;
   body: string;
+  summary: string;
   cp: string[];
   tags: string[];
   setting: string;

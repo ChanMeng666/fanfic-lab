@@ -58,6 +58,11 @@ export const DreamWriterStateAnnotation = Annotation.Root({
     default: () => 0,
   }),
 
+  summary: Annotation<string>({
+    reducer: (_, update) => update,
+    default: () => "",
+  }),
+
   result: Annotation<StoryResult | null>({
     reducer: (_, update) => update,
     default: () => null,
