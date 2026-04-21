@@ -165,11 +165,15 @@ export function StoryReader({
         <div className="space-y-12">
           {story.chapters.map((chapter, idx) => (
             <section key={chapter.id} className="space-y-4">
-              {(chapter.title || chapterCount > 1) && (
+              {/* Skip chapter h2 entirely for single-chapter stories — the
+                  page h1 (story title) already serves as the heading and a
+                  second one looks duplicated. */}
+              {chapterCount > 1 && (
                 <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">
-                  {chapterCount > 1 ? `第 ${chapter.chapterNumber} 章` : null}
-                  {chapterCount > 1 && chapter.title ? "：" : ""}
-                  {chapter.title}
+                  第 {chapter.chapterNumber} 章
+                  {chapter.title && chapter.title !== story.title
+                    ? `：${chapter.title}`
+                    : ""}
                 </h2>
               )}
               <div className="font-prose text-foreground/90 leading-8 text-base md:text-lg whitespace-pre-wrap">

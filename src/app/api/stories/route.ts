@@ -54,7 +54,12 @@ export async function POST(req: NextRequest) {
         authorId: dbUser.id,
         chapters: {
           create: {
-            title: result.title,
+            // Don't duplicate the story title onto its only chapter — when
+            // a second chapter is added later via /api/stories/[id]/continue
+            // it gets an auto-generated chapter title, and the reader UI
+            // relies on chapter.title being null/distinct to avoid showing
+            // a redundant h2.
+            title: null,
             content: result.body,
             chapterNumber: 1,
             wordCount: result.wordCount,

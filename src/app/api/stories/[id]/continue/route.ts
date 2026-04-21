@@ -20,6 +20,41 @@ const CONTINUE_PROMPT = `你是一位顶尖的同人文作者，正在为一篇�
 
 输出要求：直接输出本章正文，不要加章节标题、不要加作者注、不要加任何元信息。`;
 
+const CHAPTER_TITLE_PROMPT = `请为以下同人文章节拟一个简洁的中文章节标题。
+
+要求：
+1. 4~10 字
+2. 有诗意，能引发读者兴趣
+3. 不要剧透关键转折
+4. 不要带「第 X 章」字样，不要引号
+5. 直接输出标题，不要任何前缀或额外文字
+
+只输出标题本身。`;
+
+async function generateChapterTitle(content: string): Promise<string | null> {
+  try {
+    const model = new ChatOpenAI({
+      temperature: 0.6,
+      model: "gpt-4o-mini",
+      maxTokens: 30,
+    });
+    const res = await model.invoke([
+      new SystemMessage(CHAPTER_TITLE_PROMPT),
+      new HumanMessage(content.slice(0, 3000)),
+    ]);
+    const raw = (typeof res.content === "string" ? res.content : "").trim();
+    const cleaned = raw
+      .replace(/^["「『《]|["」』》]$/g, "")
+      .replace(/^第.{1,4}章[：:]?\s*/, "")
+      .trim();
+    if (cleaned.length < 2 || cleaned.length > 20) return null;
+    return cleaned;
+  } catch (e) {
+    console.warn("[continue] chapter title generation failed:", e);
+    return null;
+  }
+}
+
 interface ContinueBody {
   direction: string;
 }
@@ -158,6 +193,9 @@ ${direction}
           return;
         }
 
+        send({ stage: "titling", message: "正在为本章拟标题…" });
+        const chapterTitle = await generateChapterTitle(content);
+
         send({ stage: "saving", message: "正在保存章节…" });
 
         const wordCount = countWords(content);
@@ -165,7 +203,7 @@ ${direction}
         const newChapter = await prisma.chapter.create({
           data: {
             storyId,
-            title: null,
+            title: chapterTitle,
             content,
             chapterNumber: nextChapterNumber,
             wordCount,
@@ -179,9 +217,12 @@ ${direction}
 
         send({
           stage: "complete",
-          message: `第 ${nextChapterNumber} 章已添加（${wordCount.toLocaleString()} 字）`,
+          message: chapterTitle
+            ? `第 ${nextChapterNumber} 章「${chapterTitle}」已添加（${wordCount.toLocaleString()} 字）`
+            : `第 ${nextChapterNumber} 章已添加（${wordCount.toLocaleString()} 字）`,
           chapterId: newChapter.id,
           chapterNumber: nextChapterNumber,
+          chapterTitle,
           wordCount,
         });
       } catch (err) {
