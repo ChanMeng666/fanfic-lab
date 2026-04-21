@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FloatingNavbar, NavLink, NavDivider } from "@/components/ui/floating-navbar";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { syncUser } from "@/lib/actions/user";
 
 export function Header({ className }: { className?: string }) {
@@ -85,6 +86,7 @@ export function Header({ className }: { className?: string }) {
 
         {/* Auth Section */}
         <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           {isLoading ? (
             <Skeleton className="size-8 rounded-full" />
           ) : isLoggedIn ? (
