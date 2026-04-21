@@ -22,9 +22,10 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="relative min-h-[calc(100vh-4rem)] w-full bg-background">
-      {/* Soft KV strip at the top for atmosphere */}
-      <div className="relative h-56 md:h-72 w-full overflow-hidden">
+    <main className="relative min-h-screen w-full bg-background">
+      {/* KV hero strip — tall enough to carry the 大片 atmosphere, but
+          still leaves clear room for the content below on every viewport. */}
+      <div className="relative h-[50vh] min-h-[320px] md:h-[60vh] md:min-h-[420px] w-full overflow-hidden">
         <Image
           src="/hero/kv-anniversary.jpg"
           alt="Honkai: Star Rail anniversary key visual"
@@ -33,16 +34,18 @@ export default function AboutPage() {
           className="object-cover object-center"
           priority
         />
+        {/* Darken the top (so the floating navbar reads) and fade the
+            bottom into the page background for a seamless transition. */}
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-background"
+          className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-background"
         />
-        <div className="relative z-10 flex h-full items-end pb-8 px-4">
+        <div className="relative z-10 flex h-full items-end pb-10 md:pb-14 px-4">
           <div className="max-w-3xl mx-auto w-full">
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+            <h1 className="font-display text-4xl md:text-6xl font-bold text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
               关于 FanFic Lab
             </h1>
-            <p className="mt-2 text-white/80 text-base md:text-lg drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
+            <p className="mt-3 text-white/85 text-base md:text-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
               一个非商业的《崩坏·星穹铁道》同人故事生成器
             </p>
           </div>

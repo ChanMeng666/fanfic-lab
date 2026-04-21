@@ -227,8 +227,6 @@ export function Header({ className }: { className?: string }) {
         </div>
       )}
 
-      {/* Spacer for floating navbar */}
-      <div className="h-16 bg-background" />
     </>
   );
 }
