@@ -15,6 +15,7 @@ import {
   Camera,
   X,
   Plus,
+  Pencil,
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -583,19 +584,34 @@ export function ProfileClient({
                                 </Badge>
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="relative z-20 text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setPendingDeleteId(story.id);
-                              }}
-                              aria-label="删除故事"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
+                            <div className="relative z-20 flex items-center gap-1">
+                              <Link
+                                href={`/story/${story.id}/edit`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  aria-label="编辑故事"
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setPendingDeleteId(story.id);
+                                }}
+                                aria-label="删除故事"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
                           </div>
                           {story.summary && (
                             <p className="text-sm text-muted-foreground mt-2 line-clamp-2">

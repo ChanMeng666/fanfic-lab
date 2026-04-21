@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { revalidatePath } from "next/cache";
 import { Rating, StoryStatus } from "@prisma/client";
+import { countWords } from "@/lib/wordcount";
 
 // Types for action inputs
 interface CreateStoryInput {
@@ -372,9 +373,7 @@ export async function updateChapter(input: UpdateChapterInput) {
   }
 
   const oldWordCount = chapter.wordCount;
-  const newWordCount = input.content
-    ? input.content.split(/\s+/).filter(Boolean).length
-    : oldWordCount;
+  const newWordCount = input.content ? countWords(input.content) : oldWordCount;
 
   const updatedChapter = await prisma.chapter.update({
     where: { id: input.id },

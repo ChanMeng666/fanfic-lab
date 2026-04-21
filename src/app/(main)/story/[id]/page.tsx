@@ -60,6 +60,8 @@ export default async function StoryPage({ params }: StoryPageProps) {
     // Not logged in
   }
 
+  const isOwner = currentUserId === story.authorId;
+
   return (
     <div className="min-h-screen bg-background">
       <StoryReader
@@ -68,6 +70,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         initialLiked={initialLiked}
         commentCount={story._count.comments}
         currentUserId={currentUserId}
+        isOwner={isOwner}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -38,6 +38,7 @@ interface StoryReaderProps {
   initialLiked?: boolean;
   commentCount?: number;
   currentUserId?: string | null;
+  isOwner?: boolean;
 }
 
 const ratingLabels: Record<string, string> = {
@@ -60,6 +61,7 @@ export function StoryReader({
   initialLiked = false,
   commentCount = 0,
   currentUserId = null,
+  isOwner = false,
 }: StoryReaderProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -93,9 +95,19 @@ export function StoryReader({
   return (
     <article className="max-w-3xl mx-auto px-4 py-10">
       <header className="mb-8 space-y-4">
-        <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
-          {story.title}
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+            {story.title}
+          </h1>
+          {isOwner && (
+            <Link href={`/story/${story.id}/edit`} className="shrink-0">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Pencil className="size-3.5" />
+                编辑
+              </Button>
+            </Link>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <Link
