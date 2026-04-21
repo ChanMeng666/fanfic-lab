@@ -554,9 +554,35 @@ export async function getLikedStories() {
 export async function addComment(storyId: string, content: string, parentId?: string) {
   const user = await getCurrentUser();
 
+  const trimmed = content.trim();
+  if (trimmed.length < 1) throw new Error("评论内容不能为空");
+  if (trimmed.length > 2000) throw new Error("评论过长（≤ 2000 字）");
+
+  // Spam protection: 1 comment per user per 60 seconds.
+  const recent = await prisma.comment.findFirst({
+    where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 60_000) } },
+    select: { id: true },
+  });
+  if (recent) throw new Error("发言太频繁，请稍后再试");
+
+  // If replying, ensure the parent exists and belongs to the same story.
+  if (parentId) {
+    const parent = await prisma.comment.findUnique({
+      where: { id: parentId },
+      select: { storyId: true, parentId: true },
+    });
+    if (!parent || parent.storyId !== storyId) {
+      throw new Error("回复目标不存在");
+    }
+    // Flatten any reply-to-reply into a single nesting level so we don't
+    // need a tree renderer; UX-wise replies all live under the top-level
+    // thread anyway.
+    if (parent.parentId) parentId = parent.parentId;
+  }
+
   const comment = await prisma.comment.create({
     data: {
-      content,
+      content: trimmed,
       userId: user.id,
       storyId,
       parentId,
@@ -578,31 +604,86 @@ export async function addComment(storyId: string, content: string, parentId?: st
   return comment;
 }
 
-export async function getComments(storyId: string) {
+export async function updateComment(commentId: string, content: string) {
+  const user = await getCurrentUser();
+  const trimmed = content.trim();
+  if (trimmed.length < 1) throw new Error("评论内容不能为空");
+  if (trimmed.length > 2000) throw new Error("评论过长（≤ 2000 字）");
+
+  const existing = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, storyId: true },
+  });
+  if (!existing) throw new Error("评论不存在");
+  if (existing.userId !== user.id) throw new Error("无权编辑他人评论");
+
+  const updated = await prisma.comment.update({
+    where: { id: commentId },
+    data: { content: trimmed },
+  });
+  revalidatePath(`/story/${existing.storyId}`);
+  return updated;
+}
+
+export async function deleteComment(commentId: string) {
+  const user = await getCurrentUser();
+  const existing = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, storyId: true },
+  });
+  if (!existing) throw new Error("评论不存在");
+  if (existing.userId !== user.id) throw new Error("无权删除他人评论");
+
+  await prisma.comment.delete({ where: { id: commentId } });
+  revalidatePath(`/story/${existing.storyId}`);
+  return { ok: true };
+}
+
+export async function toggleCommentLike(commentId: string) {
+  const user = await getCurrentUser();
+  const existing = await prisma.commentLike.findUnique({
+    where: { userId_commentId: { userId: user.id, commentId } },
+  });
+  if (existing) {
+    await prisma.commentLike.delete({ where: { id: existing.id } });
+    return { liked: false };
+  } else {
+    // Validate target exists to avoid orphaned likes from stale UI.
+    const target = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { id: true },
+    });
+    if (!target) throw new Error("评论不存在");
+    await prisma.commentLike.create({
+      data: { userId: user.id, commentId },
+    });
+    return { liked: true };
+  }
+}
+
+export async function getComments(storyId: string, currentUserId?: string | null) {
   const comments = await prisma.comment.findMany({
     where: {
       storyId,
-      parentId: null, // Get top-level comments
+      parentId: null,
     },
     include: {
       user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
-        },
+        select: { id: true, username: true, displayName: true, avatarUrl: true },
       },
+      _count: { select: { likes: true } },
+      likes: currentUserId
+        ? { where: { userId: currentUserId }, select: { id: true } }
+        : false,
       replies: {
         include: {
           user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-            },
+            select: { id: true, username: true, displayName: true, avatarUrl: true },
           },
+          _count: { select: { likes: true } },
+          likes: currentUserId
+            ? { where: { userId: currentUserId }, select: { id: true } }
+            : false,
         },
         orderBy: { createdAt: "asc" },
       },
@@ -610,5 +691,26 @@ export async function getComments(storyId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  return comments;
+  // Flatten the like-existence check into a boolean so client logic is simpler.
+  type RawComment = (typeof comments)[number];
+  type RawReply = RawComment["replies"][number];
+  function shape(c: RawComment | RawReply) {
+    const likeCount = c._count.likes;
+    const likedByMe = "likes" in c && Array.isArray(c.likes) && c.likes.length > 0;
+    return {
+      id: c.id,
+      content: c.content,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      userId: c.userId,
+      user: c.user,
+      likeCount,
+      likedByMe,
+    };
+  }
+
+  return comments.map((c) => ({
+    ...shape(c),
+    replies: c.replies.map(shape),
+  }));
 }

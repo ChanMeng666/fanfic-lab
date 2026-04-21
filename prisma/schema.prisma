@@ -30,6 +30,7 @@ model User {
   drafts       Draft[]
   likes        Like[]
   comments     Comment[]
+  commentLikes CommentLike[]
   follows      Follow[]      @relation("follower")
   followers    Follow[]      @relation("following")
   preferences  UserPreferences?
@@ -258,12 +259,26 @@ model Comment {
   parentId  String?   // For nested replies
   parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("CommentReplies")
+  likes     CommentLike[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@index([storyId])
   @@index([userId])
   @@index([parentId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+  @@index([userId])
 }
 
 model Follow {

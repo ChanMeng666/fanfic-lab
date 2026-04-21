@@ -246,7 +246,7 @@ export function StoryReader({
 
       <Separator className="my-10" />
 
-      <CommentsSection storyId={story.id} isLoggedIn={!!currentUserId} />
+      <CommentsSection storyId={story.id} currentUserId={currentUserId} />
 
       {isOwner && (
         <ContinueChapterDialog
