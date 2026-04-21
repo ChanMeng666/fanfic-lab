@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, BookOpen, RefreshCw, Heart, FileText, Pencil } from "lucide-react";
 import { toggleLike, updateStory } from "@/lib/actions/story";
 import { toast } from "sonner";
+import { formatError } from "@/lib/format-error";
 import type { StoryResult as StoryResultType } from "@/lib/types/dreamwriter";
 
 interface StoryResultProps {
@@ -35,11 +36,7 @@ export function StoryResult({
       const res = await toggleLike(storyId);
       setLiked(res.liked);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthorized")) {
-        toast.error("请先登录后再收藏");
-      } else {
-        toast.error(err instanceof Error ? err.message : "收藏失败，请重试");
-      }
+      toast.error(formatError(err, "收藏失败，请重试"));
     } finally {
       setLiking(false);
     }
@@ -53,7 +50,7 @@ export function StoryResult({
       setDraftedAt(Date.now());
       toast.success("已转为草稿，将不再出现在 Feed 中");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失败，请重试");
+      toast.error(formatError(err, "保存草稿失败"));
     } finally {
       setDrafting(false);
     }

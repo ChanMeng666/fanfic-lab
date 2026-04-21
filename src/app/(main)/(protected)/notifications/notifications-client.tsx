@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
+import { formatError } from "@/lib/format-error";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -86,8 +87,8 @@ export function NotificationsList({ initialItems }: NotificationsListProps) {
         await markAllNotificationsRead();
         setItems((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date() })));
         toast.success("已全部标为已读");
-      } catch {
-        toast.error("操作失败");
+      } catch (err) {
+        toast.error(formatError(err, "标记已读失败"));
       }
     });
   }

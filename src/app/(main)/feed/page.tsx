@@ -12,6 +12,7 @@ import type { StoryCardData } from "@/components/feed";
 import { useFeedStories, useInfiniteScroll, useDebounce } from "@/lib/hooks";
 import { toggleLike } from "@/lib/actions/story";
 import { toast } from "sonner";
+import { formatError } from "@/lib/format-error";
 
 const PAGE_SIZE = 8;
 
@@ -123,11 +124,7 @@ function FeedPageContent() {
     try {
       await toggleLike(storyId);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthorized")) {
-        toast.error("请先登录后再点赞");
-      } else {
-        toast.error("操作失败，请重试");
-      }
+      toast.error(formatError(err, "点赞失败"));
     }
   }, []);
 

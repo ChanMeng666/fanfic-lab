@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
@@ -9,14 +9,40 @@ import { cn } from "@/lib/utils";
 
 export function DeveloperAttribution() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Handle tap to toggle on mobile
   const handleClick = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
 
+  // Close on outside tap / click + ESC for keyboard users.
+  // Pure hover would lock out touch devices, so the pill stays open
+  // until the user explicitly dismisses it elsewhere on the page.
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    function handlePointerDown(e: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsExpanded(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsExpanded(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown, { passive: true });
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [isExpanded]);
+
   return (
     <motion.div
+      ref={containerRef}
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 1.5, duration: 0.5 }}
@@ -24,14 +50,27 @@ export function DeveloperAttribution() {
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
-      {/* Floating pill container */}
+      {/* Floating pill container.
+          Not a <button> because it contains <Link>s; using role+key handler
+          so screen readers and keyboard users can still toggle it. */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+        aria-expanded={isExpanded}
+        aria-label={isExpanded ? "收起开发者信息" : "展开开发者信息"}
         className={cn(
           "flex items-center gap-2 px-3 py-2 cursor-pointer",
           "rounded-full bg-surface/85 backdrop-blur-lg",
           "border border-border/50 shadow-lg",
-          "transition-all duration-300 ease-out",
+          "transition-all duration-300 ease-out outline-none",
+          "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           isExpanded && "gap-3 px-4 py-2.5"
         )}
       >
@@ -54,7 +93,7 @@ export function DeveloperAttribution() {
         {/* Expanded: Contact links */}
         <AnimatePresence>
           {isExpanded && (
-            <motion.div
+            <motion.span
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: "auto", opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
@@ -62,7 +101,7 @@ export function DeveloperAttribution() {
               className="flex items-center gap-1 overflow-hidden"
             >
               {/* Divider */}
-              <div className="h-4 w-px bg-border/50 mx-1" />
+              <span className="h-4 w-px bg-border/50 mx-1" />
 
               {/* Email */}
               <Link
@@ -97,7 +136,7 @@ export function DeveloperAttribution() {
               >
                 <ExternalLink className="size-3.5" />
               </Link>
-            </motion.div>
+            </motion.span>
           )}
         </AnimatePresence>
       </div>

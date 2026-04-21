@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { formatError } from "@/lib/format-error";
 import {
   Dialog,
   DialogContent,
@@ -95,7 +96,7 @@ export function ContinueChapterDialog({
 
       if (lastError) throw new Error(lastError);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "续写失败");
+      toast.error(formatError(err, "续写失败"));
     } finally {
       setWorking(false);
     }

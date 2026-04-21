@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { formatError } from "@/lib/format-error";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,7 +112,7 @@ export function CommentsSection({ storyId, currentUserId }: CommentsSectionProps
         setDraft("");
         toast.success("已发表评论");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "发表失败，请重试");
+        toast.error(formatError(err, "发表失败，请重试"));
       }
     });
   }
@@ -149,7 +150,7 @@ export function CommentsSection({ storyId, currentUserId }: CommentsSectionProps
         setReplyDraft("");
         toast.success("回复已发表");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "回复失败，请重试");
+        toast.error(formatError(err, "回复失败，请重试"));
       }
     });
   }
@@ -202,7 +203,7 @@ export function CommentsSection({ storyId, currentUserId }: CommentsSectionProps
       }
     } catch (err) {
       updateLocal(-delta, currentLiked);
-      toast.error(err instanceof Error ? err.message : "操作失败");
+      toast.error(formatError(err, "点赞失败"));
     }
   }
 
@@ -240,7 +241,7 @@ export function CommentsSection({ storyId, currentUserId }: CommentsSectionProps
       cancelEdit();
       toast.success("已保存");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存失败");
+      toast.error(formatError(err, "保存失败"));
     }
   }
 
@@ -258,7 +259,7 @@ export function CommentsSection({ storyId, currentUserId }: CommentsSectionProps
       );
       toast.success("已删除");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
+      toast.error(formatError(err, "删除失败"));
     }
   }
 

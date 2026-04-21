@@ -5,9 +5,10 @@ import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { toggleLike } from "@/lib/actions/story";
 import { toast } from "sonner";
+import { formatError } from "@/lib/format-error";
 import { CommentsSection } from "./CommentsSection";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import { ViewTracker } from "./ViewTracker";
@@ -69,6 +70,42 @@ const ratingVariants: Record<string, "default" | "secondary" | "destructive" | "
   EXPLICIT: "destructive",
 };
 
+interface ChapterBodyProps {
+  chapterNumber: number;
+  chapterTitle: string | null;
+  storyTitle: string;
+  content: string;
+  showHeading: boolean;
+  showSeparator: boolean;
+}
+
+// Memoized so like-toggle / dialog state in the parent doesn't re-render
+// long chapter bodies. Re-renders only when the chapter content itself
+// or its display flags change.
+const ChapterBody = memo(function ChapterBody({
+  chapterNumber,
+  chapterTitle,
+  storyTitle,
+  content,
+  showHeading,
+  showSeparator,
+}: ChapterBodyProps) {
+  return (
+    <section className="space-y-4">
+      {showHeading && (
+        <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">
+          第 {chapterNumber} 章
+          {chapterTitle && chapterTitle !== storyTitle ? `：${chapterTitle}` : ""}
+        </h2>
+      )}
+      <div className="font-prose text-foreground/90 leading-8 text-base md:text-lg whitespace-pre-wrap">
+        {content}
+      </div>
+      {showSeparator && <Separator className="mt-12" />}
+    </section>
+  );
+});
+
 export function StoryReader({
   story,
   initialLikeCount = 0,
@@ -97,21 +134,17 @@ export function StoryReader({
     } catch (err) {
       setLiked(wasLiked);
       setLikeCount((prev) => (wasLiked ? prev + 1 : prev - 1));
-      if (err instanceof Error && err.message.includes("Unauthorized")) {
-        toast.error("请先登录后再点赞");
-      } else {
-        toast.error("操作失败，请重试");
-      }
+      toast.error(formatError(err, "点赞失败"));
     } finally {
       setLiking(false);
     }
   }
 
   return (
-    <article className="max-w-3xl mx-auto px-4 py-10">
-      <header className="mb-8 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+    <article className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
+      <header className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
             {story.title}
           </h1>
           {isOwner && (
@@ -135,7 +168,7 @@ export function StoryReader({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm text-muted-foreground">
           <Link
             href={`/users/${story.author.username}`}
             className="flex items-center gap-1.5 hover:text-primary transition-colors"
@@ -181,23 +214,18 @@ export function StoryReader({
       {chapterCount > 0 ? (
         <div className="space-y-12">
           {story.chapters.map((chapter, idx) => (
-            <section key={chapter.id} className="space-y-4">
-              {/* Skip chapter h2 entirely for single-chapter stories — the
-                  page h1 (story title) already serves as the heading and a
-                  second one looks duplicated. */}
-              {chapterCount > 1 && (
-                <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">
-                  第 {chapter.chapterNumber} 章
-                  {chapter.title && chapter.title !== story.title
-                    ? `：${chapter.title}`
-                    : ""}
-                </h2>
-              )}
-              <div className="font-prose text-foreground/90 leading-8 text-base md:text-lg whitespace-pre-wrap">
-                {chapter.content}
-              </div>
-              {idx < story.chapters.length - 1 && <Separator className="mt-12" />}
-            </section>
+            <ChapterBody
+              key={chapter.id}
+              chapterNumber={chapter.chapterNumber}
+              chapterTitle={chapter.title}
+              storyTitle={story.title}
+              content={chapter.content}
+              // Skip chapter h2 entirely for single-chapter stories — the
+              // page h1 (story title) already serves as the heading and a
+              // second one looks duplicated.
+              showHeading={chapterCount > 1}
+              showSeparator={idx < story.chapters.length - 1}
+            />
           ))}
         </div>
       ) : (

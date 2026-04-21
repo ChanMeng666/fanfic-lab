@@ -5,6 +5,7 @@ import { UserPlus, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { toggleFollow } from "@/lib/actions/user";
+import { formatError } from "@/lib/format-error";
 
 interface FollowButtonProps {
   targetUserId: string;
@@ -33,11 +34,7 @@ export function FollowButton({
         setFollowing(res.following);
       } catch (err) {
         setFollowing(wasFollowing);
-        if (err instanceof Error && err.message.includes("Unauthorized")) {
-          toast.error("请先登录后再关注");
-        } else {
-          toast.error(err instanceof Error ? err.message : "操作失败");
-        }
+        toast.error(formatError(err, "关注操作失败"));
       }
     });
   }

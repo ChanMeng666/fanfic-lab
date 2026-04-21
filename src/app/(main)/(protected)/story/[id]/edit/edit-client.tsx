@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { updateStory, updateChapter } from "@/lib/actions/story";
 import { countWords } from "@/lib/wordcount";
+import { formatError } from "@/lib/format-error";
 
 type Rating = "GENERAL" | "TEEN" | "MATURE" | "EXPLICIT";
 type Status = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -187,7 +188,7 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
         toast.success("已保存");
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "保存失败");
+        toast.error(formatError(err, "保存失败"));
       }
     });
   }

@@ -145,13 +145,17 @@ export function Header({ className }: { className?: string }) {
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-1.5">
-              <Link href="/handler/sign-in" className="hidden sm:block">
-                <Button variant="ghost" size="sm" className="h-8 px-3 text-sm rounded-full">
+              <Link href="/handler/sign-in">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2.5 sm:px-3 text-sm rounded-full"
+                >
                   登录
                 </Button>
               </Link>
               <Link href="/handler/sign-in?after_auth_return_to=/create">
-                <Button size="sm" className="h-8 px-3 text-sm rounded-full gap-1">
+                <Button size="sm" className="h-8 px-2.5 sm:px-3 text-sm rounded-full gap-1">
                   <span className="hidden sm:inline">开始创作</span>
                   <span className="sm:hidden">创作</span>
                   <ArrowRight className="size-3.5" />
@@ -217,18 +221,6 @@ export function Header({ className }: { className?: string }) {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     我的作品
-                  </Link>
-                </>
-              )}
-              {!isLoggedIn && (
-                <>
-                  <div className="h-px bg-border/50 my-1" />
-                  <Link
-                    href="/handler/sign-in"
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    登录
                   </Link>
                 </>
               )}

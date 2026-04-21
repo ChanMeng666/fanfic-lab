@@ -39,6 +39,7 @@ import { StoryCard, type StoryCardData } from "@/components/feed";
 import { updateProfile, updatePreferences } from "@/lib/actions/user";
 import { deleteStory, publishStory } from "@/lib/actions/story";
 import { toast } from "sonner";
+import { formatError } from "@/lib/format-error";
 
 interface UserProfile {
   id: string;
@@ -221,7 +222,7 @@ export function ProfileClient({
       setIsEditingProfile(false);
       toast.success("资料更新成功");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新资料失败");
+      toast.error(formatError(err, "更新资料失败"));
     } finally {
       setIsSaving(false);
     }
@@ -241,7 +242,7 @@ export function ProfileClient({
       setProfile((prev) => ({ ...prev, avatarUrl: data.url }));
       toast.success("头像已更新");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "头像上传失败");
+      toast.error(formatError(err, "头像上传失败"));
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -256,8 +257,8 @@ export function ProfileClient({
       setStories((prev) => prev.filter((s) => s.id !== pendingDeleteId));
       toast.success("故事已删除");
       setPendingDeleteId(null);
-    } catch {
-      toast.error("删除故事失败");
+    } catch (err) {
+      toast.error(formatError(err, "删除故事失败"));
     } finally {
       setDeleting(false);
     }
@@ -275,7 +276,7 @@ export function ProfileClient({
       );
       toast.success("已发布");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "发布失败");
+      toast.error(formatError(err, "发布失败"));
     }
   }
 
