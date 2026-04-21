@@ -40,6 +40,7 @@ import { updateProfile, updatePreferences } from "@/lib/actions/user";
 import { deleteStory, publishStory } from "@/lib/actions/story";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
+import { AvatarCropDialog } from "@/components/avatar/AvatarCropDialog";
 
 interface UserProfile {
   id: string;
@@ -177,6 +178,8 @@ export function ProfileClient({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -228,11 +231,18 @@ export function ProfileClient({
     }
   }
 
-  async function handleAvatarUpload(file: File) {
+  function handleFileSelect(file: File) {
+    setPendingAvatarFile(file);
+    setCropDialogOpen(true);
+  }
+
+  async function handleAvatarUpload(blob: Blob) {
     setUploadingAvatar(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      // The cropper always emits a square JPEG; give it a stable filename
+      // so the server's MIME validation (image/jpeg|png|webp) accepts it.
+      fd.append("file", blob, "avatar.jpg");
       const res = await fetch("/api/upload/avatar", { method: "POST", body: fd });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -436,7 +446,7 @@ export function ProfileClient({
                                 className="hidden"
                                 onChange={(e) => {
                                   const f = e.target.files?.[0];
-                                  if (f) handleAvatarUpload(f);
+                                  if (f) handleFileSelect(f);
                                 }}
                               />
                               <Button
@@ -774,6 +784,19 @@ export function ProfileClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AvatarCropDialog
+        file={pendingAvatarFile}
+        open={cropDialogOpen}
+        onOpenChange={(open) => {
+          setCropDialogOpen(open);
+          if (!open) {
+            setPendingAvatarFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }
+        }}
+        onConfirm={handleAvatarUpload}
+      />
     </div>
   );
 }
