@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sparkles, BookOpen, RefreshCw, Heart } from "lucide-react";
-import { toggleLike } from "@/lib/actions/story";
+import { Sparkles, BookOpen, RefreshCw, Heart, FileText, Pencil } from "lucide-react";
+import { toggleLike, updateStory } from "@/lib/actions/story";
 import { toast } from "sonner";
 import type { StoryResult as StoryResultType } from "@/lib/types/dreamwriter";
 
@@ -24,6 +25,8 @@ export function StoryResult({
 }: StoryResultProps) {
   const [liked, setLiked] = useState(false);
   const [liking, setLiking] = useState(false);
+  const [draftedAt, setDraftedAt] = useState<number | null>(null);
+  const [drafting, setDrafting] = useState(false);
 
   async function handleLike() {
     if (!storyId || liking) return;
@@ -39,6 +42,20 @@ export function StoryResult({
       }
     } finally {
       setLiking(false);
+    }
+  }
+
+  async function handleSaveAsDraft() {
+    if (!storyId || drafting) return;
+    setDrafting(true);
+    try {
+      await updateStory({ id: storyId, status: "DRAFT" });
+      setDraftedAt(Date.now());
+      toast.success("已转为草稿，将不再出现在 Feed 中");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "操作失败，请重试");
+    } finally {
+      setDrafting(false);
     }
   }
 
@@ -83,7 +100,7 @@ export function StoryResult({
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" className="gap-1.5" onClick={onCreateAnother}>
           <RefreshCw className="size-3.5" />
           再来一篇
@@ -96,6 +113,23 @@ export function StoryResult({
         >
           <Heart className={`size-3.5 ${liked ? "fill-current" : ""}`} />
           {liked ? "已收藏" : "收藏"}
+        </Button>
+        {storyId && (
+          <Link href={`/story/${storyId}/edit`}>
+            <Button variant="ghost" className="gap-1.5">
+              <Pencil className="size-3.5" />
+              编辑
+            </Button>
+          </Link>
+        )}
+        <Button
+          variant="ghost"
+          className="gap-1.5"
+          onClick={handleSaveAsDraft}
+          disabled={!storyId || drafting || draftedAt !== null}
+        >
+          <FileText className="size-3.5" />
+          {draftedAt !== null ? "已转为草稿" : drafting ? "处理中…" : "存为草稿"}
         </Button>
       </div>
 
