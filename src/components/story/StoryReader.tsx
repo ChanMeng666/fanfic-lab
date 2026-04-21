@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +9,7 @@ import { useState } from "react";
 import { toggleLike } from "@/lib/actions/story";
 import { toast } from "sonner";
 import { CommentsSection } from "./CommentsSection";
+import { ContinueChapterDialog } from "./ContinueChapterDialog";
 
 interface StoryReaderProps {
   story: {
@@ -66,6 +67,7 @@ export function StoryReader({
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [liking, setLiking] = useState(false);
+  const [continueOpen, setContinueOpen] = useState(false);
 
   const displayDate = story.publishedAt ?? story.createdAt;
   const chapterCount = story.chapters.length;
@@ -100,12 +102,23 @@ export function StoryReader({
             {story.title}
           </h1>
           {isOwner && (
-            <Link href={`/story/${story.id}/edit`} className="shrink-0">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Pencil className="size-3.5" />
-                编辑
+            <div className="shrink-0 flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setContinueOpen(true)}
+              >
+                <Sparkles className="size-3.5" />
+                续写
               </Button>
-            </Link>
+              <Link href={`/story/${story.id}/edit`}>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Pencil className="size-3.5" />
+                  编辑
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
 
@@ -213,6 +226,14 @@ export function StoryReader({
       <Separator className="my-10" />
 
       <CommentsSection storyId={story.id} isLoggedIn={!!currentUserId} />
+
+      {isOwner && (
+        <ContinueChapterDialog
+          storyId={story.id}
+          open={continueOpen}
+          onOpenChange={setContinueOpen}
+        />
+      )}
     </article>
   );
 }
