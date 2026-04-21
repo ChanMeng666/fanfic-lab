@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { Search, BookOpen, X, Loader2, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -18,6 +18,28 @@ const PAGE_SIZE = 8;
 type SortOption = "recent" | "popular" | "comments" | "words";
 
 export default function FeedPage() {
+  // useSearchParams in FeedPageContent requires a Suspense boundary so the
+  // page can be statically prerendered without bailing out.
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <main className="container mx-auto px-4 py-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <StoryCardSkeleton key={i} />
+              ))}
+            </div>
+          </main>
+        </div>
+      }
+    >
+      <FeedPageContent />
+    </Suspense>
+  );
+}
+
+function FeedPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
