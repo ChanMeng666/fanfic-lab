@@ -204,18 +204,24 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
                     </div>
                     <div className="text-xs text-muted-foreground">作品</div>
                   </div>
-                  <div>
+                  <Link
+                    href={`/users/${profile.username}/followers`}
+                    className="hover:text-primary transition-colors"
+                  >
                     <div className="text-xl font-bold text-foreground">
                       {profile._count.followers}
                     </div>
                     <div className="text-xs text-muted-foreground">粉丝</div>
-                  </div>
-                  <div>
+                  </Link>
+                  <Link
+                    href={`/users/${profile.username}/following`}
+                    className="hover:text-primary transition-colors"
+                  >
                     <div className="text-xl font-bold text-foreground">
                       {profile._count.follows}
                     </div>
                     <div className="text-xs text-muted-foreground">关注</div>
-                  </div>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
