@@ -69,11 +69,20 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "FanFic Lab",
     url: SITE_URL,
+    images: [
+      {
+        url: "/og-cover.png",
+        width: 1200,
+        height: 630,
+        alt: "FanFic Lab — AI co-writing studio for Honkai: Star Rail fanfiction",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "FanFic Lab",
     description: "AI 协作的同人文创作工坊",
+    images: ["/og-cover.png"],
   },
 };
 
