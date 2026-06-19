@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { heroBlurDataURL } from "@/lib/hero-blur";
 
 export const metadata: Metadata = {
   title: "关于 · FanFic Lab",
@@ -31,6 +32,8 @@ export default function AboutPage() {
           alt="Honkai: Star Rail anniversary key visual"
           fill
           sizes="100vw"
+          placeholder="blur"
+          blurDataURL={heroBlurDataURL}
           className="object-cover object-center"
           priority
         />

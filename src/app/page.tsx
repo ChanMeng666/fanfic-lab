@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { DeveloperAttribution, HsrAttribution } from "@/components/layout";
+import { heroBlurDataURL } from "@/lib/hero-blur";
 
 /**
  * Landing page — minimal, cinematic, single-screen.
@@ -27,6 +28,8 @@ export default function Home() {
         fill
         priority
         sizes="100vw"
+        placeholder="blur"
+        blurDataURL={heroBlurDataURL}
         className="object-cover object-center"
       />
 
