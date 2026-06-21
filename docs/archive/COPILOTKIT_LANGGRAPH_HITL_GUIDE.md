@@ -1,5 +1,14 @@
 # CopilotKit + LangGraph.js HITL Integration Guide
 
+> [!NOTE]
+> **ARCHIVED — historical record, not current architecture.**
+> CopilotKit was **removed** from FanFic Lab. The current DreamWriter agent is pure LangGraph.js
+> running **in-process** inside the Next.js app (no CopilotKit, no `/api/copilotkit`, no HITL
+> approval UI, no separate agent server). This document is preserved only for the engineering
+> lessons it captures (why CopilotKit + LangGraph.js's ToolMessage format were hard to integrate,
+> the bugs hit, and workarounds tried). **Do not follow it as setup guidance.**
+> For the current architecture see [`../../AGENTS.md`](../../AGENTS.md) and [`../../README.md`](../../README.md).
+
 ## Overview
 
 This document summarizes our experience integrating **CopilotKit** with **LangGraph.js** for Human-in-the-Loop (HITL) workflows. It covers critical bugs, failed approaches, and the final working solution.

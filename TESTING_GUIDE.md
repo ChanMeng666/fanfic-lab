@@ -1,6 +1,11 @@
-# FanFic Lab - Comprehensive Testing Guide
+# FanFic Lab - Manual Testing Guide
 
-This document provides step-by-step testing instructions for the FanFic Lab platform. Follow these tests to verify all features are working correctly.
+Step-by-step manual checks for the current FanFic Lab platform (an autonomous **DreamWriter**
+story generator with a social reading layer). There is no automated test suite yet; these are
+manual E2E scenarios.
+
+> Architecture note: the DreamWriter agent runs **in-process** inside the Next.js app. There is
+> no separate agent server to start, and no `LANGGRAPH_URL`. A single `npm run dev` runs everything.
 
 ---
 
@@ -10,14 +15,13 @@ This document provides step-by-step testing instructions for the FanFic Lab plat
 2. [Environment Variables](#2-environment-variables)
 3. [Homepage Tests](#3-homepage-tests)
 4. [Authentication Tests](#4-authentication-tests)
-5. [Creative Wizard Tests](#5-creative-wizard-tests)
-6. [Smart Editor Tests](#6-smart-editor-tests)
-7. [AI Features Tests](#7-ai-features-tests)
-8. [Fandom Feed Tests](#8-fandom-feed-tests)
-9. [Profile Page Tests](#9-profile-page-tests)
-10. [Database & Persistence Tests](#10-database--persistence-tests)
-11. [Image Generation Tests](#11-image-generation-tests)
-12. [Known Issues & Limitations](#12-known-issues--limitations)
+5. [Story Creation (DreamWriter) Tests](#5-story-creation-dreamwriter-tests)
+6. [Story Reader & Continue Tests](#6-story-reader--continue-tests)
+7. [Discovery Feed Tests](#7-discovery-feed-tests)
+8. [Social & Profile Tests](#8-social--profile-tests)
+9. [Database & Persistence Tests](#9-database--persistence-tests)
+10. [Observability & Error Handling](#10-observability--error-handling)
+11. [Known Issues & Limitations](#11-known-issues--limitations)
 
 ---
 
@@ -41,76 +45,70 @@ npm install
 # 3. Generate Prisma client
 npx prisma generate
 
-# 4. Run database migrations (requires DATABASE_URL)
-npx prisma db push
+# 4. Apply the schema (requires DATABASE_URL)
+npx prisma migrate dev   # or: npx prisma db push
 
-# 5. Start both Next.js and LangGraph agent
-npm run dev:all
+# 5. Start the app (the DreamWriter agent runs in-process)
+npm run dev
 ```
 
 ### Available Development Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start Next.js only (http://localhost:3000) |
-| `npm run dev:agent` | Start LangGraph agent only (http://localhost:8123) |
-| `npm run dev:all` | Start both services (recommended) |
+| `npm run dev` | Start the app at http://localhost:3000 (agent runs in-process) |
+| `npm run dev:studio` | Optional: LangGraph Studio for visual agent debugging (port 8123, local-only) |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
 
 ### Verify Installation
-- [ ] Open `http://localhost:3000` in your browser
-- [ ] The homepage should load with the FanFic Lab branding
-- [ ] No console errors should appear
-- [ ] LangGraph agent running at `http://localhost:8123` (check terminal)
+- [ ] Open `http://localhost:3000` — the homepage loads with FanFic Lab branding
+- [ ] No errors in the browser console
+- [ ] `GET http://localhost:3000/api/health` returns `database: up` (Redis may be `down` if no local Redis)
 
 ---
 
 ## 2. Environment Variables
 
-Create a `.env.local` file with the following variables:
+Create `.env.local`:
 
 ```env
-# Database (Required - Neon PostgreSQL)
-DATABASE_URL=postgresql://user:password@host.neon.tech/fanficlab?sslmode=require
+# Database (Neon PostgreSQL) — pooled for the app, unpooled for the agent checkpointer
+DATABASE_URL=postgresql://user:password@host-pooler.neon.tech/fanficlab?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://user:password@host.neon.tech/fanficlab?sslmode=require
 
-# Stack Auth (Required for authentication)
+# Stack Auth (authentication; also the engine behind Neon Auth)
 STACK_SECRET_SERVER_KEY=your_stack_secret_key
 NEXT_PUBLIC_STACK_PROJECT_ID=your_project_id
 NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=your_publishable_key
 
-# OpenAI (Required for AI writing features)
+# OpenAI (required for story generation)
 OPENAI_API_KEY=sk-...
 
-# LangGraph Agent URL (local development)
-LANGGRAPH_URL=http://localhost:8123
-
-# Redis (Required for research caching)
+# Redis (research/general caching)
 REDIS_URL=redis://localhost:6379
 
-# Cloudinary (Required for image storage)
+# Cloudinary (cover/avatar image storage)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 
-# Together AI (Optional - for image generation, currently DISABLED)
-# Get your key at: https://www.together.ai/
-# Note: Image generation tools are currently disabled in the codebase
-TOGETHER_API_KEY=your_together_api_key
-
-# LangSmith (Optional - for AI observability)
+# Optional: LangSmith for agent tracing
 LANGSMITH_API_KEY=lsv2_...
 
-# Admin (Optional - for admin endpoints)
+# Optional: admin endpoint protection
 ADMIN_SECRET=your_admin_secret
 ```
 
 ### Environment Variable Tests
-- [ ] Application starts without critical errors
-- [ ] Database connection works (check Prisma logs)
-- [ ] Stack Auth loads without errors
-- [ ] OpenAI API key is recognized (test AI features)
-- [ ] LangGraph agent accessible at `LANGGRAPH_URL`
-- [ ] Redis connection works (check `/api/health` endpoint)
-- [ ] Cloudinary credentials valid (test cover upload)
+- [ ] App starts without critical errors
+- [ ] Database connection works (Prisma `SELECT 1` succeeds via `/api/health`)
+- [ ] Stack Auth pages load at `/handler/*`
+- [ ] First story generation succeeds (confirms `OPENAI_API_KEY`)
+- [ ] On first generation, the LangGraph checkpoint tables are created in Postgres
+      (`checkpoints`, `checkpoint_writes`, `checkpoint_blobs`, `checkpoint_migrations`)
+- [ ] Cover upload works (confirms `CLOUDINARY_*`)
 
 ---
 
@@ -118,448 +116,166 @@ ADMIN_SECRET=your_admin_secret
 
 **URL:** `http://localhost:3000`
 
-### Visual Elements
-- [ ] Hero section displays with gradient background
-- [ ] "Start Creating" and "Explore Stories" buttons are visible
-- [ ] Fandom categories grid displays (12 categories)
-- [ ] Popular tags section shows sample tags
-- [ ] Feature cards display (Smart Editor, Creative Wizard, Fandom Feed)
-- [ ] Footer is visible
-
-### Fandom Categories
-Test that these categories are displayed:
-- [ ] Anime & Manga
-- [ ] Video Games
-- [ ] Movies, TV & RPF
-- [ ] Books & Literature
-- [ ] K-pop & Music
-- [ ] Cartoons & Animation
-
-### Navigation
-- [ ] Click "Start Creating" -> navigates to `/editor`
-- [ ] Click "Explore Stories" -> navigates to `/feed`
-- [ ] Click fandom category -> navigates to `/feed` (with filter)
-- [ ] Click "Creative Wizard" card -> navigates to `/wizard`
-
-### Responsive Design
-- [ ] Test on mobile viewport (375px width)
-- [ ] Test on tablet viewport (768px width)
-- [ ] Test on desktop viewport (1280px width)
+- [ ] Hero section renders with the brand headline and artwork
+- [ ] Primary CTA (e.g. "Start Creating") and a browse/explore CTA are visible
+- [ ] Navigating "Start Creating" goes to `/create` (redirects to sign-in if unauthenticated)
+- [ ] Navigating the browse CTA goes to `/feed`
+- [ ] Header, theme toggle, and footer render
+- [ ] Responsive at 375px / 768px / 1280px widths
 
 ---
 
 ## 4. Authentication Tests
 
-Stack Auth provides pre-built authentication pages at `/handler/*`.
+Stack Auth provides the auth UI at `/handler/*`.
 
-### Sign Up Flow
-1. [ ] Navigate to `/handler/sign-up`
-2. [ ] Sign up form displays correctly
-3. [ ] Enter email and password
-4. [ ] Submit form
-5. [ ] User is created and redirected to `/wizard`
+### Sign Up
+1. [ ] Go to `/handler/sign-up`; the form renders (with FanFic Lab branding)
+2. [ ] Create an account
+3. [ ] On success you are redirected to `/create`
+4. [ ] A `User` row is created in the DB on first authenticated page load (via `syncUser()`)
 
-### Sign In Flow
-1. [ ] Navigate to `/handler/sign-in`
-2. [ ] Sign in form displays correctly
-3. [ ] Enter credentials
-4. [ ] Submit form
-5. [ ] User is authenticated and redirected to `/`
+### Sign In
+1. [ ] Go to `/handler/sign-in`; sign in
+2. [ ] On success you are redirected to `/`
 
-### Protected Routes
-Test these routes redirect to sign-in when unauthenticated:
-- [ ] `/wizard` -> redirects to `/handler/sign-in`
-- [ ] `/editor` -> redirects to `/handler/sign-in`
-- [ ] `/profile` -> redirects to `/handler/sign-in`
+### Protected Routes (redirect to sign-in when logged out)
+- [ ] `/create`
+- [ ] `/profile`
+- [ ] `/notifications`
+- [ ] `/story/[id]/edit`
 
 ### Sign Out
-1. [ ] Navigate to `/handler/account-settings`
-2. [ ] Click sign out
-3. [ ] User is signed out and redirected to `/`
+- [ ] Sign out via the account UI; you return to a logged-out state
 
 ---
 
-## 5. Creative Wizard Tests
+## 5. Story Creation (DreamWriter) Tests
 
-**URL:** `http://localhost:3000/wizard`
+**URL:** `http://localhost:3000/create` (requires auth)
 
-**Prerequisite:** User must be authenticated
+> Each generation makes real OpenAI calls and costs credits/tokens.
 
-### Step 1: Fandom Selection
-- [ ] Fandom grid displays (12 popular fandoms)
-- [ ] Search box works to filter fandoms
-- [ ] Category filter buttons work
-- [ ] Can select a fandom by clicking
-- [ ] "Custom fandom" option available
-- [ ] Selected fandom highlighted
-- [ ] Progress indicator shows Step 1/4
+### Happy Path
+1. [ ] Enter a prompt, e.g. `三月七 × 丹恒，星穹列车上的一个甜向小故事`
+2. [ ] Submit — progress streams live via SSE in this order:
+       `parsing → planning → writing → checking → complete`
+3. [ ] If the quality guard scores a draft below threshold, you may also see `revising`
+       (the writer reruns; max 2 revisions)
+4. [ ] On completion a result card shows the title, body, summary, word count, and suggestions
+5. [ ] The finished story is saved (`POST /api/stories`) and you can open it in the reader
 
-### Step 2: Ship Selection
-- [ ] Popular ships for selected fandom display
-- [ ] Can search/filter ships
-- [ ] Can select one or more ships
-- [ ] "Skip - No ships (Gen fic)" option works
-- [ ] "Custom ship" input available
-- [ ] Continue button advances to next step
+### Edge Cases
+- [ ] Submitting an empty prompt returns a friendly error (no generation runs)
+- [ ] Aborting/leaving mid-generation does not crash the app
+- [ ] A failed stage surfaces a Chinese error message (see [§10](#10-observability--error-handling))
 
-### Step 3: Character Setup
-- [ ] Suggested characters from fandom display
-- [ ] Can add custom character
-- [ ] Character form has: name, personality traits, speech patterns
-- [ ] OC toggle works
-- [ ] Can remove added characters
-- [ ] Character list shows added characters
-
-### Step 4: AI Chat & Outline
-- [ ] CopilotChat interface displays
-- [ ] Can type messages to AI
-- [ ] AI responds with story suggestions
-- [ ] Outline approval card displays when AI generates outline
-- [ ] Can approve/edit/regenerate outline
-
-### Complete Wizard
-- [ ] "Start Writing" button navigates to `/editor`
-- [ ] Story context is preserved (check editor has fandom, ships, characters)
+### Behind the scenes (optional, via `dev:studio` or logs)
+- [ ] Structured JSON logs appear with `event: "dreamwriter.node.start"` per node
+- [ ] Restarting the server mid-run leaves a resumable checkpoint in Postgres
 
 ---
 
-## 6. Smart Editor Tests
+## 6. Story Reader & Continue Tests
 
-**URL:** `http://localhost:3000/editor`
+**URL:** `http://localhost:3000/story/[id]`
 
-**Prerequisite:** User must be authenticated
-
-### Setup Form (New Story)
-- [ ] Story title input works
-- [ ] Fandom input works
-- [ ] Ships input (comma-separated) works
-- [ ] Tags input (comma-separated) works
-- [ ] Tone badges are selectable (fluff, angst, humor, etc.)
-- [ ] "Start Writing" button enables when fandom is entered
-- [ ] "Use Creative Wizard" link works
-
-### Editor Interface
-- [ ] Header shows story title (editable)
-- [ ] Header shows fandom and ships badges
-- [ ] Character sidebar displays on left
-- [ ] Main editor area displays
-- [ ] CopilotKit sidebar available on right
-- [ ] Word count displays
-
-### Text Editing
-- [ ] Can type in the editor
-- [ ] Text formatting preserved
-- [ ] Word count updates as you type
-- [ ] Autosave indicator appears
-- [ ] "Last saved" timestamp updates
-
-### AI Toolbar
-- [ ] "Magic Continue" button visible
-- [ ] "Expand" dropdown menu works
-- [ ] "Polish" dropdown menu works
-- [ ] "OOC Check" button visible
-- [ ] Selection indicator shows when text is selected
-
-### Character Sidebar
-- [ ] "Add Character" button works
-- [ ] Character dialog opens
-- [ ] Can enter character details (name, personality, speech patterns)
-- [ ] OC toggle works
-- [ ] Added characters appear in list
-- [ ] Can remove characters from list
-
-### Autosave
-- [ ] Content saves automatically (check browser localStorage)
-- [ ] "Saving..." indicator appears during save
-- [ ] "Saved [time]" indicator appears after save
-- [ ] Manual save button works
-- [ ] Unsaved changes indicator works
+- [ ] Story title, summary, metadata (CP/tags/rating/word count) render
+- [ ] Chapter content renders with the prose font; reading prefs (if present) apply
+- [ ] View count increments on read
+- [ ] Comments: post a comment; post a nested reply; like a comment
+- [ ] Related stories appear (pgvector recommendations, once embeddings exist)
+- [ ] **Continue**: open the continue dialog → a new AI-written chapter is appended
+      (`POST /api/stories/[id]/continue`) and the total word count increases
 
 ---
 
-## 7. AI Features Tests
-
-**Prerequisite:** OpenAI API key configured
-
-### Magic Continue
-1. [ ] Type some story content
-2. [ ] Click "Magic Continue" button
-3. [ ] AI generates continuation
-4. [ ] Content approval card appears
-5. [ ] Can approve/reject/edit content
-6. [ ] Approved content is inserted into editor
-
-### Expand Scene
-1. [ ] Type some story content
-2. [ ] Select a paragraph
-3. [ ] Click "Expand" dropdown
-4. [ ] Select expansion type (Dialogue, Description, etc.)
-5. [ ] AI expands the selected text
-6. [ ] Content approval card appears
-7. [ ] Can approve/reject/edit
-
-### Polish Prose
-1. [ ] Type some story content
-2. [ ] Select text to polish
-3. [ ] Click "Polish" dropdown
-4. [ ] Select intensity (Light, Medium, Heavy)
-5. [ ] AI improves the prose
-6. [ ] Content approval card appears
-7. [ ] Can approve/reject/edit
-
-### OOC Check
-1. [ ] Add characters to the story
-2. [ ] Write content with character dialogue
-3. [ ] Click "OOC Check" button
-4. [ ] OOC results display in collapsible sections
-5. [ ] Issues show severity indicators
-6. [ ] Can apply suggested fixes
-7. [ ] Can dismiss individual issues
-8. [ ] "Clear All" button works
-
-### CopilotKit Chat Sidebar
-1. [ ] Click sidebar toggle to open
-2. [ ] Chat interface displays
-3. [ ] Can type messages
-4. [ ] AI responds with helpful suggestions
-5. [ ] Responses reference story context
-
----
-
-## 8. Fandom Feed Tests
+## 7. Discovery Feed Tests
 
 **URL:** `http://localhost:3000/feed`
 
-### Feed Layout
-- [ ] Fandom tabs display at top
-- [ ] Story cards display in grid
-- [ ] Tag filter sidebar on left
-- [ ] Sort options available
-
-### Fandom Filtering
-- [ ] "All Fandoms" tab shows all stories
-- [ ] Individual fandom tabs filter stories
-- [ ] Tab highlights when selected
-- [ ] Horizontal scroll works for many tabs
-
-### Tag Filtering
-- [ ] Tag categories display (Relationship, Setting, Tone, Content)
-- [ ] Can search tags
-- [ ] Clicking tag adds to filter
-- [ ] Active filters display as badges
-- [ ] Can remove individual filters
-- [ ] "Clear All" removes all filters
-
-### Rating Filter
-- [ ] Rating dropdown works
-- [ ] Options: All, General, Teen, Mature, Explicit
-- [ ] Filter applies to stories
-
-### Status Filter
-- [ ] Status dropdown works
-- [ ] Options: All, Published, Complete
-- [ ] Filter applies to stories
-
-### Sort Options
-- [ ] Sort dropdown works
-- [ ] Options: Recent, Popular, Most Comments, Word Count
-- [ ] Stories reorder on selection
-
-### Story Cards
-- [ ] Cover image displays (or placeholder)
-- [ ] Title is clickable
-- [ ] Author name and avatar display
-- [ ] Tags display as badges
-- [ ] Rating badge displays
-- [ ] Stats show (likes, comments, chapters, words)
-- [ ] Date shows (relative time)
+- [ ] Story cards render in a grid with cover (or placeholder), title, author, tags, stats
+- [ ] Filters work (fandom / ships / tags / rating / status as available)
+- [ ] Sorting works (recent / popular / comments / word count)
+- [ ] Infinite scroll loads more stories
+- [ ] Clicking a card opens the reader
 
 ---
 
-## 9. Profile Page Tests
+## 8. Social & Profile Tests
 
-**URL:** `http://localhost:3000/profile`
+### Profile — `http://localhost:3000/profile` (auth)
+- [ ] Avatar, display name, username, bio render
+- [ ] Edit profile (display name, bio) saves and shows a success toast
+- [ ] Avatar upload works (Cloudinary)
+- [ ] Writing stats render (stories, total words, likes, comments)
+- [ ] Your stories list renders; edit links to `/story/[id]/edit`; delete works with confirmation
 
-**Prerequisite:** User must be authenticated
+### Public profile — `http://localhost:3000/users/[username]`
+- [ ] Public profile renders for another user
+- [ ] Follow / unfollow works; followers/following lists render
+- [ ] Following a user generates a notification for them
 
-### Profile Card
-- [ ] Avatar displays (or fallback)
-- [ ] Display name shows
-- [ ] Username shows with @ prefix
-- [ ] Bio displays (if set)
-- [ ] "Edit Profile" button works
-- [ ] Social stats show (Stories, Followers, Following)
-
-### Edit Profile Dialog
-1. [ ] Click "Edit Profile"
-2. [ ] Dialog opens
-3. [ ] Can edit display name
-4. [ ] Can edit bio
-5. [ ] Cancel button closes dialog
-6. [ ] Save button updates profile
-7. [ ] Toast notification appears on success
-
-### Writing Stats Card
-- [ ] Total words count displays
-- [ ] Published stories count displays
-- [ ] Total likes count displays
-- [ ] Total comments count displays
-
-### Stories Tab
-- [ ] Your stories list displays
-- [ ] Story cards show title, fandom, status
-- [ ] "Edit" button links to `/editor/[storyId]`
-- [ ] "Delete" button works with confirmation
-- [ ] Empty state shows when no stories
-
-### Drafts Tab
-- [ ] Drafts list displays
-- [ ] Draft cards show title, fandom, updated date
-- [ ] "Continue" button works
-- [ ] "Delete" button works
-- [ ] Empty state shows when no drafts
-
-### Liked Tab
-- [ ] Shows placeholder for liked stories
-- [ ] (Full implementation would show liked stories)
+### Notifications — `http://localhost:3000/notifications` (auth)
+- [ ] Notifications list renders (likes, comments, follows)
+- [ ] Unread state clears appropriately
 
 ---
 
-## 10. Database & Persistence Tests
+## 9. Database & Persistence Tests
 
-### Story Creation
-1. [ ] Create a new story in editor
-2. [ ] Add content
-3. [ ] Click "Publish" (or save)
-4. [ ] Refresh page - story persists
-5. [ ] Check story appears in profile
-
-### Story Editing
-1. [ ] Navigate to `/editor/[storyId]`
-2. [ ] Story data loads correctly
-3. [ ] Edit content
-4. [ ] Save changes
-5. [ ] Refresh - changes persist
-
-### Chapter Management
-1. [ ] Multiple chapters display as tabs (if applicable)
-2. [ ] Can switch between chapters
-3. [ ] Each chapter saves independently
-
-### Draft Persistence
-1. [ ] Create content in new editor
-2. [ ] Autosave triggers
-3. [ ] Refresh page
-4. [ ] Draft available (check localStorage or database)
+- [ ] A generated story persists across refresh and appears in the feed/profile
+- [ ] Editing a story at `/story/[id]/edit` persists changes
+- [ ] Adding a chapter via Continue persists and updates word count
+- [ ] Each completed generation writes a `Generation` ledger row with an accurate `wordCount`
+- [ ] Likes / comments / follows persist across refresh
 
 ---
 
-## 11. Image Generation Tests
+## 10. Observability & Error Handling
 
-> **⚠️ IMPORTANT:** Image generation tools are currently **DISABLED** in the codebase (IMAGE_GENERATION_ENABLED = false). These tests will not work until the feature is re-enabled.
-
-**Status:** Temporarily disabled. Will be re-enabled when a free/affordable image generation API is available.
-
-**What you can test instead:**
-- [ ] Cover image upload via CoverUploader component
-- [ ] Cover upload to Cloudinary works (requires CLOUDINARY_* env vars)
-- [ ] Uploaded covers display correctly in feed and profile
-
-### Character Portrait (DISABLED)
-~~1. [ ] Add a character~~
-~~2. [ ] Request portrait generation via chat~~
-~~3. [ ] If API configured: image generates~~
-~~4. [ ] Image approval card displays~~
-
-### Scene Illustration (DISABLED)
-~~1. [ ] Write a scene description~~
-~~2. [ ] Request illustration via chat~~
-
-### Story Cover Upload (ACTIVE)
-1. [ ] Navigate to editor with a story
-2. [ ] Click cover upload button
-3. [ ] Select an image (jpeg, png, webp, max 5MB)
-4. [ ] Image uploads to Cloudinary
-5. [ ] Cover displays in story card
+- [ ] Agent logs are single-line JSON objects (machine-readable), e.g.
+      `{"ts":"…","level":"info","event":"dreamwriter.node.start","node":"writer"}`
+- [ ] A forced failure (e.g. invalid `OPENAI_API_KEY`) produces a `level:"warn"`/`"error"`
+      JSON log with an `errorCode`, and the UI shows the mapped Chinese message
+- [ ] `GET /api/health` reports per-service `status` + `latency` for redis and database
 
 ---
 
-## 12. Known Issues & Limitations
+## 11. Known Issues & Limitations
 
-### Deployment Architecture
-FanFic Lab uses a **unified Railway deployment**:
-- **Railway Web Service**: Next.js frontend, API routes, CopilotKit runtime
-- **Railway Agent Service**: LangGraph.js agent server (private network)
-
-For local development, both services must run:
-```bash
-npm run dev:all   # Starts both Next.js and LangGraph agent
-```
+### Architecture
+- Single deployable: the DreamWriter agent runs in-process; there is no separate agent service.
+- Deploy is via GitHub Actions → DigitalOcean VPS (see `docs/DEPLOYMENT.md`).
 
 ### Current Limitations
-1. **Image Generation**: Currently **DISABLED** in codebase. Will be re-enabled when a free/affordable API is available.
-2. **Cover Upload**: Requires Cloudinary credentials for permanent storage
-3. **Research Cache**: Requires Redis connection for caching Tavily search results
-4. **Social Features**: Like/comment/follow UI exists but may need database connection
-5. **Real-time Updates**: No WebSocket/SSE for live updates
-6. **Search**: Full-text search not implemented
+1. **No automated tests** — these manual scenarios are the current coverage.
+2. **Generation cost** — every creation/continue call hits OpenAI (real tokens).
+3. **Recommendations** — related stories need embeddings; new stories get them asynchronously
+   (and the backfill script `npm run backfill-embeddings` exists for older rows).
+4. **Billing** — per-1k-words charging logic exists but live deduction is intentionally not
+   wired on yet (generation is currently uncharged).
+5. **Redis optional locally** — caching degrades gracefully if Redis is unreachable.
 
 ### Expected Behaviors
-- Unauthenticated users are redirected to sign-in for protected routes
-- Autosave uses localStorage when not signed in
-- AI features require OpenAI API key AND running LangGraph agent
-- Some feed stories are sample data for demonstration
+- Unauthenticated users are redirected to sign-in for protected routes.
+- Story generation requires a valid `OPENAI_API_KEY`.
+- Sign-up redirects to `/create`; sign-in redirects to `/`.
 
 ### Browser Compatibility
-- Chrome 90+: Full support
-- Firefox 88+: Full support
-- Safari 14+: Full support
-- Edge 90+: Full support
+- Chrome 90+, Firefox 88+, Safari 14+, Edge 90+: supported.
 
-### Production URLs
+### Production URL
 | Service | URL |
 |---------|-----|
-| Frontend | https://www.fanfic-lab.tech |
-| Agent | http://fanfic-lab.railway.internal:8123 (private) |
-
----
-
-## Test Completion Checklist
-
-### Core Functionality
-- [ ] Homepage loads correctly
-- [ ] Authentication flow works
-- [ ] Creative Wizard completes
-- [ ] Smart Editor works
-- [ ] AI features respond
-- [ ] Feed displays stories
-- [ ] Profile page loads
-
-### Data Persistence
-- [ ] Stories save to database
-- [ ] Drafts autosave
-- [ ] User profile updates
-- [ ] Story edits persist
-
-### Error Handling
-- [ ] No console errors during normal use
-- [ ] Graceful handling of missing API keys
-- [ ] Proper error messages for failed operations
+| Frontend + Agent | https://fanfic-lab.tech |
 
 ---
 
 ## Reporting Issues
 
-If you encounter issues during testing:
-
-1. Check browser console for errors
-2. Check terminal for server errors
-3. Verify environment variables are set
-4. Ensure database is connected
-5. Check network requests in DevTools
-
-Report issues with:
+When reporting a problem, include:
 - Steps to reproduce
 - Expected vs actual behavior
-- Console/terminal errors
-- Browser and OS information
+- Relevant JSON log lines (terminal) and any browser console errors
+- Browser and OS

@@ -1,0 +1,45 @@
+# FanFic Lab
+
+> Autonomous Honkai: Star Rail (HSR) fanfiction generator. The DreamWriter agent (LangGraph.js,
+> running in-process inside a Next.js app) plans, writes, self-reviews for out-of-character issues,
+> summarizes, and delivers a finished fanfic — wrapped in a social reading layer (feed, reader,
+> likes/comments/follows, profiles).
+
+This file follows the [llms.txt](https://llmstxt.org/) convention: a concise, machine-readable map
+of the project for large language models and AI agents.
+
+## About
+
+- Repository: https://github.com/ChanMeng666/fanfic-lab
+- Live: https://fanfic-lab.tech
+- Stack: Next.js 16 · React 19 · TypeScript 5 · TailwindCSS 4 · Prisma 7 · Neon Postgres + pgvector ·
+  Redis (Upstash) · Cloudinary · Stack Auth (= Neon Auth engine) · OpenAI · LangGraph.js (in-process)
+- Deploy: single Docker image → DigitalOcean VPS (Traefik/Coolify) → Cloudflare CDN
+- License: MIT
+
+## Key documents
+
+- [README](https://github.com/ChanMeng666/fanfic-lab/blob/master/README.md): overview, features, architecture, setup
+- [AGENTS.md](https://github.com/ChanMeng666/fanfic-lab/blob/master/AGENTS.md): authoritative guide for AI agents — architecture, conventions, gotchas, deferred decisions
+- [CLAUDE.md](https://github.com/ChanMeng666/fanfic-lab/blob/master/CLAUDE.md): design-system rules + UI/coding conventions
+- [TESTING_GUIDE.md](https://github.com/ChanMeng666/fanfic-lab/blob/master/TESTING_GUIDE.md): manual E2E test scenarios
+- [docs/DEPLOYMENT.md](https://github.com/ChanMeng666/fanfic-lab/blob/master/docs/DEPLOYMENT.md): deployment guide
+- [CONTRIBUTING](https://github.com/ChanMeng666/fanfic-lab/blob/master/CONTRIBUTING.md): contribution workflow
+
+## Architecture in one paragraph
+
+A single Next.js deployable. The create page POSTs a prompt to `src/app/api/create/route.ts`, which
+streams the in-process compiled LangGraph (`getGraph()` in `src/agent/dreamwriter/graph.ts`) over SSE.
+The pipeline is `intent_parser → story_architect → writer → quality_guard → [revision loop ≤2] →
+summarize → delivery`. JSON nodes use Zod `withStructuredOutput` (`schemas.ts`); state is checkpointed
+in Postgres (unpooled connection); writing is grounded by pgvector RAG over an HSR knowledge pack.
+Finished stories save via `src/app/api/stories/route.ts`. Logging is structured JSON (`src/lib/logger.ts`);
+errors are typed codes (`src/lib/errors.ts`) mapped to Chinese UI strings at the boundary.
+
+## For agents
+
+Read README → AGENTS.md → CLAUDE.md first. The agent runs in-process (no `LANGGRAPH_URL`, no separate
+service). Do not reintroduce CopilotKit, hand-rolled JSON parsing, or `console.log`. Do not migrate to
+Drizzle/Cloudflare R2/Pulumi or split into microservices without explicit discussion — these were
+deliberately deferred (see AGENTS.md → "Deferred architecture decisions"). Prefer the project's own
+npm scripts over ad-hoc commands.

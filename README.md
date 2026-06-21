@@ -2,11 +2,11 @@
 
 <img src="https://readme-typing-svg.herokuapp.com?font=Cormorant+Garamond&weight=700&size=45&pause=1000&color=2DD4BF&center=true&vCenter=true&random=false&width=600&height=80&lines=%E2%9C%A8+FanFic+Lab+%E2%9C%A8" alt="FanFic Lab" />
 
-<h3>AI-Powered Fanfiction Writing Platform</h3>
+<h3>Autonomous AI Fanfiction Generator</h3>
 
-An innovative AI-powered fanfiction writing platform built with **Next.js 16** and **LangGraph.js**.<br/>
-Create amazing fanfiction with an AI assistant that understands your characters, respects canon, and helps bring your stories to life.<br/>
-Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop approval workflows.
+An autonomous AI fanfiction generator built with **Next.js 16** and **LangGraph.js**.<br/>
+Describe the story you want and the **DreamWriter** agent plans, writes, self-reviews for out-of-character (OOC) issues, and delivers a finished Honkai: Star Rail fanfic.<br/>
+Featuring a multi-stage generation pipeline, RAG-grounded canon knowledge, a discovery feed, and a full social reading layer.
 
 [Live Demo][project-link] · [Report Bug][github-issues-link] · [Request Feature][github-issues-link]
 
@@ -51,7 +51,7 @@ Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop
 </div>
 
 > [!IMPORTANT]
-> FanFic Lab combines cutting-edge AI technology with a deep understanding of fanfiction culture. It features LangGraph.js for intelligent agent workflows with Human-in-the-Loop approval, Tavily for fandom research, and a beautiful "Literary Atelier" design system with Teal + Amber color palette.
+> FanFic Lab combines cutting-edge AI with a deep understanding of fanfiction culture. The **DreamWriter** agent (LangGraph.js) runs a six-stage generation pipeline — intent parsing → story architecture → writing → quality/OOC review (with a revision loop) → summary → delivery — grounded in a Honkai: Star Rail knowledge pack via pgvector RAG. The agent runs **in-process inside the Next.js app** (a single deployable), and the UI is wrapped in a "Literary Atelier" design system with a Teal + Amber palette.
 
 <details>
 <summary><kbd>Table of Contents</kbd></summary>
@@ -106,45 +106,43 @@ Featuring smart editing, creative wizard, fandom research, and Human-in-the-Loop
 
 FanFic Lab is designed for the fanfiction community, providing:
 
-- **Smart Editor** - AI-powered writing assistance with inline suggestions
-- **Creative Wizard** - Conversational story setup with Human-in-the-Loop (HITL) forms
-- **Fandom Research** - Tavily-powered research for characters, ships, and world-building
-- **Fandom Feed** - Discover and filter stories by fandom, ships, and tags
-- **Character Management** - Track characters and detect out-of-character moments
-- **Image Gallery** - AI-generated character portraits and scene illustrations (coming soon)
+- **DreamWriter Agent** - Autonomous, multi-stage story generation from a single prompt
+- **OOC Quality Guard** - The agent self-reviews for out-of-character issues and revises
+- **Canon-Grounded RAG** - Honkai: Star Rail knowledge pack retrieved via pgvector
+- **Story Reader & Continue** - Read generated stories and extend them chapter by chapter
+- **Discovery Feed** - Browse and filter stories by fandom, ships, tags, rating, and status
+- **Social Layer** - Likes, nested comments, follows, notifications, and profiles
 
 ```mermaid
 graph TB
     subgraph "User Interface"
-        A[Homepage] --> B[Creative Wizard]
-        A --> C[Smart Editor]
-        A --> D[Fandom Feed]
-        B --> C
+        A[Homepage] --> B[Create Page]
+        A --> D[Discovery Feed]
+        A --> R[Story Reader]
     end
 
-    subgraph "AI Layer"
-        E[CopilotKit Provider]
-        F[LangGraph Agent]
-        G[OpenAI GPT-4o]
-        H[Tavily Search]
+    subgraph "Next.js App (single deployable)"
+        I[API Routes / Server Actions]
+        F[DreamWriter Agent - LangGraph.js, in-process]
+        J[Prisma 7]
     end
 
-    subgraph "Backend"
-        I[Next.js API Routes]
-        J[Prisma ORM]
-        K[Neon PostgreSQL]
+    subgraph "External Services"
+        G[OpenAI GPT-4o / 4o-mini]
+        K[Neon PostgreSQL + pgvector]
         L[Redis Cache]
+        P[Cloudinary]
     end
 
-    C --> E
-    B --> E
-    E --> I
+    B -->|SSE stream| I
+    R --> I
+    D --> I
     I --> F
     F --> G
-    F --> H
     I --> J
     J --> K
     I --> L
+    I --> P
 ```
 
 <div align="right">
@@ -155,37 +153,18 @@ graph TB
 
 ## 🚀 Key Features
 
-### `1` Smart Editor with AI Assistance
+### `1` DreamWriter Generation Pipeline
 
-Experience next-generation writing with AI-powered inline suggestions. The Smart Editor integrates CopilotKit for real-time assistance, helping you write better fanfiction faster.
+Describe the story you want; the DreamWriter agent autonomously produces a finished fanfic through a six-stage LangGraph pipeline, streaming live progress to the UI over SSE.
 
-| Feature | Description |
-|---------|-------------|
-| **CopilotTextarea** | Inline AI suggestions while typing |
-| **Magic Continue** | AI writes the next 200-300 words naturally |
-| **Expand Text** | Enhance selected text with more dialogue/description/emotion |
-| **Polish Prose** | Improve writing quality at light/medium/deep levels |
-| **Autosave** | Automatic saving with debounce to localStorage |
-| **HITL Approval** | Review and approve/edit AI-generated content |
-
-<div align="right">
-
-[![][back-to-top]](#readme-top)
-
-</div>
-
-### `2` Creative Wizard with Fandom Research
-
-Revolutionary story setup wizard that researches your fandom using Tavily API, understands your characters, and generates story outlines for your approval.
-
-| Feature | Description |
-|---------|-------------|
-| **Fandom Selector** | Browse popular fandoms or enter custom |
-| **Source Research** | Tavily-powered research for characters, ships, world-building |
-| **Ship Builder** | Define romantic pairings with AI suggestions |
-| **Character Setup** | Add characters with AI-enhanced profiles |
-| **Outline Generation** | AI creates story outline for HITL approval |
-| **Step Progress** | Visual progress tracking through wizard |
+| Stage | Node | What it does |
+|-------|------|--------------|
+| **Intent** | `intent_parser` | Extracts CP, setting, tone, and constraints (structured output) |
+| **Architect** | `story_architect` | Plans title, emotional arc, and scene-by-scene outline |
+| **Write** | `writer` | Drafts the full story, grounded by pgvector RAG passages |
+| **Quality Guard** | `quality_guard` | Scores OOC/consistency/prose; loops back to rewrite (up to 2×) |
+| **Summarize** | `summarize` | Writes a spoiler-free hook for the feed |
+| **Deliver** | `delivery` | Finalizes word count, metadata, and "similar story" suggestions |
 
 <div align="right">
 
@@ -193,17 +172,17 @@ Revolutionary story setup wizard that researches your fandom using Tavily API, u
 
 </div>
 
-### `3` Character & OOC System
+### `2` Reliability & Cost Engineering
 
-Intelligent character management with out-of-character detection to keep your characters authentic.
+The pipeline is built to be deterministic, observable, and cheap to run.
 
 | Feature | Description |
 |---------|-------------|
-| **Character Sidebar** | Add/manage characters with personality traits |
-| **OOC Detection** | AI checks for out-of-character moments |
-| **Character Profiles** | Name, fandom, personality, speech patterns |
-| **Original Characters** | Support for OCs with custom definitions |
-| **Dialogue Suggestions** | In-character dialogue generation |
+| **Structured outputs** | Every JSON stage uses Zod-validated structured outputs (no brittle parsing) |
+| **Prompt caching** | Static knowledge/system prefix kept stable so OpenAI caches it across calls |
+| **Durable checkpointer** | LangGraph state persisted in Postgres — runs survive restarts |
+| **Structured logging** | Machine-readable JSON logs + typed error codes |
+| **In-process agent** | Runs inside Next.js — one deployable, no internal network hop |
 
 <div align="right">
 
@@ -211,7 +190,24 @@ Intelligent character management with out-of-character detection to keep your ch
 
 </div>
 
-### `4` Fandom Feed
+### `3` Canon Fidelity & OOC Guard
+
+Keeping characters authentic to canon is the core quality bar.
+
+| Feature | Description |
+|---------|-------------|
+| **OOC Detection** | The `quality_guard` node scores each draft for out-of-character moments |
+| **Revision loop** | Drafts below the threshold are rewritten with targeted feedback |
+| **RAG grounding** | Canon passages retrieved from a pgvector knowledge base inform the writing |
+| **Knowledge pack** | A Honkai: Star Rail character/world knowledge set seeds the system prompt |
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+### `4` Discovery Feed
 
 Discover and filter stories by fandom, ships, tags, rating, and status.
 
@@ -232,14 +228,14 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 
 ### `*` Additional Features
 
-- [x] 💨 **Quick Setup**: Auto-deploy via `git push` with Coolify on DigitalOcean
+- [x] 💨 **Quick Setup**: Auto-deploy via `git push` (GitHub Actions → DigitalOcean VPS)
 - [x] 🌐 **Responsive Design**: Beautiful UI on desktop and mobile
-- [x] 🔒 **Authentication**: Stack Auth for secure user management
+- [x] 🔒 **Authentication**: Stack Auth (the engine behind Neon Auth) for secure user management
 - [x] 💎 **Literary Atelier Design**: Teal + Amber color palette with elegant typography
-- [x] 🗣️ **Real-time AI**: Live AI suggestions and generation
-- [x] 📊 **Research Cache**: Redis caching for Tavily search results (30-day TTL)
-- [x] 🔌 **Extensible**: Plugin-ready architecture for custom functionality
-- [x] ☁️ **Cloud Storage**: Cloudinary integration for image hosting
+- [x] 🗣️ **Streaming generation**: Live SSE progress while the agent works
+- [x] ✍️ **Continue chapters**: Extend any story with additional AI-written chapters
+- [x] 💳 **Usage ledger**: Per-generation tracking with per-1k-words credit accounting
+- [x] ☁️ **Cloud Storage**: Cloudinary integration for cover/avatar image hosting
 
 > ✨ More features are continuously being added as the project evolves.
 
@@ -288,16 +284,16 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
-| **Framework** | Next.js 16 (App Router, Turbopack) | DigitalOcean + Coolify |
-| **UI** | React 19, TailwindCSS 4, shadcn/ui | DigitalOcean + Coolify |
-| **AI Agent** | LangGraph.js 1.0 | DigitalOcean + Coolify |
+| **Framework** | Next.js 16 (App Router) | DigitalOcean VPS |
+| **UI** | React 19, TailwindCSS 4, shadcn/ui | DigitalOcean VPS |
+| **AI Agent** | LangGraph.js 1.0 (in-process) | Bundled in the Next.js app |
 | **Reverse Proxy** | Traefik (via Coolify) | DigitalOcean |
 | **SSL / CDN** | Cloudflare (proxy mode) | Cloudflare |
 | **LLM** | OpenAI GPT-4o / GPT-4o-mini | OpenAI API |
-| **Search** | Tavily API | Tavily |
-| **Database** | Neon PostgreSQL + Prisma 7 | Neon |
+| **Database** | Neon PostgreSQL + pgvector + Prisma 7 | Neon |
+| **Checkpointer** | LangGraph Postgres saver | Neon |
 | **Cache** | Redis (ioredis) | Upstash |
-| **Auth** | Stack Auth | Stack Auth Cloud |
+| **Auth** | Stack Auth (= Neon Auth engine) | Stack Auth Cloud |
 | **Storage** | Cloudinary | Cloudinary |
 
 <div align="right">
@@ -311,7 +307,7 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 ### System Architecture
 
 > [!TIP]
-> FanFic Lab runs on a **DigitalOcean VPS with Coolify** (self-hosted PaaS). Both the Next.js frontend and LangGraph agent are deployed as Docker Compose services, communicating via Docker internal networking. Cloudflare provides SSL and CDN.
+> FanFic Lab ships as a **single Next.js deployable** — the DreamWriter agent runs in-process inside API route handlers, so there is no separate agent service and no internal HTTP hop. It runs on a **DigitalOcean VPS** behind **Traefik** (managed by Coolify), with **Cloudflare** for SSL and CDN.
 
 ```mermaid
 graph TB
@@ -319,88 +315,53 @@ graph TB
         CF[SSL + CDN + DNS]
     end
 
-    subgraph "DigitalOcean VPS (Coolify)"
+    subgraph "DigitalOcean VPS"
         T[Traefik Reverse Proxy]
-        subgraph "Docker Compose"
-            A[Next.js 16 - Web] --> D[API Routes]
-            D --> E[Prisma 7]
-            F[LangGraph.js 1.0 - Agent] --> G[chat_node]
-            F --> H[research_node]
-            F --> I[outline_node]
-            F --> J[tool_node]
+        subgraph "Single Container - Next.js 16"
+            D[API Routes / Server Actions]
+            F[DreamWriter Agent - LangGraph.js, in-process]
+            E[Prisma 7]
+            D --> F
+            D --> E
         end
     end
 
     subgraph "External Services"
         K[OpenAI API]
-        L[Tavily API]
-        M[LangSmith]
+        M[LangSmith - optional tracing]
     end
 
     subgraph "Data Layer"
-        N[Neon PostgreSQL]
+        N[Neon PostgreSQL + pgvector]
         O[Redis Cache]
         P[Cloudinary]
     end
 
     CF -->|HTTP| T
-    T --> A
-    D -->|Docker Network| F
-    G --> K
-    H --> L
-    F --> M
+    T --> D
+    F --> K
+    F -->|traces| M
+    F -->|checkpoints + RAG| N
     E --> N
     D --> O
     D --> P
 ```
 
-### Agent Workflow (LangGraph)
+### Agent Workflow (LangGraph DreamWriter)
 
-The agent uses **dedicated graph nodes** for HITL operations instead of tools. This is a workaround for the CopilotKit/LangGraph.js ToolMessage format incompatibility.
+A linear pipeline with a conditional revision loop. State is checkpointed in Postgres, and `/api/create` streams node updates to the client over SSE.
 
 ```mermaid
 graph TD
-    A[START] --> B{routeFromStart}
-    B -->|Research Request| C[research_node]
-    B -->|Outline Request| D[outline_node]
-    B -->|Default| E[chat_node]
-
-    C --> F[Tavily Search x4]
-    F --> G[LLM Aggregation]
-    G --> H[Emit State with researchData]
-    H --> I[Return AIMessage]
-
-    D --> J[Generate Outline]
-    J --> K[Set pendingContent]
-    K --> L[Emit State for HITL]
-    L --> I
-
-    E --> M{Has Tool Call?}
-    M -->|Yes| N[tool_node]
-    M -->|No| I
-
-    N --> O[Execute Tool]
-    O --> I
-
-    I --> P[END]
-```
-
-### HITL (Human-in-the-Loop) Pattern
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant FE as Frontend
-    participant CK as CopilotKit
-    participant Agent as LangGraph Agent
-
-    Agent->>CK: copilotkitEmitState(pendingContent)
-    CK->>FE: State Update
-    FE->>FE: useCoAgentStateRender detects pendingContent
-    FE->>U: Render Approval Card
-    U->>FE: Approve/Edit/Reject
-    FE->>CK: respond({ data })
-    CK->>Agent: Continue with user input
+    A[START] --> B[intent_parser_node]
+    B --> C[story_architect_node]
+    C --> D[writer_node]
+    D --> E[quality_guard_node]
+    E -->|score < 7 and revisions < 2| R[revision_counter_node]
+    R --> D
+    E -->|passes or max revisions| F[summarize_node]
+    F --> G[delivery_node]
+    G --> H[END]
 ```
 
 <div align="right">
@@ -457,8 +418,8 @@ npx prisma migrate dev
 **5. Start Development**
 
 ```bash
-# Start both Next.js and LangGraph agent
-npm run dev:all
+# The DreamWriter agent runs in-process, so a single command is all you need
+npm run dev
 ```
 
 🎉 **Success!** Open [http://localhost:3000](http://localhost:3000) to view the application.
@@ -466,13 +427,15 @@ npm run dev:all
 ### Development Commands
 
 ```bash
-npm run dev        # Start Next.js dev server only
-npm run dev:agent  # Start LangGraph agent only
-npm run dev:all    # Start both services (recommended)
-npm run build      # Build for production
-npm run start      # Start production server
-npm run lint       # Run ESLint
+npm run dev         # Start the Next.js dev server (agent runs in-process)
+npm run dev:studio  # Optional: LangGraph Studio for visual agent debugging (local-only)
+npm run build       # Build for production
+npm run start       # Start production server
+npm run lint        # Run ESLint
 ```
+
+> [!NOTE]
+> `npm run dev:studio` launches the LangGraph Studio dev server (`langgraphjs dev`) on port 8123 for inspecting agent runs. It is purely a local debugging aid — the app itself does not depend on it and production ships without it.
 
 <div align="right">
 
@@ -485,52 +448,49 @@ npm run lint       # Run ESLint
 ### Local Development (`.env.local`)
 
 ```env
-# Database (Neon PostgreSQL)
-DATABASE_URL=postgresql://user:pass@host.neon.tech/fanficlab?sslmode=require
+# Database (Neon PostgreSQL) — pooled for the app, unpooled for the agent checkpointer
+DATABASE_URL=postgresql://user:pass@host-pooler.neon.tech/fanficlab?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://user:pass@host.neon.tech/fanficlab?sslmode=require
 
 # Stack Auth
 STACK_SECRET_SERVER_KEY=ssk_...
 NEXT_PUBLIC_STACK_PROJECT_ID=...
 NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=pck_...
 
-# OpenAI (required for AI features)
+# OpenAI (required for AI generation)
 OPENAI_API_KEY=sk-...
 
-# LangGraph (local dev: localhost, production: http://agent:8123 via Docker Compose)
-LANGGRAPH_URL=http://localhost:8123
-
-# Redis (for research caching)
+# Redis (for research/general caching)
 REDIS_URL=redis://localhost:6379
 
-# Cloudinary (for image hosting)
+# Cloudinary (for cover/avatar image hosting)
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
 
-# Optional: Together AI for image generation (currently disabled)
-TOGETHER_API_KEY=...
-
-# Optional: LangSmith for tracing
+# Optional: LangSmith for agent tracing
 LANGSMITH_API_KEY=lsv2_...
 
 # Optional: Admin endpoint protection
 ADMIN_SECRET=...
 ```
 
+> [!NOTE]
+> There is no `LANGGRAPH_URL` anymore — the agent runs in-process. The LangGraph **Postgres checkpointer** uses `DATABASE_URL_UNPOOLED` (falling back to `DATABASE_URL`) because it relies on prepared statements that Neon's pooled endpoint doesn't support reliably.
+
 ### Production Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DATABASE_URL` | Neon PostgreSQL connection string | ✅ |
+| `DATABASE_URL` | Neon PostgreSQL connection string (pooled) | ✅ |
+| `DATABASE_URL_UNPOOLED` | Direct connection for the agent checkpointer | 🔶 |
 | `STACK_SECRET_SERVER_KEY` | Stack Auth server key | ✅ |
 | `NEXT_PUBLIC_STACK_PROJECT_ID` | Stack Auth project ID | ✅ |
 | `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Stack Auth client key | ✅ |
-| `LANGGRAPH_URL` | Agent URL (`http://agent:8123` in Docker Compose) | ✅ |
 | `OPENAI_API_KEY` | OpenAI API key | ✅ |
 | `REDIS_URL` | Redis connection string | ✅ |
 | `CLOUDINARY_*` | Cloudinary credentials | ✅ |
-| `LANGSMITH_API_KEY` | LangSmith API key | 🔶 |
-| `TAVILY_API_KEY` | Tavily API key (agent service) | ✅ |
+| `LANGSMITH_API_KEY` | LangSmith API key (agent tracing) | 🔶 |
 | `ADMIN_SECRET` | Admin endpoint protection | 🔶 |
 
 > ✅ Required, 🔶 Optional
@@ -614,38 +574,50 @@ fanfic-lab/
 ├── src/
 │   ├── app/                          # Next.js App Router
 │   │   ├── api/                      # API routes
-│   │   │   ├── copilotkit/          # CopilotKit runtime
-│   │   │   ├── research-cache/      # Redis caching
-│   │   │   ├── health/              # Health check
-│   │   │   ├── admin/cache-stats/   # Cache analytics
-│   │   │   └── upload/cover/        # Cover upload
+│   │   │   ├── create/              # POST: stream a DreamWriter generation (SSE)
+│   │   │   ├── stories/             # POST: save story; [id]/continue: add chapter
+│   │   │   ├── upload/              # avatar + cover image upload (Cloudinary)
+│   │   │   ├── research-cache/      # Redis-backed research cache
+│   │   │   ├── admin/cache-stats/   # Cache analytics (ADMIN_SECRET)
+│   │   │   └── health/             # Health check
 │   │   ├── (main)/                   # Main routes
 │   │   │   ├── (protected)/         # Auth required
-│   │   │   │   ├── editor/          # Smart Editor
-│   │   │   │   ├── wizard/          # Creative Wizard
-│   │   │   │   └── profile/         # User Profile
-│   │   │   └── feed/                # Fandom Feed (public)
+│   │   │   │   ├── create/         # AI story creation page
+│   │   │   │   ├── profile/        # User profile
+│   │   │   │   ├── notifications/  # Notifications
+│   │   │   │   └── story/[id]/edit # Story editing
+│   │   │   ├── feed/               # Discovery feed (public)
+│   │   │   ├── story/[id]/         # Story reader (public)
+│   │   │   └── users/[username]/   # Public profiles + followers/following
 │   │   └── handler/[...stack]/      # Stack Auth
 │   │
 │   ├── components/                   # React components
 │   │   ├── ui/                      # shadcn/ui components
-│   │   ├── editor/                  # Editor components
-│   │   ├── wizard/                  # Wizard components
-│   │   ├── feed/                    # Feed components
-│   │   ├── hitl/                    # HITL approval cards
-│   │   ├── layout/                  # Layout components
+│   │   ├── create/                  # Creation flow (input, progress, results)
+│   │   ├── story/                   # Reader, comments, continue dialog
+│   │   ├── feed/                    # Feed cards, filters
+│   │   ├── credits/                 # Credit badge / gate
+│   │   ├── layout/                  # Header, theme toggle, notifications
 │   │   └── providers/               # Context providers
 │   │
-│   ├── agent/                        # LangGraph agent
-│   │   ├── agent.ts                 # Workflow definition
-│   │   ├── state.ts                 # State annotation
-│   │   └── tools/                   # Agent tools
+│   ├── agent/                        # In-process LangGraph agent
+│   │   ├── langgraph.json           # Studio config (local dev)
+│   │   └── dreamwriter/
+│   │       ├── graph.ts             # Pipeline + getGraph() (Postgres checkpointer)
+│   │       ├── state.ts             # State annotation
+│   │       ├── schemas.ts           # Zod schemas for structured outputs
+│   │       ├── nodes/               # intent, architect, writer, quality, summarize, delivery
+│   │       └── prompts/             # System prompts + HSR knowledge prompt
+│   │
+│   ├── knowledge/                    # RAG knowledge base (HSR) + retrieval
 │   │
 │   └── lib/                          # Utilities
 │       ├── hooks/                   # Custom hooks
-│       ├── actions/                 # Server actions
+│       ├── actions/                 # Server actions (stories, users, credits…)
 │       ├── types/                   # TypeScript types
-│       ├── db.ts                    # Database client
+│       ├── logger.ts               # Structured JSON logger
+│       ├── errors.ts               # Typed error codes
+│       ├── db.ts                    # Prisma client
 │       ├── redis.ts                 # Redis client
 │       └── cloudinary.ts            # Cloudinary client
 │
@@ -653,10 +625,7 @@ fanfic-lab/
 │   ├── schema.prisma                # Database schema
 │   └── migrations/                  # Migrations
 │
-├── docs/
-│   ├── COPILOTKIT_LANGGRAPH_HITL_GUIDE.md
-│   └── MIGRATION_RAILWAY_TO_DIGITALOCEAN.md
-│
+├── docs/                            # Deployment + migration guides
 └── public/                          # Static assets
 ```
 
@@ -668,20 +637,24 @@ fanfic-lab/
 
 ## 📡 API Reference
 
-### POST /api/copilotkit
+### POST /api/create
 
-CopilotKit runtime endpoint that routes requests to the LangGraph agent.
+Runs the in-process DreamWriter agent and streams progress back as Server-Sent Events.
 
-```typescript
-const runtime = new CopilotRuntime({
-  agents: {
-    fanfic_agent: new LangGraphAgent({
-      deploymentUrl: process.env.LANGGRAPH_URL,
-      graphId: "fanfic_agent",
-    }),
-  },
-});
+```jsonc
+// Request
+{ "prompt": "三月七 × 丹恒，星穹列车上的一个甜向小故事" }
+
+// Each SSE "data:" frame is a CreationProgressEvent
+{ "stage": "writing", "message": "故事初稿完成，正在进行质量检查..." }
+{ "stage": "complete", "result": { "title": "…", "body": "…", "wordCount": 3142, "summary": "…" } }
 ```
+
+Stages stream in order: `parsing → planning → writing → checking → (revising)? → complete`. The client saves the finished `result` to `POST /api/stories`.
+
+### POST /api/stories · POST /api/stories/[id]/continue
+
+`POST /api/stories` persists a completed generation (story + first chapter + Generation ledger row, then a recommendation embedding asynchronously). `POST /api/stories/[id]/continue` appends an AI-written next chapter. Both require an authenticated Stack user.
 
 ### GET/POST /api/research-cache
 
@@ -724,18 +697,17 @@ Cover image upload endpoint.
 
 ## 🛳 Deployment
 
-### Cloud Deployment (DigitalOcean + Coolify)
+### Cloud Deployment (DigitalOcean)
 
-FanFic Lab runs on a DigitalOcean VPS with Coolify (self-hosted PaaS), using Docker Compose for both services. Cloudflare handles SSL and CDN.
+FanFic Lab deploys as a **single Docker image** to a DigitalOcean VPS behind Traefik (managed by Coolify). Cloudflare handles SSL and CDN. CI builds the image and deploys over SSH.
 
-**Services:**
+**Service:**
 
 | Service | Dockerfile | Port | Health Check |
 |---------|-----------|------|-------------|
-| **Web** (Next.js) | `Dockerfile.web` | 3000 | `/api/health` |
-| **Agent** (LangGraph) | `Dockerfile.agent` | 8123 | `/info` |
+| **Web** (Next.js + in-process agent) | `Dockerfile.web` | 3000 | `/api/health` |
 
-**Deployment Compose:** `docker-compose.coolify.yml`
+**Local compose:** `docker-compose.coolify.yml` (single `web` service)
 
 ### Production URLs
 
@@ -743,16 +715,11 @@ FanFic Lab runs on a DigitalOcean VPS with Coolify (self-hosted PaaS), using Doc
 |---------|-----|
 | Frontend | https://fanfic-lab.tech |
 | www (redirect) | https://www.fanfic-lab.tech → https://fanfic-lab.tech |
-| Agent (Internal) | http://agent:8123 (Docker Compose network) |
 | Coolify Dashboard | http://159.223.173.17:8000 |
 
-### Deployment Methods
+### Deployment Method
 
-| Method | Command |
-|--------|---------|
-| **Auto-deploy** | `git push origin master` (GitHub webhook → Coolify) |
-| **Manual (API)** | `curl -X POST http://159.223.173.17:8000/api/v1/applications/wea94e791gdrn59xv4tqnxdm/restart -H "Authorization: Bearer <token>"` |
-| **Dashboard** | Open Coolify → Deploy button |
+`git push origin master` triggers `.github/workflows/deploy.yml`: GitHub Actions builds and pushes the web image to GHCR, then SSHes into the VPS to pull and restart the container with Traefik labels.
 
 ### Architecture Diagram
 
@@ -763,36 +730,30 @@ FanFic Lab runs on a DigitalOcean VPS with Coolify (self-hosted PaaS), using Doc
                     └──────┬───────┘
                            │ HTTP
 ┌──────────────────────────┼────────────────────────┐
-│          DigitalOcean VPS (Coolify)                │
+│               DigitalOcean VPS                     │
 │                  ┌───────┴───────┐                 │
 │                  │    Traefik    │                 │
 │                  │ Reverse Proxy │                 │
 │                  └───────┬───────┘                 │
 │  ┌───────────────────────┼───────────────────────┐│
-│  │            Docker Compose Network             ││
-│  │  ┌─────────────────────┐ ┌──────────────────┐ ││
-│  │  │    Web Service      │ │  Agent Service   │ ││
-│  │  │    (Next.js 16)     │ │  (LangGraph.js)  │ ││
-│  │  │                     │ │                  │ ││
-│  │  │  • React 19         │ │  • chat_node     │ ││
-│  │  │  • Prisma 7         │ │  • research_node │ ││
-│  │  │  • Stack Auth       │ │  • outline_node  │ ││
-│  │  │  • Port 3000        │ │  • Port 8123     │ ││
-│  │  └──────────┬──────────┘ └────────┬─────────┘ ││
-│  │             │  http://agent:8123  │           ││
-│  │             └─────────────────────┘           ││
-│  └───────────────────────────────────────────────┘│
+│  │         Single Container (Next.js 16)         ││
+│  │   • React 19 UI        • Prisma 7             ││
+│  │   • API routes         • Stack Auth           ││
+│  │   • DreamWriter agent (LangGraph.js, in-proc) ││
+│  │   • Port 3000                                  ││
+│  └───────────────────────┬───────────────────────┘│
 └──────────────────────────┼────────────────────────┘
                            │
          ┌─────────────────┼─────────────────┐
          ▼                 ▼                 ▼
    ┌──────────┐      ┌──────────┐      ┌──────────┐
    │   Neon   │      │  Upstash │      │Cloudinary│
-   │PostgreSQL│      │  Redis   │      │  Images  │
+   │ Postgres │      │  Redis   │      │  Images  │
+   │+ pgvector│      │          │      │          │
    └──────────┘      └──────────┘      └──────────┘
 ```
 
-> For detailed migration history and Coolify setup guide, see [docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md](./docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md).
+> For detailed migration history and Coolify setup, see [docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md](./docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md).
 
 <div align="right">
 

@@ -4,24 +4,25 @@ How to deploy FanFic Lab (HSR DreamWriter) to production. This guide is written 
 
 ## Architecture Overview
 
+> The DreamWriter agent runs **in-process** inside the Next.js app — there is a **single** image
+> and a **single** container. There is no separate agent service and no `LANGGRAPH_URL`.
+
 ```
 Developer (git push)
     |
     v
 GitHub Actions (.github/workflows/deploy.yml)
-    |-- Build Agent Docker image (Dockerfile.agent)
-    |-- Build Web Docker image (Dockerfile.web)
-    |-- Push both to GitHub Container Registry (GHCR)
+    |-- Build Web Docker image (Dockerfile.web — bundles the in-process agent)
+    |-- Push to GitHub Container Registry (GHCR)
     |-- SSH into VPS
-    |-- Pull new images
-    |-- Stop old containers
-    |-- Start new containers
+    |-- Pull new image
+    |-- Stop old container
+    |-- Start new container
     |
     v
 DigitalOcean VPS (159.223.173.17)
     |-- coolify-proxy (Traefik) -- reverse proxy, SSL via Cloudflare
-    |-- agent-dreamwriter       -- LangGraph agent on port 8123
-    |-- web-dreamwriter         -- Next.js app on port 3000
+    |-- web-dreamwriter         -- Next.js app + in-process agent on port 3000
     |
     v
 Cloudflare (CDN/SSL) --> https://fanfic-lab.tech
@@ -37,11 +38,11 @@ git push origin master
 ```
 
 The workflow (`.github/workflows/deploy.yml`) will:
-1. Build Agent image (~1 min) and Web image (~3 min) on GitHub's servers
-2. Push images to `ghcr.io/chanmeng666/fanfic-lab/{web,agent}`
-3. SSH into the VPS and pull the new images
-4. Stop old containers, start new ones
-5. Total time: ~5 minutes
+1. Build the Web image (~3 min) on GitHub's servers
+2. Push it to `ghcr.io/chanmeng666/fanfic-lab/web`
+3. SSH into the VPS and pull the new image
+4. Stop the old container, start the new one (also cleans up the retired `agent-dreamwriter`)
+5. Total time: ~4 minutes
 
 ### Monitoring the Build
 
@@ -63,9 +64,8 @@ curl -s -o /dev/null -w "HTTP:%{http_code}" https://fanfic-lab.tech
 # Check containers on VPS
 ssh -i ~/.ssh/id_ed25519 root@159.223.173.17 "docker ps --format '{{.Names}} | {{.Status}}'"
 
-# Check container logs
+# Check container logs (agent logs are interleaved here — it runs in-process)
 ssh -i ~/.ssh/id_ed25519 root@159.223.173.17 "docker logs web-dreamwriter --tail 20"
-ssh -i ~/.ssh/id_ed25519 root@159.223.173.17 "docker logs agent-dreamwriter --tail 20"
 
 # Check memory usage
 ssh -i ~/.ssh/id_ed25519 root@159.223.173.17 "free -h"
@@ -79,38 +79,24 @@ If GitHub Actions fails or you need to deploy manually:
 # 1. SSH into the VPS
 ssh -i ~/.ssh/id_ed25519 root@159.223.173.17
 
-# 2. Pull the latest images
-docker pull ghcr.io/chanmeng666/fanfic-lab/agent:latest
+# 2. Pull the latest image
 docker pull ghcr.io/chanmeng666/fanfic-lab/web:latest
 
-# 3. Stop old containers
-docker stop agent-dreamwriter web-dreamwriter
-docker rm agent-dreamwriter web-dreamwriter
+# 3. Stop old container(s) (also clears the retired agent container if present)
+docker stop web-dreamwriter agent-dreamwriter 2>/dev/null || true
+docker rm web-dreamwriter agent-dreamwriter 2>/dev/null || true
 
-# 4. Start agent (must start before web)
-docker run -d \
-  --name agent-dreamwriter \
-  --network coolify \
-  --restart unless-stopped \
-  -e NODE_ENV=production \
-  -e PORT=8123 \
-  -e OPENAI_API_KEY="<key>" \
-  -e DATABASE_URL="<url>" \
-  ghcr.io/chanmeng666/fanfic-lab/agent:latest
-
-# 5. Wait for agent to be ready (~30s)
-# Check: docker exec agent-dreamwriter node -e "fetch('http://localhost:8123/info').then(r=>console.log(r.status))"
-
-# 6. Start web
+# 4. Start web (the DreamWriter agent runs in-process — no separate container)
 docker run -d \
   --name web-dreamwriter \
   --network coolify \
   --restart unless-stopped \
   -e NODE_ENV=production \
-  -e LANGGRAPH_URL=http://agent-dreamwriter:8123 \
   -e DATABASE_URL="<url>" \
+  -e DATABASE_URL_UNPOOLED="<direct-url>" \
   -e REDIS_URL="<url>" \
   -e OPENAI_API_KEY="<key>" \
+  -e LANGSMITH_API_KEY="<key>" \
   -e STACK_SECRET_SERVER_KEY="<key>" \
   -e NEXT_PUBLIC_STACK_PROJECT_ID="<id>" \
   -e NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY="<key>" \
@@ -129,8 +115,9 @@ All secrets are stored in **GitHub Repository Secrets** (Settings > Secrets and 
 |--------|---------|---------|
 | `VPS_HOST` | Deploy job | VPS IP address (159.223.173.17) |
 | `VPS_SSH_KEY` | Deploy job | SSH private key for root access |
-| `OPENAI_API_KEY` | Agent + Web | GPT-4o API calls |
-| `DATABASE_URL` | Web | Neon PostgreSQL connection |
+| `OPENAI_API_KEY` | Web | GPT-4o API calls (generation + embeddings) |
+| `DATABASE_URL` | Web | Neon PostgreSQL connection (pooled) |
+| `DATABASE_URL_UNPOOLED` | Web | Direct connection for the in-process agent's Postgres checkpointer |
 | `REDIS_URL` | Web | Upstash Redis connection |
 | `STACK_SECRET_SERVER_KEY` | Web | Stack Auth server key |
 | `NEXT_PUBLIC_STACK_PROJECT_ID` | Web | Stack Auth project ID |
@@ -138,8 +125,7 @@ All secrets are stored in **GitHub Repository Secrets** (Settings > Secrets and 
 | `CLOUDINARY_CLOUD_NAME` | Web | Image storage |
 | `CLOUDINARY_API_KEY` | Web | Image storage |
 | `CLOUDINARY_API_SECRET` | Web | Image storage |
-| `LANGSMITH_API_KEY` | Agent | LangSmith tracing (optional) |
-| `TAVILY_API_KEY` | Agent | Web search (optional) |
+| `LANGSMITH_API_KEY` | Web | LangSmith tracing for the in-process agent (optional) |
 | `ADMIN_SECRET` | Web | Admin endpoints |
 
 ### Updating a Secret
@@ -173,13 +159,16 @@ The web container also has Traefik labels as a fallback, but the static config f
 
 The VPS is a DigitalOcean s-2vcpu-2gb droplet ($12/mo). Memory is tight.
 
-### What's Running (3 containers only)
+### What's Running (2 containers only)
 
 | Container | Purpose | ~RAM |
 |-----------|---------|------|
 | `coolify-proxy` | Traefik reverse proxy | ~50MB |
-| `agent-dreamwriter` | LangGraph AI agent | ~300MB |
-| `web-dreamwriter` | Next.js application | ~200MB |
+| `web-dreamwriter` | Next.js app + in-process DreamWriter agent | ~400MB |
+
+> Merging the agent in-process removed the separate `agent-dreamwriter` container (one fewer image,
+> no internal HTTP hop). If you see a leftover `agent-dreamwriter` from an old deploy, it is safe to
+> stop and remove.
 
 ### What Was Removed
 
@@ -202,7 +191,7 @@ ssh -i ~/.ssh/id_ed25519 root@159.223.173.17 \
   "docker stop coolify coolify-db coolify-redis coolify-realtime coolify-sentinel && \
    docker update --restart=no coolify coolify-db coolify-redis coolify-realtime coolify-sentinel"
 
-# 4. The app containers (web-dreamwriter, agent-dreamwriter) have --restart=unless-stopped
+# 4. The app container (web-dreamwriter) has --restart=unless-stopped
 #    and will auto-recover after the Coolify services are stopped.
 ```
 
@@ -229,16 +218,12 @@ npx prisma db push
 ## Local Development
 
 ```bash
-# Start both servers locally:
-# Terminal 1: Start agent (needs env vars)
-set -a && source .env.local && source .env && set +a
-npx langgraphjs dev --host 0.0.0.0 --port 8123 --config src/agent/langgraph.json
-
-# Terminal 2: Start Next.js (auto-loads .env.local)
+# The DreamWriter agent runs in-process, so a single command runs everything
+# (Next.js auto-loads .env.local):
 npm run dev
 
-# Or use concurrently (but agent may not load .env.local):
-npm run dev:all
+# Optional: LangGraph Studio for visual agent debugging (local-only, port 8123)
+npm run dev:studio
 ```
 
 ## Troubleshooting
@@ -258,11 +243,15 @@ npm run dev:all
 3. Check memory: `ssh ... "free -h"`
 4. If OOM: power cycle VPS and stop Coolify services (see above)
 
-### Agent Not Responding
+### Story Generation Failing
 
-1. Check agent logs: `ssh ... "docker logs agent-dreamwriter --tail 30"`
-2. Test agent directly: `ssh ... "docker exec web-dreamwriter node -e \"fetch('http://agent-dreamwriter:8123/info').then(r=>r.json()).then(console.log)\""`
-3. Common cause: `OPENAI_API_KEY` invalid or expired
+The agent runs in-process, so its logs are interleaved in the web container.
+
+1. Check web logs for agent events: `ssh ... "docker logs web-dreamwriter --tail 50"`
+   (look for JSON lines like `{"event":"dreamwriter.node.start",...}` or `level:"error"`)
+2. Common cause: `OPENAI_API_KEY` invalid or expired
+3. Checkpointer issues: ensure `DATABASE_URL_UNPOOLED` is set (pooled connections break the
+   Postgres checkpointer's prepared statements)
 
 ### Traefik Not Routing
 

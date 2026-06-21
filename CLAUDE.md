@@ -1,6 +1,20 @@
 # FanFic Lab - Claude Code Guidelines
 
-Essential design system rules and coding patterns for Claude Code. For detailed technical documentation, see [README.md](./README.md).
+Design-system rules and coding conventions for this repo. **For the authoritative architecture,
+code map, gotchas, and deferred decisions, read [AGENTS.md](./AGENTS.md) first** — this file focuses
+on UI/design conventions. General overview: [README.md](./README.md).
+
+---
+
+## Architecture in one line
+
+A single Next.js deployable; the **DreamWriter** agent (LangGraph.js) runs **in-process** —
+`src/app/api/create/route.ts` streams `getGraph()` (`src/agent/dreamwriter/graph.ts`) over SSE
+through the pipeline `intent → architect → writer → quality (loop ≤2) → summarize → delivery`.
+Data: Prisma 7 + Neon Postgres + pgvector; agent state checkpointed in Postgres. See **AGENTS.md**
+for the full map, conventions (structured outputs via `schemas.ts`, JSON logging via `lib/logger.ts`,
+typed errors via `lib/errors.ts`), and **Deferred decisions** (do not migrate to Drizzle / R2 /
+Pulumi or add microservices without discussion).
 
 ---
 
@@ -9,27 +23,28 @@ Essential design system rules and coding patterns for Claude Code. For detailed 
 | Layer | Technology | Deployment |
 |-------|------------|------------|
 | Frontend | Next.js 16, React 19, TailwindCSS 4 | DigitalOcean VPS |
-| AI Agent | LangGraph.js 1.0 | DigitalOcean VPS |
+| AI Agent | LangGraph.js 1.0 (in-process) | Bundled in the Next.js app |
 | CI/CD | GitHub Actions | GitHub |
 | Reverse Proxy | Traefik | DigitalOcean |
 | SSL / CDN | Cloudflare (proxy mode) | Cloudflare |
-| Database | Prisma 7 + Neon PostgreSQL | Neon |
+| Database | Prisma 7 + Neon PostgreSQL + pgvector | Neon |
 | Cache | Redis (ioredis) | Upstash |
 | Storage | Cloudinary | Cloudinary |
+| Auth | Stack Auth (= Neon Auth engine) | Stack Auth Cloud |
 
-**Production URLs:**
-- Frontend: `https://fanfic-lab.tech` (Cloudflare → DigitalOcean)
-- Agent: `http://agent-dreamwriter:8123` (Docker internal network)
+**Production URL:**
+- Frontend + Agent: `https://fanfic-lab.tech` (Cloudflare → DigitalOcean). The DreamWriter
+  agent runs **in-process** inside the Next.js app — single deployable, no separate agent service.
 
 **Deployment:**
-- **Auto-deploy:** `git push origin master` triggers GitHub Actions → builds Docker images → deploys to VPS via SSH
+- **Auto-deploy:** `git push origin master` triggers GitHub Actions → builds the single web Docker image → deploys to VPS via SSH
 - **Full guide:** See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for detailed deployment instructions
 - **SSH access:** `ssh -i ~/.ssh/id_ed25519 root@159.223.173.17`
 
 **Dockerfile Structure:**
-- `Dockerfile.web` - Full Next.js build for web service
-- `Dockerfile.agent` - Lightweight build for LangGraph agent + knowledge pack
+- `Dockerfile.web` - Full Next.js build (bundles the in-process DreamWriter agent + knowledge pack)
 - `.github/workflows/deploy.yml` - CI/CD pipeline definition
+- Local-only: `npm run dev:studio` runs LangGraph Studio (`langgraphjs dev`) for agent debugging
 
 ---
 
