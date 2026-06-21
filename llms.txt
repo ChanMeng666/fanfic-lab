@@ -13,7 +13,7 @@ of the project for large language models and AI agents.
 - Repository: https://github.com/ChanMeng666/fanfic-lab
 - Live: https://fanfic-lab.tech
 - Stack: Next.js 16 · React 19 · TypeScript 5 · TailwindCSS 4 · Prisma 7 · Neon Postgres + pgvector ·
-  Redis (Upstash) · Cloudinary · Stack Auth (= Neon Auth engine) · OpenAI · LangGraph.js (in-process)
+  Cloudinary · Stack Auth (= Neon Auth engine) · OpenAI · LangGraph.js (in-process). No Redis.
 - Deploy: single Docker image → DigitalOcean VPS (Traefik/Coolify) → Cloudflare CDN
 - License: MIT
 

@@ -94,7 +94,6 @@ docker run -d \
   -e NODE_ENV=production \
   -e DATABASE_URL="<url>" \
   -e DATABASE_URL_UNPOOLED="<direct-url>" \
-  -e REDIS_URL="<url>" \
   -e OPENAI_API_KEY="<key>" \
   -e LANGSMITH_API_KEY="<key>" \
   -e STACK_SECRET_SERVER_KEY="<key>" \
@@ -118,7 +117,6 @@ All secrets are stored in **GitHub Repository Secrets** (Settings > Secrets and 
 | `OPENAI_API_KEY` | Web | GPT-4o API calls (generation + embeddings) |
 | `DATABASE_URL` | Web | Neon PostgreSQL connection (pooled) |
 | `DATABASE_URL_UNPOOLED` | Web | Direct connection for the in-process agent's Postgres checkpointer |
-| `REDIS_URL` | Web | Upstash Redis connection |
 | `STACK_SECRET_SERVER_KEY` | Web | Stack Auth server key |
 | `NEXT_PUBLIC_STACK_PROJECT_ID` | Web | Stack Auth project ID |
 | `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Web | Stack Auth client key |

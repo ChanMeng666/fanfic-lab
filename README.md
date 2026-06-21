@@ -45,7 +45,6 @@ Featuring a multi-stage generation pipeline, RAG-grounded canon knowledge, a dis
 <img src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white"/>
 <img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwindcss&logoColor=white"/>
 <img src="https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white"/>
-<img src="https://img.shields.io/badge/redis-%23DC382D.svg?style=for-the-badge&logo=redis&logoColor=white"/>
 <img src="https://img.shields.io/badge/openai-%23412991.svg?style=for-the-badge&logo=openai&logoColor=white"/>
 
 </div>
@@ -130,7 +129,6 @@ graph TB
     subgraph "External Services"
         G[OpenAI GPT-4o / 4o-mini]
         K[Neon PostgreSQL + pgvector]
-        L[Redis Cache]
         P[Cloudinary]
     end
 
@@ -141,7 +139,6 @@ graph TB
     F --> G
     I --> J
     J --> K
-    I --> L
     I --> P
 ```
 
@@ -271,10 +268,6 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
         <br>PostgreSQL
       </td>
       <td align="center" width="96">
-        <img src="https://cdn.simpleicons.org/redis" width="48" height="48" alt="Redis" />
-        <br>Redis
-      </td>
-      <td align="center" width="96">
         <img src="https://cdn.simpleicons.org/openai" width="48" height="48" alt="OpenAI" />
         <br>GPT-4o
       </td>
@@ -292,7 +285,7 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 | **LLM** | OpenAI GPT-4o / GPT-4o-mini | OpenAI API |
 | **Database** | Neon PostgreSQL + pgvector + Prisma 7 | Neon |
 | **Checkpointer** | LangGraph Postgres saver | Neon |
-| **Cache** | Redis (ioredis) | Upstash |
+| **Cache** | Neon Postgres (`SourceResearchCache`) | Neon |
 | **Auth** | Stack Auth (= Neon Auth engine) | Stack Auth Cloud |
 | **Storage** | Cloudinary | Cloudinary |
 
@@ -333,7 +326,6 @@ graph TB
 
     subgraph "Data Layer"
         N[Neon PostgreSQL + pgvector]
-        O[Redis Cache]
         P[Cloudinary]
     end
 
@@ -343,7 +335,6 @@ graph TB
     F -->|traces| M
     F -->|checkpoints + RAG| N
     E --> N
-    D --> O
     D --> P
 ```
 
@@ -460,9 +451,6 @@ NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=pck_...
 # OpenAI (required for AI generation)
 OPENAI_API_KEY=sk-...
 
-# Redis (for research/general caching)
-REDIS_URL=redis://localhost:6379
-
 # Cloudinary (for cover/avatar image hosting)
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
@@ -488,7 +476,6 @@ ADMIN_SECRET=...
 | `NEXT_PUBLIC_STACK_PROJECT_ID` | Stack Auth project ID | ✅ |
 | `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Stack Auth client key | ✅ |
 | `OPENAI_API_KEY` | OpenAI API key | ✅ |
-| `REDIS_URL` | Redis connection string | ✅ |
 | `CLOUDINARY_*` | Cloudinary credentials | ✅ |
 | `LANGSMITH_API_KEY` | LangSmith API key (agent tracing) | 🔶 |
 | `ADMIN_SECRET` | Admin endpoint protection | 🔶 |
@@ -577,7 +564,7 @@ fanfic-lab/
 │   │   │   ├── create/              # POST: stream a DreamWriter generation (SSE)
 │   │   │   ├── stories/             # POST: save story; [id]/continue: add chapter
 │   │   │   ├── upload/              # avatar + cover image upload (Cloudinary)
-│   │   │   ├── research-cache/      # Redis-backed research cache
+│   │   │   ├── research-cache/      # Postgres-backed research cache
 │   │   │   ├── admin/cache-stats/   # Cache analytics (ADMIN_SECRET)
 │   │   │   └── health/             # Health check
 │   │   ├── (main)/                   # Main routes
@@ -617,8 +604,8 @@ fanfic-lab/
 │       ├── types/                   # TypeScript types
 │       ├── logger.ts               # Structured JSON logger
 │       ├── errors.ts               # Typed error codes
+│       ├── research-cache.ts        # Postgres-backed research cache
 │       ├── db.ts                    # Prisma client
-│       ├── redis.ts                 # Redis client
 │       └── cloudinary.ts            # Cloudinary client
 │
 ├── prisma/
@@ -658,7 +645,7 @@ Stages stream in order: `parsing → planning → writing → checking → (revi
 
 ### GET/POST /api/research-cache
 
-Research results caching endpoint (Redis).
+Research results caching endpoint (Neon Postgres, `SourceResearchCache` table).
 
 | Method | Query/Body | Description |
 |--------|------------|-------------|
@@ -674,7 +661,6 @@ Service health check endpoint.
 {
   "status": "healthy",
   "services": {
-    "redis": { "status": "up", "latency": 5 },
     "database": { "status": "up", "latency": 12 }
   }
 }
@@ -744,13 +730,13 @@ FanFic Lab deploys as a **single Docker image** to a DigitalOcean VPS behind Tra
 │  └───────────────────────┬───────────────────────┘│
 └──────────────────────────┼────────────────────────┘
                            │
-         ┌─────────────────┼─────────────────┐
-         ▼                 ▼                 ▼
-   ┌──────────┐      ┌──────────┐      ┌──────────┐
-   │   Neon   │      │  Upstash │      │Cloudinary│
-   │ Postgres │      │  Redis   │      │  Images  │
-   │+ pgvector│      │          │      │          │
-   └──────────┘      └──────────┘      └──────────┘
+              ┌─────────────────┴─────────────────┐
+              ▼                                     ▼
+        ┌──────────┐                          ┌──────────┐
+        │   Neon   │                          │Cloudinary│
+        │ Postgres │                          │  Images  │
+        │+ pgvector│                          │          │
+        └──────────┘                          └──────────┘
 ```
 
 > For detailed migration history and Coolify setup, see [docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md](./docs/MIGRATION_RAILWAY_TO_DIGITALOCEAN.md).

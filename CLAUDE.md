@@ -28,7 +28,7 @@ Pulumi or add microservices without discussion).
 | Reverse Proxy | Traefik | DigitalOcean |
 | SSL / CDN | Cloudflare (proxy mode) | Cloudflare |
 | Database | Prisma 7 + Neon PostgreSQL + pgvector | Neon |
-| Cache | Redis (ioredis) | Upstash |
+| Cache | Neon Postgres (`SourceResearchCache`) | Neon |
 | Storage | Cloudinary | Cloudinary |
 | Auth | Stack Auth (= Neon Auth engine) | Stack Auth Cloud |
 

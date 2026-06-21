@@ -65,7 +65,7 @@ npm run dev
 ### Verify Installation
 - [ ] Open `http://localhost:3000` — the homepage loads with FanFic Lab branding
 - [ ] No errors in the browser console
-- [ ] `GET http://localhost:3000/api/health` returns `database: up` (Redis may be `down` if no local Redis)
+- [ ] `GET http://localhost:3000/api/health` returns `database: up`
 
 ---
 
@@ -85,9 +85,6 @@ NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=your_publishable_key
 
 # OpenAI (required for story generation)
 OPENAI_API_KEY=sk-...
-
-# Redis (research/general caching)
-REDIS_URL=redis://localhost:6379
 
 # Cloudinary (cover/avatar image storage)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -238,7 +235,7 @@ Stack Auth provides the auth UI at `/handler/*`.
       `{"ts":"…","level":"info","event":"dreamwriter.node.start","node":"writer"}`
 - [ ] A forced failure (e.g. invalid `OPENAI_API_KEY`) produces a `level:"warn"`/`"error"`
       JSON log with an `errorCode`, and the UI shows the mapped Chinese message
-- [ ] `GET /api/health` reports per-service `status` + `latency` for redis and database
+- [ ] `GET /api/health` reports `status` + `latency` for the database
 
 ---
 
@@ -255,7 +252,8 @@ Stack Auth provides the auth UI at `/handler/*`.
    (and the backfill script `npm run backfill-embeddings` exists for older rows).
 4. **Billing** — per-1k-words charging logic exists but live deduction is intentionally not
    wired on yet (generation is currently uncharged).
-5. **Redis optional locally** — caching degrades gracefully if Redis is unreachable.
+5. **No Redis** — the research cache is backed by Neon Postgres (`SourceResearchCache`);
+   there is no Redis/Upstash dependency.
 
 ### Expected Behaviors
 - Unauthenticated users are redirected to sign-in for protected routes.

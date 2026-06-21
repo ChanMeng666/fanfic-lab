@@ -95,7 +95,7 @@ src/
 ├── components/               # ui/ (shadcn), create/, story/, feed/, credits/, layout/, providers/
 ├── agent/dreamwriter/        # in-process LangGraph: graph.ts, state.ts, schemas.ts, nodes/, prompts/
 ├── knowledge/                # HSR knowledge pack + pgvector RAG retrieval
-└── lib/                      # actions/ (server actions), hooks/, types/, db.ts, redis.ts,
+└── lib/                      # actions/ (server actions), hooks/, types/, db.ts, research-cache.ts,
                               #   cloudinary.ts, logger.ts, errors.ts, format-error.ts, story-embedding.ts
 prisma/                       # schema.prisma + migrations
 Dockerfile.web                # single production image (bundles the in-process agent)
@@ -118,7 +118,9 @@ docker-compose.coolify.yml    # single `web` service
 - **pgvector via raw SQL.** Prisma can't write the `vector` type directly — use the helpers in
   `story-embedding.ts` / `rag.ts`, not `prisma.update` for embeddings.
 - **`@tavily/core` / `@langchain/tavily` are dependencies but currently unused** in `src`. Don't
-  assume live web research exists; there's a Redis research cache scaffold but no wired Tavily calls.
+  assume live web research exists; there's a Postgres-backed research cache
+  (`src/lib/research-cache.ts` → `SourceResearchCache` table, used by `/api/research-cache`) but no
+  wired Tavily calls. **There is no Redis** — caching is on Neon Postgres.
 - **`npm run build` runs `prisma generate`.** If Prisma types look stale, build or run
   `npx prisma generate`.
 - **Node:** requires `>=20.9.0` (Prisma 7). Next.js 16 / React 19 may differ from older training data.
