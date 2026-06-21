@@ -3,13 +3,23 @@
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 
-// Credit costs per generation type
+// Pre-generation estimate (words not known yet) used only by the gate/UI.
+// The authoritative charge is word-based — see creditsForWords().
 const CREDIT_COSTS = {
   short: 1,   // ~1000 words
   medium: 3,  // ~3000 words
   long: 5,    // ~6000 words
   continuation: 1,
 } as const;
+
+// Billing unit: pay per 1,000 delivered words ("sell the result, not the tool").
+// This is the authoritative charge applied once delivered word count is known.
+const WORDS_PER_CREDIT = 1000;
+
+/** Credits owed for a delivered piece, billed per 1k words (min 1). */
+export function creditsForWords(words: number): number {
+  return Math.max(1, Math.ceil(words / WORDS_PER_CREDIT));
+}
 
 // Free tier limits
 const FREE_DAILY_LIMIT = 3; // 3 short stories per day
@@ -96,14 +106,19 @@ export async function checkCanGenerate(
 }
 
 /**
- * Deduct credits for a generation
+ * Charge for a completed generation, billed per 1,000 delivered words.
+ *
+ * NOTE (groundwork): this is the word-based ("pay for the result") charge function,
+ * but it is intentionally NOT wired into the generation flow yet — flipping live
+ * deduction on is the deferred business-model pivot. When ready, call this from
+ * /api/stories after the Generation row is created, passing result.wordCount.
  */
 export async function deductCredits(
   generationId: string,
-  length: "short" | "medium" | "long" | "continuation"
-): Promise<{ newBalance: number }> {
+  deliveredWords: number
+): Promise<{ newBalance: number; creditsCharged: number }> {
   const userId = await getCurrentUserId();
-  const cost = CREDIT_COSTS[length];
+  const cost = creditsForWords(deliveredWords);
 
   const credits = await prisma.userCredits.upsert({
     where: { userId },
@@ -114,13 +129,13 @@ export async function deductCredits(
     },
   });
 
-  // Update generation record
+  // Record the authoritative per-result charge on the generation ledger.
   await prisma.generation.update({
     where: { id: generationId },
     data: { creditsCharged: cost },
   });
 
-  return { newBalance: credits.balance };
+  return { newBalance: credits.balance, creditsCharged: cost };
 }
 
 /**

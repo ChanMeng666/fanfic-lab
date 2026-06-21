@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
+import { logger, errorFields } from "@/lib/logger";
 import type { StoryResult } from "@/lib/types/dreamwriter";
 import {
   embeddingTextForStory,
@@ -101,14 +102,14 @@ export async function POST(req: NextRequest) {
         try {
           await setStoryEmbedding(story.id, embedding);
         } catch (e) {
-          console.warn("[stories] failed to persist embedding:", e);
+          logger.warn("stories.embedding.failed", { storyId: story.id, ...errorFields(e) });
         }
       }
     })();
 
     return NextResponse.json({ storyId: story.id });
   } catch (err) {
-    console.error("[stories] Save failed:", err);
+    logger.error("stories.save.failed", errorFields(err));
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "保存失败" },
       { status: 500 }

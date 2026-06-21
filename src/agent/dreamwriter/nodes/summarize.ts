@@ -3,12 +3,13 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { DreamWriterState } from "../state";
 import { SUMMARIZE_PROMPT } from "../prompts/system";
+import { logger, errorFields } from "../../../lib/logger";
 
 export async function summarizeNode(
   state: DreamWriterState,
   _config: RunnableConfig
 ): Promise<Partial<DreamWriterState>> {
-  console.log("[DreamWriter] ========== SUMMARIZE ==========");
+  logger.info("dreamwriter.node.start", { node: "summarize" });
 
   const story = state.storyDraft;
   const title = state.outline?.title ?? "";
@@ -38,7 +39,7 @@ export async function summarizeNode(
     }
     throw new Error(`summary length out of range: ${summary.length}`);
   } catch (e) {
-    console.warn("[DreamWriter] summarize failed, falling back:", e);
+    logger.warn("dreamwriter.node.fallback", { node: "summarize", ...errorFields(e) });
     // Mid-section fallback so the preview doesn't duplicate the chapter opening.
     const len = story.length;
     const fallback =

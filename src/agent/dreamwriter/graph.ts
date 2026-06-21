@@ -1,4 +1,6 @@
 import { StateGraph, MemorySaver, START, END } from "@langchain/langgraph";
+import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
+import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { DreamWriterStateAnnotation } from "./state";
 import { intentParserNode } from "./nodes/intent-parser";
 import { storyArchitectNode } from "./nodes/story-architect";
@@ -6,6 +8,7 @@ import { writerNode } from "./nodes/writer";
 import { qualityGuardNode } from "./nodes/quality-guard";
 import { summarizeNode } from "./nodes/summarize";
 import { deliveryNode } from "./nodes/delivery";
+import { logger } from "../../lib/logger";
 import type { DreamWriterState } from "./state";
 
 const MAX_REVISIONS = 2;
@@ -14,7 +17,7 @@ function routeAfterQualityCheck(state: DreamWriterState): string {
   const report = state.qualityReport;
   if (!report) return "summarize_node";
   if (!report.passesThreshold && state.revisionCount < MAX_REVISIONS) {
-    console.log(`[DreamWriter] Quality score ${report.overallScore}/10, revision ${state.revisionCount + 1}/${MAX_REVISIONS}`);
+    logger.info("dreamwriter.revision", { score: report.overallScore, revision: state.revisionCount + 1, maxRevisions: MAX_REVISIONS });
     return "writer_node";
   }
   return "summarize_node";
@@ -41,5 +44,29 @@ const workflow = new StateGraph(DreamWriterStateAnnotation)
   .addEdge("summarize_node", "delivery_node")
   .addEdge("delivery_node", END);
 
-const memory = new MemorySaver();
-export const graph = workflow.compile({ checkpointer: memory });
+/**
+ * In-memory compiled graph. Used ONLY by the local LangGraph Studio dev server
+ * (`npm run dev:studio`, referenced by langgraph.json). Production uses getGraph().
+ */
+export const graph = workflow.compile({ checkpointer: new MemorySaver() });
+
+// --- Production (in-process) graph with a durable Postgres checkpointer ---
+// Lazily built and memoized so importing this module has no DB side effects, and
+// table setup runs at most once per process. The checkpointer uses a DIRECT
+// (unpooled) connection because it relies on prepared statements / transactions,
+// which Neon's pooled endpoint (pgbouncer) does not support reliably.
+let graphPromise: ReturnType<typeof buildGraphWithPostgres> | null = null;
+
+async function buildGraphWithPostgres() {
+  const connString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+  if (!connString) throw new Error("DATABASE_URL(_UNPOOLED) is required for the DreamWriter checkpointer");
+  const checkpointer: BaseCheckpointSaver = PostgresSaver.fromConnString(connString);
+  // Idempotent: CREATE TABLE IF NOT EXISTS for the LangGraph checkpoint tables only.
+  await (checkpointer as PostgresSaver).setup();
+  return workflow.compile({ checkpointer });
+}
+
+export function getGraph() {
+  if (!graphPromise) graphPromise = buildGraphWithPostgres();
+  return graphPromise;
+}

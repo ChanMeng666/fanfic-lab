@@ -1,3 +1,5 @@
+import { isAppError, ERROR_MESSAGES } from "./errors";
+
 type ErrorRule = { match: RegExp; message: string };
 
 const RULES: ErrorRule[] = [
@@ -13,15 +15,17 @@ const RULES: ErrorRule[] = [
  * Map server / network errors to user-facing Chinese messages.
  *
  * Behaviour:
- *  - If `err` matches any known rule (Unauthorized / Forbidden / Not found /
- *    Rate limit / Timeout / Network), return the mapped Chinese message.
- *  - If `err` is an Error with a non-empty message that does not match any
- *    rule, surface that message verbatim (server actions usually throw with
- *    Chinese, e.g. "标题不能为空").
+ *  - If `err` is an AppError, map its typed `code` to the canonical message
+ *    (the preferred path — machine-stable, no string matching).
+ *  - Else if `err` matches any known regex rule (for third-party / unknown
+ *    errors), return the mapped Chinese message.
+ *  - Else if `err` is an Error with a non-empty message, surface it verbatim
+ *    (server actions often throw Chinese, e.g. "标题不能为空").
  *  - Otherwise fall back to `fallback` (default: 「操作失败，请重试」).
  */
 export function formatError(err: unknown, fallback = "操作失败，请重试"): string {
   if (!err) return fallback;
+  if (isAppError(err)) return ERROR_MESSAGES[err.code];
   const raw = err instanceof Error ? err.message : String(err);
   if (!raw) return fallback;
   for (const rule of RULES) {
