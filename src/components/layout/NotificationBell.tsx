@@ -87,25 +87,21 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [, startMarkAll] = useTransition();
 
-  // Initial fetch + interval poll. Skip entirely when logged out.
+  // Initial fetch + interval poll. Skip entirely when logged out (the component
+  // also returns null when logged out, so no state reset is needed here).
   useEffect(() => {
-    if (!isLoggedIn) {
-      setUnread(0);
-      setItems([]);
-      return;
-    }
+    if (!isLoggedIn) return;
     let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    function pollCount() {
+    const pollCount = () => {
       getUnreadNotificationCount().then((n) => {
         if (!cancelled) setUnread(n);
       }).catch(() => {});
-    }
+    };
     pollCount();
-    timer = setInterval(pollCount, POLL_INTERVAL_MS);
+    const timer = setInterval(pollCount, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
-      if (timer) clearInterval(timer);
+      clearInterval(timer);
     };
   }, [isLoggedIn]);
 

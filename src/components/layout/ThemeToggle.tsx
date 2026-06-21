@@ -16,9 +16,11 @@ export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch — server renders nothing, client hydrates the
-  // real icon after next-themes resolves the active theme.
+  // Avoid hydration mismatch — server renders a placeholder, client hydrates the
+  // real icon after next-themes resolves the active theme. Setting state once on
+  // mount is the canonical next-themes pattern (intentionally synchronous here).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
