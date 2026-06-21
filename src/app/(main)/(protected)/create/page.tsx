@@ -1,13 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import { useStoryCreation } from "@/lib/hooks/useStoryCreation";
 import { DreamInput } from "@/components/create/DreamInput";
 import { CreationProgress } from "@/components/create/CreationProgress";
 import { StoryResult } from "@/components/create/StoryResult";
+import { OutOfCreditsDialog } from "@/components/billing/OutOfCreditsDialog";
+import { checkCanGenerate } from "@/lib/actions/credits";
+import { LENGTH_OPTIONS, type StoryLength } from "@/lib/billing/pricing";
 
 export default function CreatePage() {
   const { stage, message, result, storyId, isCreating, create, reset } =
     useStoryCreation();
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateReason, setGateReason] = useState<string | undefined>();
+
+  // Pre-generation credit gate. Checks before kicking off the (slow, costly)
+  // generation so the user sees a friendly top-up prompt instead of an error.
+  // The /api/create route re-checks server-side as the authoritative guard.
+  async function handleCreate(prompt: string, length: StoryLength) {
+    try {
+      const gate = await checkCanGenerate(length);
+      if (!gate.canGenerate) {
+        const label = LENGTH_OPTIONS.find((o) => o.value === length)?.labelZh ?? "本篇";
+        setGateReason(
+          `${label}需要 ${gate.cost} 积分，当前余额 ${gate.currentBalance} 积分。充值后即可继续。`
+        );
+        setGateOpen(true);
+        return;
+      }
+    } catch {
+      // If the gate check itself fails, fall through and let the server route
+      // be the authority (it will reject if truly unauthorized/out of credits).
+    }
+    create(prompt, length);
+  }
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
@@ -19,7 +46,7 @@ export default function CreatePage() {
           <p className="text-muted-foreground max-w-md mx-auto">
             用你自己的话描述，剩下的交给我。
           </p>
-          <DreamInput onSubmit={create} />
+          <DreamInput onSubmit={handleCreate} />
         </div>
       )}
 
@@ -48,9 +75,16 @@ export default function CreatePage() {
       {stage === "error" && (
         <div className="text-center space-y-4">
           <p className="text-destructive">{message || "创建失败，请重试"}</p>
-          <DreamInput onSubmit={create} />
+          <DreamInput onSubmit={handleCreate} />
         </div>
       )}
+
+      <OutOfCreditsDialog
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        isAuthenticated
+        reason={gateReason}
+      />
     </div>
   );
 }

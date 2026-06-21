@@ -35,6 +35,12 @@ services:
       - NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
       - ADMIN_SECRET=${ADMIN_SECRET}
+      # Payments (Stripe). Checkout is disabled gracefully if STRIPE_SECRET_KEY is unset.
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PRICE_STARTER=${STRIPE_PRICE_STARTER}
+      - STRIPE_PRICE_STANDARD=${STRIPE_PRICE_STANDARD}
+      - STRIPE_PRICE_CREATOR=${STRIPE_PRICE_CREATOR}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s

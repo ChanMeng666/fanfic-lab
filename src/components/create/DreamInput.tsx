@@ -2,7 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Check } from "lucide-react";
+import { LENGTH_OPTIONS, type StoryLength } from "@/lib/billing/pricing";
+import { cn } from "@/lib/utils";
 
 const QUICK_TAGS = [
   "砂金×星期日",
@@ -14,17 +16,18 @@ const QUICK_TAGS = [
 ];
 
 interface DreamInputProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, length: StoryLength) => void;
   disabled?: boolean;
 }
 
 export function DreamInput({ onSubmit, disabled }: DreamInputProps) {
   const [prompt, setPrompt] = useState("");
+  const [length, setLength] = useState<StoryLength>("short");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (prompt.trim() && !disabled) {
-      onSubmit(prompt.trim());
+      onSubmit(prompt.trim(), length);
     }
   }
 
@@ -58,6 +61,45 @@ export function DreamInput({ onSubmit, disabled }: DreamInputProps) {
             </button>
           ))}
         </div>
+        {/* Length selector — credit cost is shown up front so the price the
+            user sees is exactly what gets charged. */}
+        <div className="grid grid-cols-3 gap-2">
+          {LENGTH_OPTIONS.map((opt) => {
+            const active = length === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setLength(opt.value)}
+                disabled={disabled}
+                aria-pressed={active}
+                className={cn(
+                  "relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-colors disabled:opacity-50",
+                  active
+                    ? "border-accent bg-ai-surface ai-glow"
+                    : "border-border bg-background hover:bg-secondary"
+                )}
+              >
+                {active && (
+                  <Check className="absolute right-2 top-2 size-3.5 text-accent" />
+                )}
+                <span className="font-display text-base text-foreground">
+                  {opt.labelZh}
+                </span>
+                <span className="text-xs text-muted-foreground">{opt.approxZh}</span>
+                <span
+                  className={cn(
+                    "text-xs font-medium",
+                    opt.value === "short" ? "text-primary" : "text-accent"
+                  )}
+                >
+                  {opt.value === "short" ? "每日免费起" : `${opt.cost} 积分`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <Button
           type="submit"
           size="lg"

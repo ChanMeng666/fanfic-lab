@@ -8,6 +8,8 @@ import {
   getStoryEmbedding,
   setStoryEmbedding,
 } from "@/lib/story-embedding";
+import { chargeGeneration } from "@/lib/actions/credits";
+import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
 
 // Defensive fallback when the agent payload is missing `summary` (older
 // in-flight requests that started before the summarize node was deployed,
@@ -36,6 +38,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { result, prompt } = body as { result: StoryResult; prompt: string };
+    const length: StoryLength =
+      typeof body?.length === "string" && body.length in CREDIT_COSTS
+        ? (body.length as StoryLength)
+        : "short";
 
     if (!result?.body || !result?.title) {
       return NextResponse.json({ error: "缺少故事数据" }, { status: 400 });
@@ -74,17 +80,35 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await prisma.generation.create({
+    const generation = await prisma.generation.create({
       data: {
         userId: dbUser.id,
         type: "STORY",
         status: "COMPLETE",
-        request: { prompt, language: result.language } as object,
+        // `length` is persisted so the free-tier counter and the charge step
+        // can bill the quoted flat cost the user saw before generating.
+        request: { prompt, language: result.language, length } as object,
         deliverable: result as object,
         wordCount: result.wordCount,
         storyId: story.id,
       },
     });
+
+    // Apply the credit charge for this generation. Failures here must not lose
+    // the user's saved story, so we degrade gracefully.
+    let creditsCharged = 0;
+    let newBalance: number | undefined;
+    try {
+      const charge = await chargeGeneration(generation.id, dbUser.id, length);
+      creditsCharged = charge.creditsCharged;
+      newBalance = charge.newBalance;
+    } catch (e) {
+      logger.warn("stories.charge.failed", {
+        generationId: generation.id,
+        userId: dbUser.id,
+        ...errorFields(e),
+      });
+    }
 
     // Generate recommendation embedding asynchronously so it never blocks
     // the create-story response. The user gets their storyId immediately;
@@ -107,7 +131,7 @@ export async function POST(req: NextRequest) {
       }
     })();
 
-    return NextResponse.json({ storyId: story.id });
+    return NextResponse.json({ storyId: story.id, creditsCharged, newBalance });
   } catch (err) {
     logger.error("stories.save.failed", errorFields(err));
     return NextResponse.json(

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import type {
   DreamWriterStage,
   StoryOutline,
   StoryResult,
   CreationProgressEvent,
 } from "@/lib/types/dreamwriter";
+import type { StoryLength } from "@/lib/billing/pricing";
 
 interface UseStoryCreationReturn {
   stage: DreamWriterStage;
@@ -16,7 +18,7 @@ interface UseStoryCreationReturn {
   storyId: string | null;
   error: string | null;
   isCreating: boolean;
-  create: (prompt: string) => Promise<void>;
+  create: (prompt: string, length?: StoryLength) => Promise<void>;
   reset: () => void;
 }
 
@@ -31,7 +33,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
 
   const isCreating = stage !== "idle" && stage !== "complete" && stage !== "error";
 
-  const create = useCallback(async (prompt: string) => {
+  const create = useCallback(async (prompt: string, length: StoryLength = "short") => {
     // Reset state
     setStage("parsing");
     setMessage("正在理解你的创作需求...");
@@ -49,7 +51,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
       const res = await fetch("/api/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, length }),
         signal: controller.signal,
       });
 
@@ -85,14 +87,27 @@ export function useStoryCreation(): UseStoryCreationReturn {
             if (event.outline) setOutline(event.outline);
             if (event.result) {
               setResult(event.result);
-              // Auto-save story to database
+              // Auto-save story to database. The save endpoint also applies the
+              // credit charge for this generation and returns the result, which
+              // we surface as a toast.
               fetch("/api/stories", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ result: event.result, prompt }),
+                body: JSON.stringify({ result: event.result, prompt, length }),
               })
                 .then((r) => r.json())
-                .then((data) => { if (data.storyId) setStoryId(data.storyId); })
+                .then((data) => {
+                  if (data.storyId) setStoryId(data.storyId);
+                  if (typeof data.creditsCharged === "number") {
+                    if (data.creditsCharged > 0) {
+                      toast.success(
+                        `本次消耗 ${data.creditsCharged} 积分，余额 ${data.newBalance} 积分`
+                      );
+                    } else {
+                      toast.success("本次创作使用了每日免费额度");
+                    }
+                  }
+                })
                 .catch(() => {/* silent fail on save */});
             }
             if (event.error) setError(event.error);

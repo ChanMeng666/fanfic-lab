@@ -21,6 +21,9 @@ model User {
   displayName String?
   avatarUrl   String?
   bio         String?  @db.Text
+  // Stripe customer id (created lazily on first checkout). Lets us reuse the
+  // same customer across purchases so payment history is grouped in Stripe.
+  stripeCustomerId String? @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -37,6 +40,7 @@ model User {
   preferences   UserPreferences?
   generations   Generation[]
   credits       UserCredits?
+  payments      Payment[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -374,6 +378,43 @@ model UserCredits {
   balance   Int      @default(0)
   totalUsed Int      @default(0)
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// PAYMENTS (Stripe one-time credit packs)
+// ============================================
+
+// One row per Stripe Checkout Session. Created as `pending` when the user
+// starts checkout, flipped to `paid` by the webhook once payment succeeds.
+// The webhook is the source of truth for granting credits — never the client.
+model Payment {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSessionId       String    @unique // Stripe Checkout Session id
+  stripePaymentIntentId String?            // Filled once payment completes
+  packId                String             // Credit pack id (see lib/billing/packs.ts)
+  amount                Int                // Charged amount in the smallest currency unit (cents / 分)
+  currency              String    @default("usd")
+  creditsGranted        Int                // Credits this purchase unlocked
+  status                String    @default("pending") // "pending" | "paid" | "failed"
+  createdAt             DateTime  @default(now())
+  completedAt           DateTime?
+
+  @@index([userId])
+  @@index([stripeSessionId])
+}
+
+// Idempotency ledger for Stripe webhooks: Stripe may deliver the same event
+// more than once. We insert eventId before processing; a duplicate insert
+// (unique violation) means the event was already handled — skip it.
+model StripeEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique // Stripe event id (evt_...)
+  type        String           // e.g. "checkout.session.completed"
+  processedAt DateTime @default(now())
+
+  @@index([eventId])
 }
 
 enum GenerationType {

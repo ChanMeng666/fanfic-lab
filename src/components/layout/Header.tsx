@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   ArrowRight,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +27,7 @@ import {
 import { FloatingNavbar, NavLink, NavDivider } from "@/components/ui/floating-navbar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { CreditBadge } from "@/components/credits/CreditBadge";
 import { syncUser } from "@/lib/actions/user";
 
 export function Header({ className }: { className?: string }) {
@@ -87,6 +89,7 @@ export function Header({ className }: { className?: string }) {
 
         {/* Auth Section */}
         <div className="flex items-center gap-1.5">
+          {isLoggedIn && <CreditBadge className="hidden sm:inline-flex" />}
           <ThemeToggle />
           {isLoggedIn && <NotificationBell />}
           {isLoading ? (
@@ -124,6 +127,12 @@ export function Header({ className }: { className?: string }) {
                   <Link href="/profile" className="cursor-pointer gap-2">
                     <BookOpen className="size-4" />
                     我的作品
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/billing" className="cursor-pointer gap-2">
+                    <CreditCard className="size-4" />
+                    积分 &amp; 充值
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -221,6 +230,13 @@ export function Header({ className }: { className?: string }) {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     我的作品
+                  </Link>
+                  <Link
+                    href="/billing"
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    积分 & 充值
                   </Link>
                 </>
               )}

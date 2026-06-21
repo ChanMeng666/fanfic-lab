@@ -12,6 +12,9 @@ export enum ErrorCode {
   NETWORK = "NETWORK",
   INSUFFICIENT_CREDITS = "INSUFFICIENT_CREDITS",
   AGENT_FAILED = "AGENT_FAILED",
+  PAYMENT_FAILED = "PAYMENT_FAILED",
+  WEBHOOK_VERIFICATION_FAILED = "WEBHOOK_VERIFICATION_FAILED",
+  STRIPE_API_ERROR = "STRIPE_API_ERROR",
   INTERNAL = "INTERNAL",
 }
 
@@ -26,6 +29,9 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.NETWORK]: "网络异常，请稍后重试",
   [ErrorCode.INSUFFICIENT_CREDITS]: "额度不足，请充值后再试",
   [ErrorCode.AGENT_FAILED]: "创作引擎出错，请稍后重试",
+  [ErrorCode.PAYMENT_FAILED]: "支付失败，请重试或更换支付方式",
+  [ErrorCode.WEBHOOK_VERIFICATION_FAILED]: "支付回调校验失败",
+  [ErrorCode.STRIPE_API_ERROR]: "支付服务暂时不可用，请稍后再试",
   [ErrorCode.INTERNAL]: "操作失败，请重试",
 };
 

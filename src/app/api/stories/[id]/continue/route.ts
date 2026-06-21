@@ -4,6 +4,7 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { stackServerApp } from "@/lib/stack";
 import { prisma } from "@/lib/db";
 import { countWords } from "@/lib/wordcount";
+import { chargeContinuation } from "@/lib/actions/credits";
 
 // Direct LLM continuation, bypassing the agent graph. We only need a single
 // writer call here — there's no outline / quality / revision loop. If we
@@ -105,6 +106,19 @@ export async function POST(
       status: 403,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Continuations are always paid (word-based, min 1 credit). Gate on having
+  // at least the minimum charge available before spending an LLM call.
+  const credits = await prisma.userCredits.findUnique({
+    where: { userId: dbUser.id },
+    select: { balance: true },
+  });
+  if ((credits?.balance ?? 0) < 1) {
+    return new Response(
+      JSON.stringify({ error: "额度不足，请充值后再续写", code: "INSUFFICIENT_CREDITS" }),
+      { status: 402, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   let body: ContinueBody;
@@ -215,6 +229,28 @@ ${direction}
           data: { wordCount: { increment: wordCount } },
         });
 
+        // Record the continuation on the generation ledger and charge it
+        // (word-based). Charge failures must not lose the saved chapter.
+        let creditsCharged = 0;
+        let newBalance: number | undefined;
+        try {
+          const generation = await prisma.generation.create({
+            data: {
+              userId: dbUser.id,
+              type: "CONTINUATION",
+              status: "COMPLETE",
+              request: { direction, storyId } as object,
+              wordCount,
+              storyId,
+            },
+          });
+          const charge = await chargeContinuation(generation.id, dbUser.id, wordCount);
+          creditsCharged = charge.creditsCharged;
+          newBalance = charge.newBalance;
+        } catch (e) {
+          console.warn("[stories/continue] charge failed:", e);
+        }
+
         send({
           stage: "complete",
           message: chapterTitle
@@ -224,6 +260,8 @@ ${direction}
           chapterNumber: nextChapterNumber,
           chapterTitle,
           wordCount,
+          creditsCharged,
+          newBalance,
         });
       } catch (err) {
         console.error("[stories/continue] failed:", err);
