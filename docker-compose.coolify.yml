@@ -8,7 +8,6 @@ services:
         - NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}
         - STACK_SECRET_SERVER_KEY=${STACK_SECRET_SERVER_KEY}
         - DATABASE_URL=${DATABASE_URL}
-        - REDIS_URL=${REDIS_URL}
         - OPENAI_API_KEY=${OPENAI_API_KEY}
         - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
         - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
@@ -21,7 +20,8 @@ services:
       # The DreamWriter agent now runs in-process inside this web container.
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      # Direct (unpooled) connection for the in-process agent's Postgres checkpointer.
+      - DATABASE_URL_UNPOOLED=${DATABASE_URL_UNPOOLED}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
       - STACK_SECRET_SERVER_KEY=${STACK_SECRET_SERVER_KEY}
