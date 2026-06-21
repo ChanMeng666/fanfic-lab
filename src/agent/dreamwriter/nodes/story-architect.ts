@@ -13,9 +13,13 @@ export async function storyArchitectNode(state: DreamWriterState, _config: Runna
   // System prompt is fully static (knowledge pack) -> stable prefix for OpenAI prompt caching.
   const systemPrompt = STORY_ARCHITECT_PROMPT(getHSRKnowledgePrompt());
   const requestSummary = `CP: ${state.parsedCP.join(" × ")}\n设定: ${state.parsedSetting}\n基调: ${state.parsedTone}\n约束: ${JSON.stringify(state.parsedConstraints)}`;
+  // Variable research goes in the human turn so the system prompt stays a stable cache prefix.
+  const humanText = state.researchContext
+    ? `${requestSummary}\n\n## 原著资料参考（联网检索）\n${state.researchContext}`
+    : requestSummary;
   const model = new ChatOpenAI({ temperature: 0.8, model: "gpt-4o" }).withStructuredOutput(StoryOutlineSchema, { name: "outline" });
   try {
-    const parsed = (await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(requestSummary)])) as StoryOutline;
+    const parsed = (await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(humanText)])) as StoryOutline;
     return { stage: "planning", outline: parsed, logs: [{ message: `故事构思完成：${parsed.title}`, done: true }] };
   } catch (err) {
     logger.warn("dreamwriter.node.fallback", { node: "story_architect", ...errorFields(err) });

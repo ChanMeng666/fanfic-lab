@@ -49,7 +49,11 @@ Type-check with `npx tsc --noEmit` (clean = exit 0).
 
 ### The DreamWriter pipeline (`src/agent/dreamwriter/`)
 Linear graph with a conditional revision loop (`graph.ts`):
-`intent_parser → story_architect → writer → quality_guard → [revision_counter → writer]* → summarize → delivery`
+`intent_parser → research → story_architect → writer → quality_guard → [revision_counter → writer]* → summarize → delivery`
+- `research` (`nodes/research.ts` + `research.ts`) does optional live fandom research via Tavily for
+  the parsed CP, digests it with an LLM, caches the brief in Postgres (`SourceResearchCache`), and
+  puts it in `state.researchContext` for the architect/writer. It emits no `stage` (transparent to
+  the UI) and degrades to `""` when `TAVILY_API_KEY` is unset or any step fails.
 - Nodes in `nodes/*.ts`; prompts in `prompts/system.ts`; HSR knowledge prompt in `prompts/hsr.ts`.
 - `quality_guard` scores OOC/consistency/prose; if `score < 7` and `revisionCount < 2` it loops back
   to `writer` with feedback (`MAX_REVISIONS = 2`).
@@ -117,10 +121,10 @@ docker-compose.coolify.yml    # single `web` service
   breaks the saver's prepared statements.
 - **pgvector via raw SQL.** Prisma can't write the `vector` type directly — use the helpers in
   `story-embedding.ts` / `rag.ts`, not `prisma.update` for embeddings.
-- **`@tavily/core` / `@langchain/tavily` are dependencies but currently unused** in `src`. Don't
-  assume live web research exists; there's a Postgres-backed research cache
-  (`src/lib/research-cache.ts` → `SourceResearchCache` table, used by `/api/research-cache`) but no
-  wired Tavily calls. **There is no Redis** — caching is on Neon Postgres.
+- **Tavily research is wired but optional.** The `research` node (`@tavily/core`) runs only when
+  `TAVILY_API_KEY` is set; otherwise it's a graceful no-op. Briefs are cached in Postgres
+  (`src/lib/research-cache.ts` → `SourceResearchCache`, also exposed via `/api/research-cache`).
+  **There is no Redis** — all caching is on Neon Postgres.
 - **`npm run build` runs `prisma generate`.** If Prisma types look stale, build or run
   `npx prisma generate`.
 - **Node:** requires `>=20.9.0` (Prisma 7). Next.js 16 / React 19 may differ from older training data.

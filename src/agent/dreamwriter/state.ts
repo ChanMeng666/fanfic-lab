@@ -48,6 +48,11 @@ export const DreamWriterStateAnnotation = Annotation.Root({
     reducer: (_, update) => update,
     default: () => [],
   }),
+  // Live fandom research brief (Tavily) for the requested CP; "" when unavailable.
+  researchContext: Annotation<string>({
+    reducer: (_, update) => update,
+    default: () => "",
+  }),
 
   qualityReport: Annotation<QualityReport | null>({
     reducer: (_, update) => update,

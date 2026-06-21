@@ -3,6 +3,7 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { DreamWriterStateAnnotation } from "./state";
 import { intentParserNode } from "./nodes/intent-parser";
+import { researchNode } from "./nodes/research";
 import { storyArchitectNode } from "./nodes/story-architect";
 import { writerNode } from "./nodes/writer";
 import { qualityGuardNode } from "./nodes/quality-guard";
@@ -29,6 +30,7 @@ async function revisionCounterNode(state: DreamWriterState): Promise<Partial<Dre
 
 const workflow = new StateGraph(DreamWriterStateAnnotation)
   .addNode("intent_parser_node", intentParserNode)
+  .addNode("research_node", researchNode)
   .addNode("story_architect_node", storyArchitectNode)
   .addNode("writer_node", writerNode)
   .addNode("quality_guard_node", qualityGuardNode)
@@ -36,7 +38,8 @@ const workflow = new StateGraph(DreamWriterStateAnnotation)
   .addNode("summarize_node", summarizeNode)
   .addNode("delivery_node", deliveryNode)
   .addEdge(START, "intent_parser_node")
-  .addEdge("intent_parser_node", "story_architect_node")
+  .addEdge("intent_parser_node", "research_node")
+  .addEdge("research_node", "story_architect_node")
   .addEdge("story_architect_node", "writer_node")
   .addEdge("writer_node", "quality_guard_node")
   .addConditionalEdges("quality_guard_node", routeAfterQualityCheck, { writer_node: "revision_counter_node", summarize_node: "summarize_node" })

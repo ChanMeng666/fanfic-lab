@@ -157,6 +157,7 @@ Describe the story you want; the DreamWriter agent autonomously produces a finis
 | Stage | Node | What it does |
 |-------|------|--------------|
 | **Intent** | `intent_parser` | Extracts CP, setting, tone, and constraints (structured output) |
+| **Research** | `research` | Optional live fandom research (Tavily) for the CP, digested + cached in Postgres |
 | **Architect** | `story_architect` | Plans title, emotional arc, and scene-by-scene outline |
 | **Write** | `writer` | Drafts the full story, grounded by pgvector RAG passages |
 | **Quality Guard** | `quality_guard` | Scores OOC/consistency/prose; loops back to rewrite (up to 2×) |
@@ -345,7 +346,8 @@ A linear pipeline with a conditional revision loop. State is checkpointed in Pos
 ```mermaid
 graph TD
     A[START] --> B[intent_parser_node]
-    B --> C[story_architect_node]
+    B --> RS[research_node — optional Tavily]
+    RS --> C[story_architect_node]
     C --> D[writer_node]
     D --> E[quality_guard_node]
     E -->|score < 7 and revisions < 2| R[revision_counter_node]
@@ -459,6 +461,9 @@ CLOUDINARY_API_SECRET=...
 # Optional: LangSmith for agent tracing
 LANGSMITH_API_KEY=lsv2_...
 
+# Optional: Tavily for live fandom research (skipped gracefully if unset)
+TAVILY_API_KEY=tvly-...
+
 # Optional: Admin endpoint protection
 ADMIN_SECRET=...
 ```
@@ -478,6 +483,7 @@ ADMIN_SECRET=...
 | `OPENAI_API_KEY` | OpenAI API key | ✅ |
 | `CLOUDINARY_*` | Cloudinary credentials | ✅ |
 | `LANGSMITH_API_KEY` | LangSmith API key (agent tracing) | 🔶 |
+| `TAVILY_API_KEY` | Tavily key for live fandom research (skipped if unset) | 🔶 |
 | `ADMIN_SECRET` | Admin endpoint protection | 🔶 |
 
 > ✅ Required, 🔶 Optional

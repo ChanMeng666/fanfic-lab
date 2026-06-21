@@ -22,7 +22,8 @@ export async function writerNode(state: DreamWriterState, _config: RunnableConfi
   const ragContext = buildRAGContext(ragChunks);
 
   const outlineText = `标题：${outline.title}\nCP：${outline.cp.join(" × ")}\n设定：${outline.setting}\n基调：${outline.tone}\n目标字数：${outline.wordTarget}\n情感曲线：${outline.emotionalArc}\n\n场景安排：\n${outline.scenes.map((s, i) => `${i + 1}. ${s.summary}（角色：${s.characters.join("、")}，情绪：${s.emotion}）`).join("\n")}${state.qualityReport ? `\n\n上一版的质量反馈（请针对性修改）：\n${state.qualityReport.oocIssues.map((i) => `- ${i.character}: ${i.issue} → ${i.suggestion}`).join("\n")}\n${state.qualityReport.proseNotes.map((n) => `- ${n}`).join("\n")}` : ""}`;
-  const humanText = ragContext ? `${ragContext}\n\n---\n\n${outlineText}` : outlineText;
+  const researchBlock = state.researchContext ? `## 原著资料参考（联网检索）\n${state.researchContext}` : "";
+  const humanText = [ragContext, researchBlock, outlineText].filter(Boolean).join("\n\n---\n\n");
 
   const model = new ChatOpenAI({ temperature: 0.9, model: "gpt-4o" });
   const response = await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(humanText)]);
