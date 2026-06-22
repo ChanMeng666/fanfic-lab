@@ -13,6 +13,7 @@ import { formatError } from "@/lib/format-error";
 import { CommentsSection } from "./CommentsSection";
 import { ShareButton } from "./ShareButton";
 import { ReactionBar } from "./ReactionBar";
+import { ReadingProgressTracker } from "./ReadingProgressTracker";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import type { ReactionSummary } from "@/lib/actions/reaction";
 import { ViewTracker } from "./ViewTracker";
@@ -345,6 +346,9 @@ export function StoryReader({
       )}
 
       <ViewTracker storyId={story.id} />
+      {isSingleChapter && (
+        <ReadingProgressTracker storyId={story.id} chapterNumber={chapters[0].chapterNumber} />
+      )}
 
       <ReadingPrefs />
       {isSingleChapter && savedPercent !== null && (

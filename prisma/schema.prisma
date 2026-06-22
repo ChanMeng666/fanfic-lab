@@ -48,6 +48,7 @@ model User {
   proposedOptions  BranchOption[] @relation("optionProposer")
   pollVotes        PollVote[]
   reactions        Reaction[]
+  readingProgress  ReadingProgress[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -120,6 +121,7 @@ model Story {
   generations Generation[]
   branches    StoryBranch[]
   polls       BranchPoll[]
+  readingProgress ReadingProgress[]
 
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -309,6 +311,23 @@ enum ReactionType {
   FIRE        // 带感
   MIND_BLOWN  // 脑洞
   SWEET       // 甜
+}
+
+// Cross-device "继续阅读": the last chapter a user opened in a story. Distinct
+// from the client-side scroll-position progress (localStorage) — this is the
+// server record powering the profile's resume list.
+model ReadingProgress {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId           String
+  story             Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  lastChapterNumber Int      @default(1)
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, storyId])
+  @@index([userId, updatedAt])
 }
 
 // Save-for-later / reading list. Distinct from Like: Like is an appreciation

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getContinueReading } from "@/lib/actions/reading-progress";
 import { ProfileClient } from "./profile-client";
 
 export default async function ProfilePage() {
@@ -137,6 +138,8 @@ export default async function ProfilePage() {
     JSON.stringify(bookmarkedStories.map((b) => b.story))
   );
 
+  const continueReading = await getContinueReading();
+
   return (
     <Suspense
       fallback={
@@ -158,6 +161,7 @@ export default async function ProfilePage() {
         stories={serializedStories}
         likedStories={serializedLikedStories}
         bookmarkedStories={serializedBookmarkedStories}
+        continueReading={continueReading}
         stats={stats}
       />
     </Suspense>

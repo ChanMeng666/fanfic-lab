@@ -100,11 +100,20 @@ interface UserStats {
   followers: number;
 }
 
+interface ContinueReadingItem {
+  storyId: string;
+  title: string;
+  lastChapterNumber: number;
+  totalChapters: number;
+  authorUsername: string;
+}
+
 interface ProfileClientProps {
   profile: UserProfile;
   stories: Story[];
   likedStories: Story[];
   bookmarkedStories: Story[];
+  continueReading: ContinueReadingItem[];
   stats: UserStats;
 }
 
@@ -157,6 +166,7 @@ export function ProfileClient({
   stories: initialStories,
   likedStories,
   bookmarkedStories,
+  continueReading,
   stats,
 }: ProfileClientProps) {
   const searchParams = useSearchParams();
@@ -665,7 +675,45 @@ export function ProfileClient({
           </div>
 
           {/* Main Content */}
-          <div>
+          <div className="space-y-6">
+            {continueReading.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2.5 text-base">
+                    <div className="flex items-center justify-center size-8 rounded-xl bg-primary/15 text-primary">
+                      <BookOpen className="size-4" />
+                    </div>
+                    继续阅读
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2 sm:grid-cols-2">
+                  {continueReading.map((item) => {
+                    const href =
+                      item.totalChapters > 1
+                        ? `/story/${item.storyId}/chapter/${item.lastChapterNumber}`
+                        : `/story/${item.storyId}`;
+                    return (
+                      <Link
+                        key={item.storyId}
+                        href={href}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground line-clamp-1">{item.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {item.totalChapters > 1
+                              ? `读到第 ${item.lastChapterNumber} / ${item.totalChapters} 章`
+                              : "继续阅读"}
+                          </p>
+                        </div>
+                        <span className="text-xs text-primary shrink-0">继续 →</span>
+                      </Link>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-4 max-w-xl">
                 <TabsTrigger value="stories" className="gap-1.5">

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import { ProposeBranchDialog } from "./ProposeBranchDialog";
+import { ReadingProgressTracker } from "./ReadingProgressTracker";
 import { ViewTracker } from "./ViewTracker";
 import { ReadingPrefs } from "./ReadingPrefs";
 import { ReadingProgressBanner } from "./ReadingProgressBanner";
@@ -211,6 +212,7 @@ export function ChapterReader({
       )}
 
       <ViewTracker storyId={storyId} />
+      <ReadingProgressTracker storyId={storyId} chapterNumber={chapter.chapterNumber} />
       <ReadingPrefs />
       {savedPercent !== null && (
         <ReadingProgressBanner
