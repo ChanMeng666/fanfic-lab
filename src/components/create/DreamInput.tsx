@@ -18,10 +18,12 @@ const QUICK_TAGS = [
 interface DreamInputProps {
   onSubmit: (prompt: string, length: StoryLength) => void;
   disabled?: boolean;
+  // Seed text (e.g. from a remix). Remount via `key` to re-seed after it loads.
+  initialPrompt?: string;
 }
 
-export function DreamInput({ onSubmit, disabled }: DreamInputProps) {
-  const [prompt, setPrompt] = useState("");
+export function DreamInput({ onSubmit, disabled, initialPrompt }: DreamInputProps) {
+  const [prompt, setPrompt] = useState(initialPrompt ?? "");
   const [length, setLength] = useState<StoryLength>("short");
 
   function handleSubmit(e: FormEvent) {

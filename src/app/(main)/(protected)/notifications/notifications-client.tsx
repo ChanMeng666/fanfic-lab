@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign, Vote } from "lucide-react";
+import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign, Vote, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,12 @@ function notificationLabel(n: NotificationItem) {
         icon: <Sparkles className="size-4 text-accent" />,
         verb: `你支持的方向胜出，已生成新分支`,
         href: `/story/${p.storyId}/branch/${p.branchId}`,
+      };
+    case "story_remixed":
+      return {
+        icon: <Copy className="size-4 text-primary" />,
+        verb: `以你的《${p.storyTitle}》为灵感创作了新作`,
+        href: `/story/${p.storyId}`,
       };
     default:
       return {

@@ -17,7 +17,9 @@ export type NotificationType =
   | "branch_canonized"
   // 接龙投票
   | "poll_vote"
-  | "poll_generated";
+  | "poll_generated"
+  // 二创/衍生
+  | "story_remixed";
 
 export interface NotificationPayload {
   actorId: string;

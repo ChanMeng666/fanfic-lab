@@ -24,6 +24,7 @@ interface Story {
   status: StoryStatus;
   isComplete: boolean;
   allowBranching: boolean;
+  remixedFromId: string | null;
   wordCount: number;
   viewCount: number;
   coverImageUrl: string | null;

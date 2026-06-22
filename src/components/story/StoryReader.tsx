@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -68,6 +68,8 @@ interface StoryReaderProps {
   commentCount?: number;
   currentUserId?: string | null;
   isOwner?: boolean;
+  // Set when this story is itself a remix of another work (attribution).
+  remixedFrom?: { id: string; title: string; authorUsername: string } | null;
 }
 
 export function StoryReader({
@@ -80,6 +82,7 @@ export function StoryReader({
   commentCount = 0,
   currentUserId = null,
   isOwner = false,
+  remixedFrom = null,
 }: StoryReaderProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -221,6 +224,16 @@ export function StoryReader({
             {story.summary}
           </p>
         )}
+
+        {remixedFrom && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Copy className="size-3.5 text-accent" />
+            二创自
+            <Link href={`/story/${remixedFrom.id}`} className="text-primary hover:underline">
+              《{remixedFrom.title}》
+            </Link>
+          </p>
+        )}
       </header>
 
       <Separator className="mb-8" />
@@ -285,6 +298,12 @@ export function StoryReader({
             {commentCount}
           </a>
           <ShareButton title={story.title} />
+          <Link href={`/create?remixFrom=${story.id}`}>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Copy className="size-3.5" />
+              二创
+            </Button>
+          </Link>
         </div>
 
         <p className="text-xs text-muted-foreground flex items-center gap-2">

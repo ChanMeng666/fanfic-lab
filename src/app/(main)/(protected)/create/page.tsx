@@ -1,19 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Copy, X } from "lucide-react";
 import { useStoryCreation } from "@/lib/hooks/useStoryCreation";
 import { DreamInput } from "@/components/create/DreamInput";
 import { CreationProgress } from "@/components/create/CreationProgress";
 import { StoryResult } from "@/components/create/StoryResult";
 import { OutOfCreditsDialog } from "@/components/billing/OutOfCreditsDialog";
 import { checkCanGenerate } from "@/lib/actions/credits";
+import { createRemixSeed, type RemixSeed } from "@/lib/actions/remix";
 import { LENGTH_OPTIONS, type StoryLength } from "@/lib/billing/pricing";
 
 export default function CreatePage() {
+  // useSearchParams requires a Suspense boundary for static prerender.
+  return (
+    <Suspense fallback={null}>
+      <CreatePageContent />
+    </Suspense>
+  );
+}
+
+function CreatePageContent() {
+  const searchParams = useSearchParams();
+  const remixFrom = searchParams.get("remixFrom");
+
   const { stage, message, result, storyId, isCreating, saveStatus, create, retrySave, reset } =
     useStoryCreation();
   const [gateOpen, setGateOpen] = useState(false);
   const [gateReason, setGateReason] = useState<string | undefined>();
+  const [remixSeed, setRemixSeed] = useState<RemixSeed | null>(null);
+
+  // Load the remix seed (prefill prompt + source attribution) when arriving via
+  // /create?remixFrom=<id>. Generation is unchanged — only the edge is recorded.
+  useEffect(() => {
+    if (!remixFrom) return;
+    let cancelled = false;
+    createRemixSeed(remixFrom)
+      .then((seed) => {
+        if (!cancelled) setRemixSeed(seed);
+      })
+      .catch(() => {
+        if (!cancelled) setRemixSeed(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [remixFrom]);
 
   // Pre-generation credit gate. Checks before kicking off the (slow, costly)
   // generation so the user sees a friendly top-up prompt instead of an error.
@@ -33,7 +66,7 @@ export default function CreatePage() {
       // If the gate check itself fails, fall through and let the server route
       // be the authority (it will reject if truly unauthorized/out of credits).
     }
-    create(prompt, length);
+    create(prompt, length, remixSeed?.sourceId);
   }
 
   return (
@@ -46,7 +79,22 @@ export default function CreatePage() {
           <p className="text-muted-foreground max-w-md mx-auto">
             用你自己的话描述，剩下的交给我。
           </p>
-          <DreamInput onSubmit={handleCreate} />
+          {remixSeed && (
+            <div className="max-w-2xl mx-auto flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-ai-surface px-4 py-2.5 text-left">
+              <span className="flex items-center gap-2 text-sm text-foreground">
+                <Copy className="size-4 text-accent shrink-0" />
+                二创自《{remixSeed.sourceTitle}》 · {remixSeed.sourceAuthor}
+              </span>
+              <a href="/create" aria-label="取消二创" className="text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
+              </a>
+            </div>
+          )}
+          <DreamInput
+            key={remixSeed?.sourceId ?? "blank"}
+            onSubmit={handleCreate}
+            initialPrompt={remixSeed?.prompt}
+          />
         </div>
       )}
 
@@ -77,7 +125,7 @@ export default function CreatePage() {
       {stage === "error" && (
         <div className="text-center space-y-4">
           <p className="text-destructive">{message || "创建失败，请重试"}</p>
-          <DreamInput onSubmit={handleCreate} />
+          <DreamInput onSubmit={handleCreate} initialPrompt={remixSeed?.prompt} />
         </div>
       )}
 

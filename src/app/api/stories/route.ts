@@ -9,6 +9,7 @@ import {
   setStoryEmbedding,
 } from "@/lib/story-embedding";
 import { chargeGeneration } from "@/lib/actions/credits";
+import { createNotification } from "@/lib/actions/notification";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
 
 // Defensive fallback when the agent payload is missing `summary` (older
@@ -42,9 +43,22 @@ export async function POST(req: NextRequest) {
       typeof body?.length === "string" && body.length in CREDIT_COSTS
         ? (body.length as StoryLength)
         : "short";
+    const remixedFromIdInput =
+      typeof body?.remixedFromId === "string" && body.remixedFromId.trim()
+        ? body.remixedFromId.trim()
+        : undefined;
 
     if (!result?.body || !result?.title) {
       return NextResponse.json({ error: "缺少故事数据" }, { status: 400 });
+    }
+
+    // Validate the remix source exists + is published before recording the edge.
+    let remixSource: { id: string; authorId: string; title: string } | null = null;
+    if (remixedFromIdInput) {
+      remixSource = await prisma.story.findFirst({
+        where: { id: remixedFromIdInput, status: "PUBLISHED" },
+        select: { id: true, authorId: true, title: true },
+      });
     }
 
     const summary =
@@ -64,6 +78,7 @@ export async function POST(req: NextRequest) {
         publishedAt: new Date(),
         wordCount: result.wordCount,
         authorId: dbUser.id,
+        remixedFromId: remixSource?.id,
         chapters: {
           create: {
             // Don't duplicate the story title onto its only chapter — when
@@ -107,6 +122,24 @@ export async function POST(req: NextRequest) {
         generationId: generation.id,
         userId: dbUser.id,
         ...errorFields(e),
+      });
+    }
+
+    // Notify the original author that their work was remixed (skips self-remix
+    // via createNotification's actor check).
+    if (remixSource) {
+      await createNotification({
+        recipientId: remixSource.authorId,
+        type: "story_remixed",
+        payload: {
+          actorId: dbUser.id,
+          actorName: dbUser.displayName || dbUser.username,
+          actorUsername: dbUser.username,
+          actorAvatarUrl: dbUser.avatarUrl,
+          // storyId points at the NEW remix so the original author can read it.
+          storyId: story.id,
+          storyTitle: remixSource.title,
+        },
       });
     }
 

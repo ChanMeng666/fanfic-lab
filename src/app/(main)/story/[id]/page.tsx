@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Copy } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { StoryReader } from "@/components/story/StoryReader";
@@ -9,6 +11,7 @@ import { BranchTree } from "@/components/story/BranchTree";
 import { BranchPolls } from "@/components/story/BranchPolls";
 import { getBranchTree } from "@/lib/actions/branch";
 import { getPollsForStory } from "@/lib/actions/poll";
+import { getRemixes } from "@/lib/actions/remix";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
 interface StoryPageProps {
@@ -91,6 +94,9 @@ export default async function StoryPage({ params }: StoryPageProps) {
           wordCount: true,
         },
       },
+      remixedFrom: {
+        select: { id: true, title: true, author: { select: { username: true } } },
+      },
       _count: {
         select: { likes: true, comments: true },
       },
@@ -153,6 +159,16 @@ export default async function StoryPage({ params }: StoryPageProps) {
       ])
     : [[], []];
 
+  // Published derivative works of this story (二创/衍生).
+  const remixes = story.status === "PUBLISHED" ? await getRemixes(id) : [];
+  const remixedFrom = story.remixedFrom
+    ? {
+        id: story.remixedFrom.id,
+        title: story.remixedFrom.title,
+        authorUsername: story.remixedFrom.author.username,
+      }
+    : null;
+
   return (
     <div className="min-h-screen bg-background">
       <StoryReader
@@ -165,6 +181,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         commentCount={story._count.comments}
         currentUserId={currentUserId}
         isOwner={isOwner}
+        remixedFrom={remixedFrom}
       />
       {showCoCreation && (
         <div className="max-w-3xl mx-auto px-3 sm:px-4 pb-10 space-y-6">
@@ -186,6 +203,36 @@ export default async function StoryPage({ params }: StoryPageProps) {
             allowBranching={story.allowBranching}
             isLoggedIn={currentUserId !== null}
           />
+        </div>
+      )}
+      {remixes.length > 0 && (
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 pb-10">
+          <section className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
+            <h2 className="flex items-center gap-2.5 font-display text-lg sm:text-xl text-foreground mb-4">
+              <span className="flex items-center justify-center size-8 rounded-lg bg-primary/15 text-primary">
+                <Copy className="size-4" />
+              </span>
+              衍生作品
+              <span className="text-sm font-normal text-muted-foreground">
+                被二创 {remixes.length} 次
+              </span>
+            </h2>
+            <ul className="divide-y divide-border">
+              {remixes.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/story/${r.id}`}
+                    className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/40 -mx-2 px-2 rounded-md transition-colors"
+                  >
+                    <span className="font-medium text-foreground truncate">{r.title}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {r.author.displayName || r.author.username}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
       )}
       <div className="max-w-3xl mx-auto px-4 pb-16">

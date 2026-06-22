@@ -24,7 +24,7 @@ interface UseStoryCreationReturn {
   error: string | null;
   isCreating: boolean;
   saveStatus: SaveStatus;
-  create: (prompt: string, length?: StoryLength) => Promise<void>;
+  create: (prompt: string, length?: StoryLength, remixedFromId?: string) => Promise<void>;
   retrySave: () => void;
   reset: () => void;
 }
@@ -44,6 +44,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     result: StoryResult;
     prompt: string;
     length: StoryLength;
+    remixedFromId?: string;
   } | null>(null);
 
   const isCreating = stage !== "idle" && stage !== "complete" && stage !== "error";
@@ -51,7 +52,12 @@ export function useStoryCreation(): UseStoryCreationReturn {
   // Persists the generated story. Idempotent on success: once a storyId is set
   // (story saved) further calls are no-ops so a retry can't create duplicates.
   const persistStory = useCallback(
-    async (payload: { result: StoryResult; prompt: string; length: StoryLength }) => {
+    async (payload: {
+      result: StoryResult;
+      prompt: string;
+      length: StoryLength;
+      remixedFromId?: string;
+    }) => {
       savePayloadRef.current = payload;
       setSaveStatus("saving");
       try {
@@ -91,7 +97,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     if (payload) void persistStory(payload);
   }, [storyId, saveStatus, persistStory]);
 
-  const create = useCallback(async (prompt: string, length: StoryLength = "short") => {
+  const create = useCallback(async (prompt: string, length: StoryLength = "short", remixedFromId?: string) => {
     // Reset state
     setStage("parsing");
     setMessage("正在理解你的创作需求...");
@@ -150,7 +156,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
               // credit charge for this generation. On failure we flip saveStatus
               // to "failed" so the UI can offer a manual retry — the story is
               // never silently dropped.
-              void persistStory({ result: event.result, prompt, length });
+              void persistStory({ result: event.result, prompt, length, remixedFromId });
             }
             if (event.error) setError(event.error);
           } catch {

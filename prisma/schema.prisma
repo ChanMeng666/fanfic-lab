@@ -104,6 +104,12 @@ model Story {
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // 二创/衍生: a remix is a brand-new story seeded from an existing one. The
+  // edge is attribution only — remixes are independent stories.
+  remixedFromId String?
+  remixedFrom   Story?  @relation("remix", fields: [remixedFromId], references: [id], onDelete: SetNull)
+  remixes       Story[] @relation("remix")
+
   chapters    Chapter[]
   characters  StoryCharacter[]
   likes       Like[]
@@ -121,6 +127,7 @@ model Story {
   @@index([authorId])
   @@index([status])
   @@index([createdAt])
+  @@index([remixedFromId])
   // Supports the default feed query: where status=PUBLISHED order by publishedAt desc.
   @@index([status, publishedAt])
 }
