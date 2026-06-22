@@ -78,6 +78,7 @@ interface FeedFilters {
   tags?: string[];
   rating?: Rating;
   status?: StoryStatus;
+  authorIds?: string[];
   search?: string;
   sortBy?: "recent" | "popular" | "comments" | "words";
 }
@@ -257,6 +258,7 @@ export function useFeedStories(
   );
 
   const tagsKey = filters?.tags?.join(",");
+  const authorIdsKey = filters?.authorIds?.join(",");
   useEffect(() => {
     fetchStories(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,6 +269,7 @@ export function useFeedStories(
     filters?.search,
     filters?.sortBy,
     tagsKey,
+    authorIdsKey,
   ]);
 
   const loadMore = useCallback(async () => {

@@ -305,6 +305,23 @@ export async function isFollowing(targetUserId: string) {
   }
 }
 
+/**
+ * The author ids the current user follows. Used by the "关注" feed tab. Returns
+ * [] when not logged in (callers treat [] as "no followed authors").
+ */
+export async function getFollowingAuthorIds(): Promise<string[]> {
+  try {
+    const user = await getCurrentUser();
+    const rows = await prisma.follow.findMany({
+      where: { followerId: user.id },
+      select: { followingId: true },
+    });
+    return rows.map((r) => r.followingId);
+  } catch {
+    return [];
+  }
+}
+
 // ============================================
 // CHARACTER ACTIONS
 // ============================================

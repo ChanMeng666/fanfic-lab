@@ -303,6 +303,9 @@ export async function getFeedStories(options?: {
   tags?: string[];
   rating?: Rating;
   status?: StoryStatus;
+  // Restrict to these author ids (used by the "关注" feed tab). An empty array
+  // intentionally matches nothing (user follows nobody → empty feed).
+  authorIds?: string[];
   limit?: number;
   offset?: number;
   search?: string;
@@ -330,6 +333,7 @@ export async function getFeedStories(options?: {
       ...(options?.fandom && { fandom: options.fandom }),
       ...(options?.tags?.length && { tags: { hasSome: options.tags } }),
       ...(options?.rating && { rating: options.rating }),
+      ...(options?.authorIds && { authorId: { in: options.authorIds } }),
       // Search filter for title and summary
       ...(options?.search && {
         OR: [

@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
-import { Search, BookOpen, X, Loader2, PenLine } from "lucide-react";
+import { Search, BookOpen, X, Loader2, PenLine, Compass, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useUser } from "@stackframe/stack";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,8 +12,11 @@ import { StoryCard, FilterBar, StoryCardSkeleton } from "@/components/feed";
 import type { StoryCardData } from "@/components/feed";
 import { useFeedStories, useInfiniteScroll, useDebounce } from "@/lib/hooks";
 import { toggleLike } from "@/lib/actions/story";
+import { getFollowingAuthorIds } from "@/lib/actions/user";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
+
+type FeedView = "all" | "following";
 
 const PAGE_SIZE = 8;
 
@@ -44,6 +48,14 @@ function FeedPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const user = useUser();
+  const isLoggedIn = !!user;
+
+  const [view, setView] = useState<FeedView>(
+    searchParams.get("view") === "following" ? "following" : "all"
+  );
+  // null = not yet loaded; [] = loaded, follows nobody.
+  const [followingIds, setFollowingIds] = useState<string[] | null>(null);
 
   const [selectedFandom, setSelectedFandom] = useState<string | null>(
     searchParams.get("fandom") || null
@@ -58,16 +70,27 @@ function FeedPageContent() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Load the current user's followed author ids the first time the "关注" tab is
+  // opened while logged in.
+  useEffect(() => {
+    if (view === "following" && isLoggedIn && followingIds === null) {
+      getFollowingAuthorIds()
+        .then(setFollowingIds)
+        .catch(() => setFollowingIds([]));
+    }
+  }, [view, isLoggedIn, followingIds]);
+
   // Sync URL on filter change.
   useEffect(() => {
     const params = new URLSearchParams();
+    if (view === "following") params.set("view", "following");
     if (selectedFandom) params.set("fandom", selectedFandom);
     if (selectedStatus) params.set("status", selectedStatus);
     if (sortBy && sortBy !== "recent") params.set("sort", sortBy);
     if (debouncedSearch) params.set("q", debouncedSearch);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [selectedFandom, selectedStatus, sortBy, debouncedSearch, pathname, router]);
+  }, [view, selectedFandom, selectedStatus, sortBy, debouncedSearch, pathname, router]);
 
   const filters = useMemo(
     () => ({
@@ -75,8 +98,11 @@ function FeedPageContent() {
       status: selectedStatus as "PUBLISHED" | undefined,
       search: debouncedSearch || undefined,
       sortBy,
+      // In the "关注" tab, restrict to followed authors. While the id list is
+      // still loading (null), pass [] so we show nothing rather than everyone.
+      authorIds: view === "following" ? followingIds ?? [] : undefined,
     }),
-    [selectedFandom, selectedStatus, debouncedSearch, sortBy]
+    [selectedFandom, selectedStatus, debouncedSearch, sortBy, view, followingIds]
   );
 
   const { stories, loading, error, hasMore, loadMore } = useFeedStories(filters, PAGE_SIZE);
@@ -143,7 +169,13 @@ function FeedPageContent() {
     setSortBy("recent");
   };
 
-  const isInitialLoading = loading && stories.length === 0;
+  // "关注" tab special states.
+  const followingNeedsLogin = view === "following" && !isLoggedIn;
+  const followingNoAuthors =
+    view === "following" && isLoggedIn && followingIds !== null && followingIds.length === 0;
+  const followingLoading = view === "following" && isLoggedIn && followingIds === null;
+
+  const isInitialLoading = (loading && stories.length === 0) || followingLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,6 +187,28 @@ function FeedPageContent() {
           <p className="text-muted-foreground">
             浏览社区中其他作者的同人创作
           </p>
+        </div>
+
+        {/* 推荐 / 关注 toggle */}
+        <div className="mb-4 inline-flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
+          <Button
+            variant={view === "all" ? "default" : "ghost"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setView("all")}
+          >
+            <Compass className="size-4" />
+            推荐
+          </Button>
+          <Button
+            variant={view === "following" ? "default" : "ghost"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setView("following")}
+          >
+            <Users className="size-4" />
+            关注
+          </Button>
         </div>
 
         <div className="relative mb-4">
@@ -190,6 +244,39 @@ function FeedPageContent() {
           />
         </div>
 
+        {followingNeedsLogin && (
+          <Card className="p-12 text-center">
+            <div className="flex items-center justify-center size-16 rounded-2xl bg-primary/10 mx-auto mb-4">
+              <Users className="size-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">登录后查看关注流</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+              关注喜欢的作者，他们的新作会聚合在这里。
+            </p>
+            <Button asChild>
+              <Link href="/handler/sign-in">登录 / 注册</Link>
+            </Button>
+          </Card>
+        )}
+
+        {followingNoAuthors && (
+          <Card className="p-12 text-center">
+            <div className="flex items-center justify-center size-16 rounded-2xl bg-primary/10 mx-auto mb-4">
+              <Users className="size-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">还没有关注任何作者</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+              去「推荐」里逛逛，关注你喜欢的作者，他们的新作会出现在这里。
+            </p>
+            <Button variant="outline" onClick={() => setView("all")} className="gap-1.5">
+              <Compass className="size-4" />
+              浏览推荐
+            </Button>
+          </Card>
+        )}
+
+        {!followingNeedsLogin && !followingNoAuthors && (
+          <>
         {error && (
           <Card className="p-8 text-center border-destructive/50" role="alert">
             <p className="text-destructive mb-4">{error}</p>
@@ -245,16 +332,27 @@ function FeedPageContent() {
               <BookOpen className="size-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              {hasActiveFilters ? "没有符合条件的故事" : "暂无故事"}
+              {view === "following"
+                ? "关注的作者还没有新作"
+                : hasActiveFilters
+                  ? "没有符合条件的故事"
+                  : "暂无故事"}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-              {hasActiveFilters
-                ? "试试调整筛选条件或搜索关键词"
-                : "成为第一位发布故事的作者，与社区分享你的创意吧！"}
+              {view === "following"
+                ? "等他们更新，或调整筛选条件再看看"
+                : hasActiveFilters
+                  ? "试试调整筛选条件或搜索关键词"
+                  : "成为第一位发布故事的作者，与社区分享你的创意吧！"}
             </p>
             {hasActiveFilters ? (
               <Button variant="outline" onClick={clearAllFilters}>
                 清除筛选
+              </Button>
+            ) : view === "following" ? (
+              <Button variant="outline" onClick={() => setView("all")} className="gap-1.5">
+                <Compass className="size-4" />
+                浏览推荐
               </Button>
             ) : (
               <Button asChild>
@@ -265,6 +363,8 @@ function FeedPageContent() {
               </Button>
             )}
           </Card>
+        )}
+          </>
         )}
       </main>
     </div>
