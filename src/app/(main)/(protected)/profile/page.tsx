@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getContinueReading } from "@/lib/actions/reading-progress";
+import { getUserAchievements } from "@/lib/actions/achievements";
 import { ProfileClient } from "./profile-client";
 
 export default async function ProfilePage() {
@@ -139,6 +140,7 @@ export default async function ProfilePage() {
   );
 
   const continueReading = await getContinueReading();
+  const achievements = await getUserAchievements(dbUser.id);
 
   return (
     <Suspense
@@ -162,6 +164,7 @@ export default async function ProfilePage() {
         likedStories={serializedLikedStories}
         bookmarkedStories={serializedBookmarkedStories}
         continueReading={continueReading}
+        achievements={achievements}
         stats={stats}
       />
     </Suspense>

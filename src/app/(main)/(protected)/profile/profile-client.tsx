@@ -19,6 +19,12 @@ import {
   Pencil,
   Send,
   AlertTriangle,
+  Trophy,
+  Feather,
+  Flame,
+  GitBranch,
+  Lock,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +57,8 @@ interface UserProfile {
   avatarUrl: string | null;
   bio: string | null;
   createdAt: string;
+  creationStreak: number;
+  longestStreak: number;
   preferences: {
     favoriteFandoms: string[];
     favoriteShips: string[];
@@ -108,12 +116,30 @@ interface ContinueReadingItem {
   authorUsername: string;
 }
 
+interface AchievementView {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  earned: boolean;
+}
+
+const ACHIEVEMENT_ICONS: Record<string, LucideIcon> = {
+  Feather,
+  PenLine,
+  Heart,
+  Flame,
+  GitBranch,
+  Trophy,
+};
+
 interface ProfileClientProps {
   profile: UserProfile;
   stories: Story[];
   likedStories: Story[];
   bookmarkedStories: Story[];
   continueReading: ContinueReadingItem[];
+  achievements: AchievementView[];
   stats: UserStats;
 }
 
@@ -167,6 +193,7 @@ export function ProfileClient({
   likedStories,
   bookmarkedStories,
   continueReading,
+  achievements,
   stats,
 }: ProfileClientProps) {
   const searchParams = useSearchParams();
@@ -641,12 +668,71 @@ export function ProfileClient({
                   <span className="text-muted-foreground">获赞</span>
                   <span className="font-medium text-foreground">{stats.totalLikes}</span>
                 </div>
-                <div className="flex justify-between py-2">
+                <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">评论</span>
                   <span className="font-medium text-foreground">
                     {stats.totalComments}
                   </span>
                 </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Flame className="size-3.5 text-accent" />
+                    连续创作
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {profile.creationStreak} 天
+                    {profile.longestStreak > profile.creationStreak && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        (最长 {profile.longestStreak})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Achievements */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2.5 text-base">
+                  <div className="flex items-center justify-center size-8 rounded-xl bg-accent/15 text-accent">
+                    <Trophy className="size-4" />
+                  </div>
+                  成就
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {achievements.filter((a) => a.earned).length}/{achievements.length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-2">
+                {achievements.map((a) => {
+                  const Icon = ACHIEVEMENT_ICONS[a.icon] ?? Trophy;
+                  return (
+                    <div
+                      key={a.key}
+                      className={`flex items-center gap-3 rounded-lg border p-2.5 ${
+                        a.earned
+                          ? "border-accent/30 bg-accent/5"
+                          : "border-border opacity-60"
+                      }`}
+                      title={a.description}
+                    >
+                      <div
+                        className={`flex items-center justify-center size-8 rounded-lg shrink-0 ${
+                          a.earned ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"
+                        }`}
+                      >
+                        {a.earned ? <Icon className="size-4" /> : <Lock className="size-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{a.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {a.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
 

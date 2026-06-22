@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireDbUser } from "@/lib/api-auth";
 import { AppError, ErrorCode } from "@/lib/errors";
 import { createNotification } from "@/lib/actions/notification";
+import { onBranchAdopted } from "@/lib/actions/achievements";
 
 // Server actions for community AI co-creation (互动续写 / 分支续写). Branch
 // GENERATION (the paid LLM call) lives in the SSE route
@@ -205,6 +206,9 @@ export async function canonizeBranch(branchId: string) {
       branchId: branch.id,
     },
   });
+
+  // Reward the branch proposer (best-effort).
+  await onBranchAdopted(branch.proposerId);
 
   revalidatePath(`/story/${branch.storyId}`);
   return { chapterId: newChapter.id, chapterNumber: newChapter.chapterNumber };

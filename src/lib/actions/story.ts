@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { Rating, StoryStatus } from "@prisma/client";
 import { countWords } from "@/lib/wordcount";
 import { createNotification } from "@/lib/actions/notification";
+import { onLikeAdded } from "@/lib/actions/achievements";
 
 // Types for action inputs
 interface CreateStoryInput {
@@ -539,6 +540,8 @@ export async function toggleLike(storyId: string) {
           storyTitle: story.title,
         },
       });
+      // Milestone achievement for the author (best-effort).
+      await onLikeAdded(story.authorId);
     }
 
     revalidatePath("/feed");

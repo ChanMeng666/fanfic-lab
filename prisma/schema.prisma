@@ -24,6 +24,10 @@ model User {
   // Stripe customer id (created lazily on first checkout). Lets us reuse the
   // same customer across purchases so payment history is grouped in Stripe.
   stripeCustomerId String? @unique
+  // 创作打卡 streak (days). Updated whenever the user saves a generated story.
+  creationStreak Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastCreationAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -49,6 +53,7 @@ model User {
   pollVotes        PollVote[]
   reactions        Reaction[]
   readingProgress  ReadingProgress[]
+  achievements     UserAchievement[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -311,6 +316,20 @@ enum ReactionType {
   FIRE        // 带感
   MIND_BLOWN  // 脑洞
   SWEET       // 甜
+}
+
+// Earned achievements. Definitions (title/description/icon) live in code
+// (src/lib/achievements.ts) keyed by `key`; this table only records who earned
+// what + when. Unique per (user, key) so grants are idempotent.
+model UserAchievement {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 // Cross-device "继续阅读": the last chapter a user opened in a story. Distinct

@@ -19,7 +19,9 @@ export type NotificationType =
   | "poll_vote"
   | "poll_generated"
   // 二创/衍生
-  | "story_remixed";
+  | "story_remixed"
+  // 成就
+  | "achievement_unlocked";
 
 export interface NotificationPayload {
   actorId: string;
@@ -37,6 +39,8 @@ export interface NotificationPayload {
   // Set for poll_* notifications.
   pollId?: string;
   optionLabel?: string;
+  // Set for achievement_unlocked.
+  achievementTitle?: string;
 }
 
 async function currentDbUserId(): Promise<string | null> {

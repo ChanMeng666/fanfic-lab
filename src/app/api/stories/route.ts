@@ -10,6 +10,7 @@ import {
 } from "@/lib/story-embedding";
 import { chargeGeneration } from "@/lib/actions/credits";
 import { createNotification } from "@/lib/actions/notification";
+import { onStorySaved } from "@/lib/actions/achievements";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
 
 // Defensive fallback when the agent payload is missing `summary` (older
@@ -124,6 +125,9 @@ export async function POST(req: NextRequest) {
         ...errorFields(e),
       });
     }
+
+    // Achievements + creation streak (best-effort; never blocks the save).
+    await onStorySaved(dbUser.id);
 
     // Notify the original author that their work was remixed (skips self-remix
     // via createNotification's actor check).

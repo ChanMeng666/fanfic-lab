@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign, Vote, Copy } from "lucide-react";
+import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign, Vote, Copy, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { Button } from "@/components/ui/button";
@@ -103,6 +103,12 @@ function notificationLabel(n: NotificationItem) {
         icon: <Copy className="size-4 text-primary" />,
         verb: `以你的《${p.storyTitle}》为灵感创作了新作`,
         href: `/story/${p.storyId}`,
+      };
+    case "achievement_unlocked":
+      return {
+        icon: <Trophy className="size-4 text-accent" />,
+        verb: `解锁成就「${p.achievementTitle}」`,
+        href: `/profile`,
       };
     default:
       return {
