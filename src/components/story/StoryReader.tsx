@@ -11,6 +11,7 @@ import { toggleBookmark } from "@/lib/actions/bookmark";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { CommentsSection } from "./CommentsSection";
+import { ShareButton } from "./ShareButton";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import { ViewTracker } from "./ViewTracker";
 import { ReadingPrefs } from "./ReadingPrefs";
@@ -283,6 +284,7 @@ export function StoryReader({
             <MessageSquare className="size-3.5" />
             {commentCount}
           </a>
+          <ShareButton title={story.title} />
         </div>
 
         <p className="text-xs text-muted-foreground flex items-center gap-2">

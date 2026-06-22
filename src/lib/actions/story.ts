@@ -46,6 +46,20 @@ interface UpdateChapterInput {
   authorNotes?: string;
 }
 
+// Extract unique @mentioned usernames from comment text. Matches ASCII handles
+// (letters/digits/underscore) and CJK, since usernames may be derived from
+// Chinese display names. Capped to avoid notification spam; resolved against the
+// DB by the caller (unknown handles simply don't notify).
+const MENTION_RE = /@([A-Za-z0-9_一-鿿]+)/g;
+function extractMentions(content: string, max = 10): string[] {
+  const found = new Set<string>();
+  for (const m of content.matchAll(MENTION_RE)) {
+    found.add(m[1]);
+    if (found.size >= max) break;
+  }
+  return Array.from(found);
+}
+
 // Helper to get current user
 async function getCurrentUser() {
   const user = await stackServerApp.getUser();
@@ -675,15 +689,51 @@ export async function addComment(storyId: string, content: string, parentId?: st
       },
     });
 
+    // Recipients already notified above (author always; parent commenter on a
+    // reply). Mentions skip these to avoid double-pinging the same person.
+    const alreadyNotified = new Set<string>([story.authorId]);
+
     if (parentId) {
       const parentComment = await prisma.comment.findUnique({
         where: { id: parentId },
         select: { userId: true },
       });
-      if (parentComment && parentComment.userId !== story.authorId) {
+      if (parentComment) {
+        alreadyNotified.add(parentComment.userId);
+        if (parentComment.userId !== story.authorId) {
+          await createNotification({
+            recipientId: parentComment.userId,
+            type: "reply",
+            payload: {
+              actorId: user.id,
+              actorName: user.displayName || user.username,
+              actorUsername: user.username,
+              actorAvatarUrl: user.avatarUrl,
+              storyId,
+              storyTitle: story.title,
+              commentId: comment.id,
+              snippet,
+            },
+          });
+        }
+      }
+    }
+
+    // @mention notifications: resolve handles against real usernames, skip the
+    // commenter and anyone already pinged above. createNotification also drops
+    // self-notifications defensively.
+    const handles = extractMentions(trimmed);
+    if (handles.length > 0) {
+      const mentioned = await prisma.user.findMany({
+        where: { username: { in: handles } },
+        select: { id: true },
+      });
+      for (const m of mentioned) {
+        if (m.id === user.id || alreadyNotified.has(m.id)) continue;
+        alreadyNotified.add(m.id);
         await createNotification({
-          recipientId: parentComment.userId,
-          type: "reply",
+          recipientId: m.id,
+          type: "mention",
           payload: {
             actorId: user.id,
             actorName: user.displayName || user.username,

@@ -10,6 +10,7 @@ export type NotificationType =
   | "story_like"
   | "comment_like"
   | "follow"
+  | "mention"
   // Community AI co-creation (互动续写)
   | "branch_proposed"
   | "branch_like"

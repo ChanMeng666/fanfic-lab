@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check } from "lucide-react";
+import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign } from "lucide-react";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,12 @@ function notificationLabel(n: NotificationItem) {
       return {
         icon: <Heart className="size-4 text-accent fill-current" />,
         verb: `点赞了你在《${p.storyTitle}》的评论`,
+        href: `/story/${p.storyId}#comments`,
+      };
+    case "mention":
+      return {
+        icon: <AtSign className="size-4 text-primary" />,
+        verb: `在《${p.storyTitle}》的评论中提到了你`,
         href: `/story/${p.storyId}#comments`,
       };
     case "follow":

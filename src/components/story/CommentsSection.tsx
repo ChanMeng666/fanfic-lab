@@ -35,6 +35,33 @@ type CommentList = Awaited<ReturnType<typeof getComments>>;
 type CommentItem = CommentList[number];
 type ReplyItem = CommentItem["replies"][number];
 
+// Render comment text with @mentions turned into profile links. Handles match
+// ASCII (letters/digits/underscore) + CJK, mirroring how usernames are derived.
+const MENTION_RE = /@([A-Za-z0-9_一-鿿]+)/g;
+function renderWithMentions(text: string) {
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  for (const m of text.matchAll(MENTION_RE)) {
+    const start = m.index ?? 0;
+    if (start > last) nodes.push(text.slice(last, start));
+    const username = m[1];
+    nodes.push(
+      <Link
+        key={`m-${key++}`}
+        href={`/users/${username}`}
+        className="text-primary hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        @{username}
+      </Link>
+    );
+    last = start + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
 function relativeTime(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
   const diffMs = Date.now() - d.getTime();
@@ -358,7 +385,7 @@ export function CommentsSection({ storyId, currentUserId }: CommentsSectionProps
             </div>
           ) : (
             <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap break-words">
-              {c.content}
+              {renderWithMentions(c.content)}
             </p>
           )}
 
