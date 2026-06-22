@@ -8,8 +8,12 @@ single most up-to-date description of how this project actually works.
 
 **FanFic Lab** is an autonomous Honkai: Star Rail (HSR) fanfiction generator. A user describes the
 story they want; the **DreamWriter** agent (LangGraph.js) plans, writes, self-reviews for
-out-of-character (OOC) issues, summarizes, and delivers a finished fanfic. Around that sits a social
-reading layer (feed, reader, likes/comments/follows/notifications, profiles).
+out-of-character (OOC) issues, summarizes, and delivers a finished fanfic. Around that sits a full
+**community layer**: reading/feed/profiles + likes/comments/follows/notifications, plus AI-native
+co-creation (reader branch续写, 接龙投票, 二创/remix), discovery (following feed, trending leaderboard,
+weekly picks, collections), and retention (reactions, bookmarks, cross-device reading progress,
+achievements + creation streak). **The community layer is documented in full in
+[`docs/COMMUNITY_FEATURES.md`](./docs/COMMUNITY_FEATURES.md) — read it before touching social/discovery code.**
 
 - **Primary stack:** Next.js 16 (App Router) · React 19 · TypeScript 5 · TailwindCSS 4
 - **Single deployable:** the DreamWriter agent runs **in-process** inside the Next.js app. There is
@@ -44,8 +48,14 @@ Type-check with `npx tsc --noEmit` (clean = exit 0).
    LangGraph `graph.stream(..., { streamMode: "updates" })` **in-process**, emitting each node update
    to the client as SSE `CreationProgressEvent`s.
 3. The client saves the finished `result` via **`src/app/api/stories/route.ts`** (story + first
-   chapter + a `Generation` ledger row; recommendation embedding is computed asynchronously).
+   chapter + a `Generation` ledger row; recommendation embedding is computed asynchronously; also
+   accepts an optional `remixedFromId` and fires best-effort achievement/streak hooks).
 4. `src/app/api/stories/[id]/continue/route.ts` appends additional AI-written chapters.
+
+**Shared continuation engine:** the single writer-call logic (prompt + LLM call + title) lives in
+`src/lib/actions/continuation-core.ts` (`generateContinuation`) and is reused by the author
+`continue` route, the reader branch route (`stories/[id]/branches`), and poll settlement
+(`stories/[id]/polls/[pollId]/settle`). Don't add a second writer path — extend the shared engine.
 
 ### The DreamWriter pipeline (`src/agent/dreamwriter/`)
 Linear graph with a conditional revision loop (`graph.ts`):
@@ -77,6 +87,22 @@ Linear graph with a conditional revision loop (`graph.ts`):
 - Schema + migrations in `prisma/`. Server data access is via Prisma in `src/lib/actions/*`
   (`"use server"`) and the API routes.
 
+### Community & social layer
+Full details in **[`docs/COMMUNITY_FEATURES.md`](./docs/COMMUNITY_FEATURES.md)**. Quick orientation:
+- **Server actions** (`src/lib/actions/`): `branch.ts` (分支续写 + canonize), `poll.ts` (接龙投票),
+  `remix.ts` (二创 seed), `reaction.ts` (多元反应), `bookmark.ts` (收藏), `reading-progress.ts`
+  (继续阅读), `achievements.ts` (成就/打卡, catalog in `src/lib/achievements.ts`), `collection.ts`
+  (专题合集), `trending.ts` (热门排行榜). Existing social lives in `story.ts` / `user.ts` /
+  `notification.ts`.
+- **SSE routes:** `stories/[id]/branches` (reader continuation), `stories/[id]/polls/[pollId]/settle`
+  (author settles a poll) — both reuse `continuation-core.ts`.
+- **Pages** (`src/app/(main)/`): `trending/`, `collections/` + `collections/[id]/`,
+  `story/[id]/branch/[branchId]/`; the story page renders `BranchPolls` + `BranchTree` + 衍生作品.
+- **Key invariants:** branches live in `StoryBranch` and never touch canon (only `canonizeBranch`
+  creates a `Chapter`); the triggerer of paid AI pays via the `chargeContinuation` hook (live
+  deduction still off); achievement/like/progress hooks are best-effort; adding a `NotificationType`
+  means updating BOTH notification renderers (bell + `/notifications` client).
+
 ### Cross-cutting conventions
 - **Logging:** use the structured JSON logger in `src/lib/logger.ts` (`logger.info/warn/error(event, fields)`),
   **not** `console.log`. Events are one JSON object per line for machine parsing.
@@ -96,11 +122,15 @@ Linear graph with a conditional revision loop (`graph.ts`):
 ```
 src/
 ├── app/                      # App Router: (main) public + (protected) auth routes; api/*
-├── components/               # ui/ (shadcn), create/, story/, feed/, credits/, layout/, providers/
+│                             #   (main): feed, trending, collections, story/[id](+/chapter,/branch), users
+├── components/               # ui/ (shadcn), create/, story/, feed/, collections/, credits/, layout/, providers/
 ├── agent/dreamwriter/        # in-process LangGraph: graph.ts, state.ts, schemas.ts, nodes/, prompts/
 ├── knowledge/                # HSR knowledge pack + pgvector RAG retrieval
-└── lib/                      # actions/ (server actions), hooks/, types/, db.ts, research-cache.ts,
-                              #   cloudinary.ts, logger.ts, errors.ts, format-error.ts, story-embedding.ts
+└── lib/                      # actions/ (server actions, incl. community: branch/poll/remix/reaction/
+                              #   bookmark/reading-progress/achievements/collection/trending +
+                              #   continuation-core), achievements.ts (catalog), hooks/, types/, db.ts,
+                              #   research-cache.ts, cloudinary.ts, logger.ts, errors.ts, format-error.ts,
+                              #   story-embedding.ts
 prisma/                       # schema.prisma + migrations
 Dockerfile.web                # single production image (bundles the in-process agent)
 docker-compose.coolify.yml    # single `web` service
@@ -127,6 +157,15 @@ docker-compose.coolify.yml    # single `web` service
   **There is no Redis** — all caching is on Neon Postgres.
 - **`npm run build` runs `prisma generate`.** If Prisma types look stale, build or run
   `npx prisma generate`.
+- **`src/lib/hooks/useStory.ts` has a local `Story` interface mirroring the Prisma scalar set.** When
+  you add a scalar column to the `Story` model, add it here too — otherwise the `data as Story[]` cast
+  in `useMyStories` fails with a TypeScript "insufficient overlap" error. (Bit us 3× during the
+  community suite.)
+- **Two notification renderers must stay in sync** — `components/layout/NotificationBell.tsx` and
+  `app/(main)/(protected)/notifications/notifications-client.tsx` both `switch` on `n.type`. Add new
+  `NotificationType`s to both.
+- **`lucide-react` dropped brand icons** (e.g. `Twitter`) in recent versions — don't import them; use
+  a generic Lucide icon. (No emoji in UI regardless — see `CLAUDE.md`.)
 - **Node:** requires `>=20.9.0` (Prisma 7). Next.js 16 / React 19 may differ from older training data.
 
 ## Deferred architecture decisions (do NOT undo without discussing)
@@ -146,9 +185,10 @@ These were evaluated and **intentionally not adopted** for this project's curren
 
 1. `README.md` — what the project is and how to run it
 2. This `AGENTS.md` — how it actually works and how to work in it
-3. `CLAUDE.md` — design-system rules and UI/coding conventions
-4. `TESTING_GUIDE.md` — manual E2E scenarios
-5. `docs/DEPLOYMENT.md` — deployment details
+3. `docs/COMMUNITY_FEATURES.md` — the full community/social layer (read before touching social/discovery code)
+4. `CLAUDE.md` — design-system rules and UI/coding conventions
+5. `TESTING_GUIDE.md` — manual E2E scenarios
+6. `docs/DEPLOYMENT.md` — deployment details
 
 ## Conventions for Changes
 

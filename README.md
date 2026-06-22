@@ -6,7 +6,7 @@
 
 An autonomous AI fanfiction generator built with **Next.js 16** and **LangGraph.js**.<br/>
 Describe the story you want and the **DreamWriter** agent plans, writes, self-reviews for out-of-character (OOC) issues, and delivers a finished Honkai: Star Rail fanfic.<br/>
-Featuring a multi-stage generation pipeline, RAG-grounded canon knowledge, a discovery feed, and a full social reading layer.
+Featuring a multi-stage generation pipeline, RAG-grounded canon knowledge, and a full community layer — AI co-creation (reader branch续写, 接龙投票, 二创), discovery (feed, following, trending, collections), and retention (reactions, bookmarks, achievements, continue-reading).
 
 [Live Demo][project-link] · [Report Bug][github-issues-link] · [Request Feature][github-issues-link]
 
@@ -109,8 +109,11 @@ FanFic Lab is designed for the fanfiction community, providing:
 - **OOC Quality Guard** - The agent self-reviews for out-of-character issues and revises
 - **Canon-Grounded RAG** - Honkai: Star Rail knowledge pack retrieved via pgvector
 - **Story Reader & Continue** - Read generated stories and extend them chapter by chapter
-- **Discovery Feed** - Browse and filter stories by fandom, ships, tags, rating, and status
-- **Social Layer** - Likes, nested comments, follows, notifications, and profiles
+- **AI Co-Creation** - Readers propose branch续写, vote in 接龙投票, and remix (二创); authors canonize the best branch into the main story
+- **Discovery** - Filterable feed, following feed, trending leaderboard, weekly picks, and curated collections
+- **Engagement & Retention** - Likes, multi-reactions, bookmarks, nested comments (@mentions), follows, notifications, achievements + creation streak, and cross-device continue-reading
+
+> The full community/social layer is documented in **[docs/COMMUNITY_FEATURES.md](docs/COMMUNITY_FEATURES.md)**.
 
 ```mermaid
 graph TB
@@ -205,18 +208,36 @@ Keeping characters authentic to canon is the core quality bar.
 
 </div>
 
-### `4` Discovery Feed
+### `4` Discovery & Curation
 
-Discover and filter stories by fandom, ships, tags, rating, and status.
+Find the right story across multiple discovery surfaces.
 
 | Feature | Description |
 |---------|-------------|
-| **Story Cards** | Display story info with cover images and metadata |
-| **Tag Filtering** | Filter by relationship, setting, tone, content |
-| **Fandom Tabs** | Quick navigation between fandoms |
-| **Rating/Status Filters** | Filter by age rating and completion status |
-| **Sorting** | Sort by recent, popular, comments, word count |
-| **Infinite Scroll** | Load more stories seamlessly |
+| **Discovery Feed** | Filter by fandom/ships/tags/rating/status; sort by recent/popular/comments/words; infinite scroll |
+| **Following Feed** | 推荐/关注 toggle — see only the authors you follow |
+| **Trending Leaderboard** | `/trending` ranked by composite heat (likes×3 + comments×2 + views), with 本周/本月/全部 windows |
+| **Weekly Picks** | 本周精选 strip atop the feed |
+| **Collections** | 专题合集 / 书单 — user-curated, public or private story lists |
+| **Related Stories** | pgvector semantic "more like this" |
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+### `5` Community Co-Creation
+
+A published story becomes a tree of community-explored continuations — FanFic Lab's signature, AI-native social layer.
+
+| Feature | Description |
+|---------|-------------|
+| **Branch续写** | Any reader proposes "what happens next"; the shared continuation engine writes a candidate branch (stored outside canon) that others like |
+| **Canonize** | The author promotes the best branch into a real next chapter — the only path that mutates canon |
+| **接龙投票** | A fork point poses several directions; the community votes; the author settles and the winner is AI-written |
+| **二创 / Remix** | Seed a brand-new story from an existing one, with attribution back to the original |
+| **Cost gates** | Login + credit precheck + per-user/per-fork caps; whoever triggers paid AI pays (deduction currently off by design) |
 
 <div align="right">
 
@@ -232,10 +253,15 @@ Discover and filter stories by fandom, ships, tags, rating, and status.
 - [x] 💎 **Literary Atelier Design**: Teal + Amber color palette with elegant typography
 - [x] 🗣️ **Streaming generation**: Live SSE progress while the agent works
 - [x] ✍️ **Continue chapters**: Extend any story with additional AI-written chapters
+- [x] 💗 **Multi-reactions**: Express how a story felt — 催泪 / 带感 / 脑洞 / 甜 (distinct from likes)
+- [x] 🔖 **Bookmarks**: Private save-for-later, separate from likes
+- [x] 🏆 **Achievements & streak**: Earn badges and build a creation打卡 streak
+- [x] 📖 **Continue reading**: Cross-device resume of where you left off
+- [x] 🔔 **Notifications**: Likes, comments/@mentions, follows, branches, polls, remixes, achievements
 - [x] 💳 **Usage ledger**: Per-generation tracking with per-1k-words credit accounting
 - [x] ☁️ **Cloud Storage**: Cloudinary integration for cover/avatar image hosting
 
-> ✨ More features are continuously being added as the project evolves.
+> ✨ Full details in [docs/COMMUNITY_FEATURES.md](docs/COMMUNITY_FEATURES.md).
 
 <div align="right">
 
@@ -503,10 +529,23 @@ erDiagram
     User ||--o{ Draft : has
     User ||--|| UserPreferences : configures
     User ||--o{ Follow : follows
+    User ||--o{ UserAchievement : earns
+    User ||--o{ Collection : curates
+    User ||--o{ ReadingProgress : tracks
     Story ||--o{ Chapter : contains
     Story ||--o{ StoryCharacter : features
     Story ||--o{ Like : receives
+    Story ||--o{ Bookmark : "saved as"
+    Story ||--o{ Reaction : "reacted to"
     Story ||--o{ Comment : has
+    Story ||--o{ StoryBranch : "branches into"
+    Story ||--o{ BranchPoll : "polls on"
+    Story ||--o| Story : "remixed from"
+    Story ||--o{ CollectionStory : "listed in"
+    Collection ||--o{ CollectionStory : groups
+    StoryBranch ||--o{ BranchLike : receives
+    BranchPoll ||--o{ BranchOption : offers
+    BranchOption ||--o{ PollVote : "voted by"
     Character ||--o{ StoryCharacter : appears_in
     Story ||--o{ Image : includes
 
@@ -529,8 +568,31 @@ erDiagram
         string[] tags
         enum rating
         enum status
+        boolean isComplete
+        boolean allowBranching
+        string remixedFromId FK
         int wordCount
+        int viewCount
         string coverImageUrl
+    }
+
+    StoryBranch {
+        string id PK
+        string storyId FK
+        string parentChapterId FK
+        string proposerId FK
+        string direction
+        string content
+        enum status
+        string canonizedChapterId
+    }
+
+    Collection {
+        string id PK
+        string ownerId FK
+        string title
+        string description
+        boolean isPublic
     }
 
     Character {
@@ -568,27 +630,31 @@ fanfic-lab/
 │   ├── app/                          # Next.js App Router
 │   │   ├── api/                      # API routes
 │   │   │   ├── create/              # POST: stream a DreamWriter generation (SSE)
-│   │   │   ├── stories/             # POST: save story; [id]/continue: add chapter
+│   │   │   ├── stories/             # POST: save story; [id]/continue, [id]/branches,
+│   │   │   │                        #   [id]/polls/[pollId]/settle (all SSE; shared engine)
 │   │   │   ├── upload/              # avatar + cover image upload (Cloudinary)
 │   │   │   ├── research-cache/      # Postgres-backed research cache
 │   │   │   ├── admin/cache-stats/   # Cache analytics (ADMIN_SECRET)
 │   │   │   └── health/             # Health check
 │   │   ├── (main)/                   # Main routes
 │   │   │   ├── (protected)/         # Auth required
-│   │   │   │   ├── create/         # AI story creation page
-│   │   │   │   ├── profile/        # User profile
+│   │   │   │   ├── create/         # AI story creation page (+ ?remixFrom seed)
+│   │   │   │   ├── profile/        # Profile: works/drafts/likes/bookmarks, 继续阅读, 成就
 │   │   │   │   ├── notifications/  # Notifications
-│   │   │   │   └── story/[id]/edit # Story editing
-│   │   │   ├── feed/               # Discovery feed (public)
-│   │   │   ├── story/[id]/         # Story reader (public)
+│   │   │   │   └── story/[id]/edit # Story editing (+ allowBranching toggle)
+│   │   │   ├── feed/               # Discovery feed + 关注 tab + 本周精选 (public)
+│   │   │   ├── trending/           # Trending leaderboard (public)
+│   │   │   ├── collections/        # Collections browse + [id] detail (public)
+│   │   │   ├── story/[id]/         # Reader; /chapter/[n] + /branch/[branchId]
 │   │   │   └── users/[username]/   # Public profiles + followers/following
 │   │   └── handler/[...stack]/      # Stack Auth
 │   │
 │   ├── components/                   # React components
 │   │   ├── ui/                      # shadcn/ui components
 │   │   ├── create/                  # Creation flow (input, progress, results)
-│   │   ├── story/                   # Reader, comments, continue dialog
-│   │   ├── feed/                    # Feed cards, filters
+│   │   ├── story/                   # Reader, comments, reactions, branch tree/polls, dialogs
+│   │   ├── feed/                    # Feed cards, filters, weekly picks
+│   │   ├── collections/             # Collection browse + detail clients
 │   │   ├── credits/                 # Credit badge / gate
 │   │   ├── layout/                  # Header, theme toggle, notifications
 │   │   └── providers/               # Context providers
@@ -606,7 +672,11 @@ fanfic-lab/
 │   │
 │   └── lib/                          # Utilities
 │       ├── hooks/                   # Custom hooks
-│       ├── actions/                 # Server actions (stories, users, credits…)
+│       ├── actions/                 # Server actions: stories, users, credits, notification +
+│       │                            #   community: branch, poll, remix, reaction, bookmark,
+│       │                            #   reading-progress, achievements, collection, trending,
+│       │                            #   continuation-core (shared writer engine)
+│       ├── achievements.ts          # Achievement catalog (keys → title/description/icon)
 │       ├── types/                   # TypeScript types
 │       ├── logger.ts               # Structured JSON logger
 │       ├── errors.ts               # Typed error codes
@@ -647,7 +717,11 @@ Stages stream in order: `parsing → planning → writing → checking → (revi
 
 ### POST /api/stories · POST /api/stories/[id]/continue
 
-`POST /api/stories` persists a completed generation (story + first chapter + Generation ledger row, then a recommendation embedding asynchronously). `POST /api/stories/[id]/continue` appends an AI-written next chapter. Both require an authenticated Stack user.
+`POST /api/stories` persists a completed generation (story + first chapter + Generation ledger row, then a recommendation embedding asynchronously; also accepts an optional `remixedFromId`). `POST /api/stories/[id]/continue` appends an AI-written next chapter. Both require an authenticated Stack user.
+
+### POST /api/stories/[id]/branches · POST /api/stories/[id]/polls/[pollId]/settle
+
+Community AI co-creation, both SSE and both reusing the shared `continuation-core` engine. `branches` lets any logged-in reader generate a candidate **branch续写** off a chapter (gated: published + `allowBranching`, credit precheck, per-user/per-fork caps; the proposer is billed). `polls/[pollId]/settle` is **author-only** — it picks the winning poll option and generates the resulting branch. Branches live in `StoryBranch` and never touch canon until an author canonizes one (server action `canonizeBranch`). See [docs/COMMUNITY_FEATURES.md](docs/COMMUNITY_FEATURES.md).
 
 ### GET/POST /api/research-cache
 
