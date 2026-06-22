@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StoryCard, FilterBar, StoryCardSkeleton } from "@/components/feed";
+import { WeeklyPicks } from "@/components/feed/WeeklyPicks";
 import type { StoryCardData } from "@/components/feed";
 import { useFeedStories, useInfiniteScroll, useDebounce } from "@/lib/hooks";
 import { toggleLike } from "@/lib/actions/story";
@@ -210,6 +211,8 @@ function FeedPageContent() {
             关注
           </Button>
         </div>
+
+        {view === "all" && !hasActiveFilters && <WeeklyPicks />}
 
         <div className="relative mb-4">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
