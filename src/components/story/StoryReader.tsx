@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { toggleLike } from "@/lib/actions/story";
+import { toggleBookmark } from "@/lib/actions/bookmark";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { CommentsSection } from "./CommentsSection";
@@ -62,6 +63,7 @@ interface StoryReaderProps {
   firstChapterContent?: string | null;
   initialLikeCount?: number;
   initialLiked?: boolean;
+  initialBookmarked?: boolean;
   commentCount?: number;
   currentUserId?: string | null;
   isOwner?: boolean;
@@ -73,6 +75,7 @@ export function StoryReader({
   firstChapterContent = null,
   initialLikeCount = 0,
   initialLiked = false,
+  initialBookmarked = false,
   commentCount = 0,
   currentUserId = null,
   isOwner = false,
@@ -80,6 +83,8 @@ export function StoryReader({
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [liking, setLiking] = useState(false);
+  const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [bookmarking, setBookmarking] = useState(false);
   const [continueOpen, setContinueOpen] = useState(false);
 
   const { fontSize, lineHeight } = useReadingPrefs();
@@ -106,6 +111,27 @@ export function StoryReader({
       toast.error(formatError(err, "点赞失败"));
     } finally {
       setLiking(false);
+    }
+  }
+
+  async function handleBookmark() {
+    if (bookmarking) return;
+    if (!currentUserId) {
+      toast.error("请先登录后再收藏");
+      return;
+    }
+    setBookmarking(true);
+    const wasBookmarked = bookmarked;
+    setBookmarked(!wasBookmarked);
+    try {
+      const res = await toggleBookmark(story.id);
+      setBookmarked(res.bookmarked);
+      toast.success(res.bookmarked ? "已收藏" : "已取消收藏");
+    } catch (err) {
+      setBookmarked(wasBookmarked);
+      toast.error(formatError(err, "收藏失败"));
+    } finally {
+      setBookmarking(false);
     }
   }
 
@@ -234,6 +260,21 @@ export function StoryReader({
           >
             <Heart className={`size-3.5 ${liked ? "fill-current" : ""}`} />
             {likeCount}
+          </Button>
+          <Button
+            variant={bookmarked ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={handleBookmark}
+            disabled={bookmarking}
+            aria-label={bookmarked ? "取消收藏" : "收藏"}
+          >
+            {bookmarked ? (
+              <BookmarkCheck className="size-3.5" />
+            ) : (
+              <Bookmark className="size-3.5" />
+            )}
+            {bookmarked ? "已收藏" : "收藏"}
           </Button>
           <a
             href="#comments"

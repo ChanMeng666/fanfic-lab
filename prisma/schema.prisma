@@ -43,6 +43,7 @@ model User {
   payments      Payment[]
   proposedBranches StoryBranch[] @relation("branchProposer")
   branchLikes      BranchLike[]
+  bookmarks        Bookmark[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -103,6 +104,7 @@ model Story {
   chapters    Chapter[]
   characters  StoryCharacter[]
   likes       Like[]
+  bookmarks   Bookmark[]
   comments    Comment[]
   generations Generation[]
   branches    StoryBranch[]
@@ -258,6 +260,22 @@ enum ImageType {
 // ============================================
 
 model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId])
+  @@index([storyId])
+  @@index([userId])
+}
+
+// Save-for-later / reading list. Distinct from Like: Like is an appreciation
+// signal (drives "popular" sorting + author 获赞 stats), while a Bookmark is a
+// private "I want to come back to this" marker. Same shape as Like.
+model Bookmark {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

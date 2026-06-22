@@ -33,7 +33,7 @@ export default async function ProfilePage() {
   }
 
   // Fetch all data server-side in a single pass (no race conditions)
-  const [profile, stories, likedStories, statsRaw] = await Promise.all([
+  const [profile, stories, likedStories, bookmarkedStories, statsRaw] = await Promise.all([
     prisma.user.findUnique({
       where: { id: dbUser.id },
       include: {
@@ -83,6 +83,26 @@ export default async function ProfilePage() {
         },
       },
     }),
+    prisma.bookmark.findMany({
+      where: { userId: dbUser.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        story: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatarUrl: true },
+            },
+            _count: {
+              select: {
+                likes: true,
+                comments: true,
+                chapters: true,
+              },
+            },
+          },
+        },
+      },
+    }),
     prisma.$transaction([
       prisma.story.count({ where: { authorId: dbUser.id } }),
       prisma.story.count({ where: { authorId: dbUser.id, status: "PUBLISHED" } }),
@@ -113,6 +133,9 @@ export default async function ProfilePage() {
   const serializedLikedStories = JSON.parse(
     JSON.stringify(likedStories.map((l) => l.story))
   );
+  const serializedBookmarkedStories = JSON.parse(
+    JSON.stringify(bookmarkedStories.map((b) => b.story))
+  );
 
   return (
     <Suspense
@@ -134,6 +157,7 @@ export default async function ProfilePage() {
         profile={serializedProfile}
         stories={serializedStories}
         likedStories={serializedLikedStories}
+        bookmarkedStories={serializedBookmarkedStories}
         stats={stats}
       />
     </Suspense>

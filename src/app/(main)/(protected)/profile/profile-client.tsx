@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Heart,
+  Bookmark,
   MessageSquare,
   FileText,
   Trash2,
@@ -103,6 +104,7 @@ interface ProfileClientProps {
   profile: UserProfile;
   stories: Story[];
   likedStories: Story[];
+  bookmarkedStories: Story[];
   stats: UserStats;
 }
 
@@ -154,6 +156,7 @@ export function ProfileClient({
   profile: initialProfile,
   stories: initialStories,
   likedStories,
+  bookmarkedStories,
   stats,
 }: ProfileClientProps) {
   const searchParams = useSearchParams();
@@ -163,7 +166,9 @@ export function ProfileClient({
 
   const tabParam = searchParams.get("tab");
   const initialTab =
-    tabParam && ["stories", "drafts", "liked"].includes(tabParam) ? tabParam : "stories";
+    tabParam && ["stories", "drafts", "liked", "bookmarked"].includes(tabParam)
+      ? tabParam
+      : "stories";
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const publishedStories = stories.filter((s) => s.status !== "DRAFT");
@@ -662,7 +667,7 @@ export function ProfileClient({
           {/* Main Content */}
           <div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 max-w-md">
+              <TabsList className="grid w-full grid-cols-4 max-w-xl">
                 <TabsTrigger value="stories" className="gap-1.5">
                   <BookOpen className="size-4" />
                   作品 ({publishedStories.length})
@@ -673,7 +678,11 @@ export function ProfileClient({
                 </TabsTrigger>
                 <TabsTrigger value="liked" className="gap-1.5">
                   <Heart className="size-4" />
-                  收藏 ({likedStories.length})
+                  点赞 ({likedStories.length})
+                </TabsTrigger>
+                <TabsTrigger value="bookmarked" className="gap-1.5">
+                  <Bookmark className="size-4" />
+                  收藏 ({bookmarkedStories.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -740,16 +749,43 @@ export function ProfileClient({
                         <Heart className="size-8 text-accent" />
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-2">
-                        还没有收藏的故事
+                        还没有点赞过的故事
                       </h3>
                       <p className="text-muted-foreground">
-                        浏览故事并点击收藏，你喜欢的故事会出现在这里
+                        浏览故事并点个赞，你赞过的故事会出现在这里
                       </p>
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
                     {likedStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={toCardData(story, fallbackAuthor)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="bookmarked" className="mt-6">
+                {bookmarkedStories.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <div className="flex items-center justify-center size-16 rounded-2xl bg-primary/10 mx-auto mb-4">
+                        <Bookmark className="size-8 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        还没有收藏的故事
+                      </h3>
+                      <p className="text-muted-foreground">
+                        在阅读页点击「收藏」，把想稍后再读的故事存到这里
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {bookmarkedStories.map((story) => (
                       <StoryCard
                         key={story.id}
                         story={toCardData(story, fallbackAuthor)}

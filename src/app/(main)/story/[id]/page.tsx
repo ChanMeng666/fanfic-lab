@@ -112,6 +112,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
   }
 
   let initialLiked = false;
+  let initialBookmarked = false;
   let currentUserId: string | null = null;
   try {
     const stackUser = await stackServerApp.getUser();
@@ -122,10 +123,16 @@ export default async function StoryPage({ params }: StoryPageProps) {
       });
       if (dbUser) {
         currentUserId = dbUser.id;
-        const like = await prisma.like.findUnique({
-          where: { userId_storyId: { userId: dbUser.id, storyId: id } },
-        });
+        const [like, bookmark] = await Promise.all([
+          prisma.like.findUnique({
+            where: { userId_storyId: { userId: dbUser.id, storyId: id } },
+          }),
+          prisma.bookmark.findUnique({
+            where: { userId_storyId: { userId: dbUser.id, storyId: id } },
+          }),
+        ]);
         initialLiked = !!like;
+        initialBookmarked = !!bookmark;
       }
     }
   } catch {
@@ -149,6 +156,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         firstChapterContent={firstChapterContent}
         initialLikeCount={story._count.likes}
         initialLiked={initialLiked}
+        initialBookmarked={initialBookmarked}
         commentCount={story._count.comments}
         currentUserId={currentUserId}
         isOwner={isOwner}
