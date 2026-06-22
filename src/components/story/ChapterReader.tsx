@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, List, Pencil, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, List, Pencil, Sparkles, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
+import { ProposeBranchDialog } from "./ProposeBranchDialog";
 import { ViewTracker } from "./ViewTracker";
 import { ReadingPrefs } from "./ReadingPrefs";
 import { ReadingProgressBanner } from "./ReadingProgressBanner";
@@ -38,6 +39,10 @@ interface ChapterReaderProps {
   // All chapters' metadata, ordered, for the jump dropdown + prev/next.
   chapters: Array<{ chapterNumber: number; title: string | null }>;
   isOwner?: boolean;
+  // Community branch续写: readers (logged in) can fork off this chapter when the
+  // author has branching enabled on a published story.
+  isLoggedIn?: boolean;
+  allowBranching?: boolean;
 }
 
 export function ChapterReader({
@@ -46,9 +51,12 @@ export function ChapterReader({
   chapter,
   chapters,
   isOwner = false,
+  isLoggedIn = false,
+  allowBranching = false,
 }: ChapterReaderProps) {
   const router = useRouter();
   const [continueOpen, setContinueOpen] = useState(false);
+  const [branchOpen, setBranchOpen] = useState(false);
   const { fontSize, lineHeight } = useReadingPrefs();
   const { savedPercent, restore, dismiss } = useReadingProgress({
     storyId,
@@ -172,11 +180,33 @@ export function ChapterReader({
         )}
       </nav>
 
+      {isLoggedIn && allowBranching && (
+        <div className="mt-10 flex flex-col items-center gap-2 rounded-2xl border border-accent/30 bg-ai-surface ai-glow px-4 py-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            脑补了不一样的走向？让 AI 沿用原作风格，把它写成一个分支。
+          </p>
+          <Button className="gap-1.5" onClick={() => setBranchOpen(true)}>
+            <GitBranch className="size-4" />
+            从这一章之后续写
+          </Button>
+        </div>
+      )}
+
       {isOwner && (
         <ContinueChapterDialog
           storyId={storyId}
           open={continueOpen}
           onOpenChange={setContinueOpen}
+        />
+      )}
+
+      {isLoggedIn && allowBranching && (
+        <ProposeBranchDialog
+          storyId={storyId}
+          parentChapterId={chapter.id}
+          parentChapterNumber={chapter.chapterNumber}
+          open={branchOpen}
+          onOpenChange={setBranchOpen}
         />
       )}
 

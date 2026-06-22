@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { StoryReader } from "@/components/story/StoryReader";
 import { RelatedStories } from "@/components/story/RelatedStories";
+import { BranchTree } from "@/components/story/BranchTree";
+import { getBranchTree } from "@/lib/actions/branch";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
 interface StoryPageProps {
@@ -132,6 +134,13 @@ export default async function StoryPage({ params }: StoryPageProps) {
 
   const isOwner = currentUserId === story.authorId;
 
+  // Community branch续写 tree (only meaningful for published stories with at
+  // least one chapter). Branches live outside the canonical chapters.
+  const branches =
+    story.status === "PUBLISHED" && story.chapters.length > 0
+      ? await getBranchTree(id, currentUserId)
+      : [];
+
   return (
     <div className="min-h-screen bg-background">
       <StoryReader
@@ -144,6 +153,19 @@ export default async function StoryPage({ params }: StoryPageProps) {
         currentUserId={currentUserId}
         isOwner={isOwner}
       />
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 pb-10">
+        {story.status === "PUBLISHED" && story.chapters.length > 0 && (
+          <BranchTree
+            storyId={id}
+            chapters={story.chapters}
+            branches={branches}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+            allowBranching={story.allowBranching}
+            isLoggedIn={currentUserId !== null}
+          />
+        )}
+      </div>
       <div className="max-w-3xl mx-auto px-4 pb-16">
         <Suspense fallback={null}>
           <RelatedStories storyId={id} />

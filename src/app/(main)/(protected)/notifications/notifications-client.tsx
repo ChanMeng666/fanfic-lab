@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck } from "lucide-react";
+import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check } from "lucide-react";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,24 @@ function notificationLabel(n: NotificationItem) {
         icon: <UserPlus className="size-4 text-primary" />,
         verb: `关注了你`,
         href: `/users/${p.actorUsername}`,
+      };
+    case "branch_proposed":
+      return {
+        icon: <GitBranch className="size-4 text-accent" />,
+        verb: `为你的《${p.storyTitle}》续写了一个分支`,
+        href: `/story/${p.storyId}/branch/${p.branchId}`,
+      };
+    case "branch_like":
+      return {
+        icon: <Heart className="size-4 text-accent fill-current" />,
+        verb: `点赞了你的续写分支`,
+        href: `/story/${p.storyId}/branch/${p.branchId}`,
+      };
+    case "branch_canonized":
+      return {
+        icon: <Check className="size-4 text-success" />,
+        verb: `采纳了你的续写为《${p.storyTitle}》的正章`,
+        href: `/story/${p.storyId}`,
       };
     default:
       return {

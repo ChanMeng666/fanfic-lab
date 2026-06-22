@@ -9,7 +9,11 @@ export type NotificationType =
   | "reply"
   | "story_like"
   | "comment_like"
-  | "follow";
+  | "follow"
+  // Community AI co-creation (互动续写)
+  | "branch_proposed"
+  | "branch_like"
+  | "branch_canonized";
 
 export interface NotificationPayload {
   actorId: string;
@@ -20,6 +24,10 @@ export interface NotificationPayload {
   storyTitle?: string;
   commentId?: string;
   snippet?: string;
+  // Set for branch_* notifications. branchSnippet is a short preview of the
+  // reader's proposed direction.
+  branchId?: string;
+  branchSnippet?: string;
 }
 
 async function currentDbUserId(): Promise<string | null> {

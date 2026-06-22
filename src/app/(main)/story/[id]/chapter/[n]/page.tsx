@@ -59,6 +59,8 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
       id: true,
       title: true,
       authorId: true,
+      status: true,
+      allowBranching: true,
       author: { select: { username: true, displayName: true } },
       chapters: {
         orderBy: { chapterNumber: "asc" },
@@ -81,6 +83,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   if (!chapter) notFound();
 
   let isOwner = false;
+  let isLoggedIn = false;
   try {
     const stackUser = await stackServerApp.getUser();
     if (stackUser) {
@@ -88,6 +91,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         where: { stackAuthId: stackUser.id },
         select: { id: true },
       });
+      isLoggedIn = !!dbUser;
       isOwner = dbUser?.id === story.authorId;
     }
   } catch {
@@ -102,6 +106,8 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         chapter={chapter}
         chapters={story.chapters}
         isOwner={isOwner}
+        isLoggedIn={isLoggedIn}
+        allowBranching={story.status === "PUBLISHED" && story.allowBranching}
       />
     </div>
   );

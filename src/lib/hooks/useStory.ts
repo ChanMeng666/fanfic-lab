@@ -23,6 +23,7 @@ interface Story {
   rating: Rating;
   status: StoryStatus;
   isComplete: boolean;
+  allowBranching: boolean;
   wordCount: number;
   viewCount: number;
   coverImageUrl: string | null;

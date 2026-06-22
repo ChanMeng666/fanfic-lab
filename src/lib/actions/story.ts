@@ -28,6 +28,7 @@ interface UpdateStoryInput {
   rating?: Rating;
   status?: StoryStatus;
   isComplete?: boolean;
+  allowBranching?: boolean;
   coverImageUrl?: string;
 }
 
@@ -134,6 +135,7 @@ export async function updateStory(input: UpdateStoryInput) {
       rating: input.rating,
       status: input.status,
       isComplete: input.isComplete,
+      allowBranching: input.allowBranching,
       coverImageUrl: input.coverImageUrl,
     },
     include: {

@@ -41,6 +41,8 @@ model User {
   generations   Generation[]
   credits       UserCredits?
   payments      Payment[]
+  proposedBranches StoryBranch[] @relation("branchProposer")
+  branchLikes      BranchLike[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -91,6 +93,10 @@ model Story {
   coverImageUrl String?
   embedding     Unsupported("vector(1536)")?
 
+  // Community AI co-creation: when true, logged-in readers may propose
+  // "what happens next" branch continuations. Authors can opt out per story.
+  allowBranching Boolean @default(true)
+
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
@@ -99,6 +105,7 @@ model Story {
   likes       Like[]
   comments    Comment[]
   generations Generation[]
+  branches    StoryBranch[]
 
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -135,6 +142,9 @@ model Chapter {
 
   storyId String
   story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  // Community branch continuations that fork off the end of this chapter.
+  branches StoryBranch[] @relation("branchForkPoint")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -296,7 +306,7 @@ model Notification {
   id        String    @id @default(cuid())
   userId    String    // recipient
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String    // "comment" | "reply" | "story_like" | "comment_like" | "follow"
+  type      String    // "comment" | "reply" | "story_like" | "comment_like" | "follow" | "branch_proposed" | "branch_like" | "branch_canonized"
   payload   Json      // actor + context (storyId, storyTitle, commentId, snippet, etc.)
   readAt    DateTime?
   createdAt DateTime  @default(now())
@@ -316,6 +326,72 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+// ============================================
+// COMMUNITY AI CO-CREATION (互动续写 / 分支续写)
+// ============================================
+
+// A reader-proposed "what happens next" continuation, AI-written off a fork
+// point. Branches live OUTSIDE the canonical Chapter table so they never
+// pollute the main storyline — they only become a real Chapter when the
+// author canonizes one (see canonizeBranch in src/lib/actions/branch.ts).
+model StoryBranch {
+  id      String @id @default(cuid())
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  // Fork point. MVP forks only off a canonical chapter (parentChapterId set).
+  // parentBranchId is reserved for deeper branch-off-branch trees (later).
+  parentChapterId String?
+  parentChapter   Chapter? @relation("branchForkPoint", fields: [parentChapterId], references: [id], onDelete: Cascade)
+  parentBranchId  String?
+  parentBranch    StoryBranch?  @relation("branchTree", fields: [parentBranchId], references: [id], onDelete: Cascade)
+  childBranches   StoryBranch[] @relation("branchTree")
+
+  // The reader who proposed this direction (and pays the credits / is attributed).
+  proposerId String
+  proposer   User   @relation("branchProposer", fields: [proposerId], references: [id], onDelete: Cascade)
+
+  direction String  @db.Text   // the reader's "接下来会怎样" prompt
+  title     String?            // AI-generated chapter title
+  content   String  @db.Text   // AI-written candidate chapter (NOT a Chapter row)
+  wordCount Int     @default(0)
+
+  status BranchStatus @default(ACTIVE) // ACTIVE | CANONIZED | HIDDEN
+
+  // Set when the author promotes this branch into the main storyline.
+  canonizedChapterId String? @unique
+
+  likes      BranchLike[]
+  generation Generation?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storyId])
+  @@index([parentChapterId])
+  @@index([proposerId])
+  @@index([storyId, status])
+}
+
+enum BranchStatus {
+  ACTIVE
+  CANONIZED
+  HIDDEN
+}
+
+model BranchLike {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId  String
+  branch    StoryBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([userId, branchId])
+  @@index([branchId])
+  @@index([userId])
 }
 
 // ============================================
@@ -369,6 +445,10 @@ model Generation {
   durationMs     Int?
   storyId        String?          // Link to saved Story if user saves it
   story          Story?           @relation(fields: [storyId], references: [id])
+  // Link to the StoryBranch this generation produced (community branch续写).
+  // Set only for reader-proposed branch continuations.
+  branchId       String?          @unique
+  branch         StoryBranch?     @relation(fields: [branchId], references: [id])
   createdAt      DateTime         @default(now())
   completedAt    DateTime?
 

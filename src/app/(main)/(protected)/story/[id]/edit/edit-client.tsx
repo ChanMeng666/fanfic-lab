@@ -44,6 +44,7 @@ interface EditStoryClientProps {
     rating: string;
     status: string;
     isComplete: boolean;
+    allowBranching: boolean;
     chapters: ChapterDraft[];
   };
 }
@@ -140,6 +141,7 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
   const [rating, setRating] = useState<Rating>(story.rating as Rating);
   const [status, setStatus] = useState<Status>(story.status as Status);
   const [isComplete, setIsComplete] = useState(story.isComplete);
+  const [allowBranching, setAllowBranching] = useState(story.allowBranching);
 
   const [chapters, setChapters] = useState<ChapterDraft[]>(story.chapters);
   const [saving, startSaving] = useTransition();
@@ -175,6 +177,7 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
           rating,
           status,
           isComplete,
+          allowBranching,
         });
 
         // Update each changed chapter sequentially. Pre-PR-D each story
@@ -307,6 +310,24 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   标记完结不会下架作品，仍会显示在 Feed 中。
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">读者续写</label>
+                <Select
+                  value={allowBranching ? "on" : "off"}
+                  onValueChange={(v) => setAllowBranching(v === "on")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="on">开启（读者可贡献分支续写）</SelectItem>
+                    <SelectItem value="off">关闭</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  开启后，登录读者可提出「接下来会怎样」，由 AI 写成分支，你可采纳为正章。
                 </p>
               </div>
             </div>
