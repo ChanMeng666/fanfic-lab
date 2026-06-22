@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useUser } from "@stackframe/stack";
-import { Bell, Heart, MessageSquare, UserPlus, Reply, Sparkles, GitBranch, Check, AtSign } from "lucide-react";
+import { Bell, Heart, MessageSquare, UserPlus, Reply, Sparkles, GitBranch, Check, AtSign, Vote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -92,6 +92,18 @@ function notificationLabel(n: NotificationItem): { icon: React.ReactNode; verb: 
         icon: <Check className="size-3.5 text-success" />,
         verb: `采纳了你的续写为《${p.storyTitle}》的正章`,
         href: `/story/${p.storyId}`,
+      };
+    case "poll_vote":
+      return {
+        icon: <Vote className="size-3.5 text-primary" />,
+        verb: `参与了你在《${p.storyTitle}》发起的接龙投票`,
+        href: `/story/${p.storyId}#polls`,
+      };
+    case "poll_generated":
+      return {
+        icon: <Sparkles className="size-3.5 text-accent" />,
+        verb: `你支持的方向胜出，已生成新分支`,
+        href: `/story/${p.storyId}/branch/${p.branchId}`,
       };
     default:
       return {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign } from "lucide-react";
+import { Heart, MessageSquare, UserPlus, Reply, Sparkles, CheckCheck, GitBranch, Check, AtSign, Vote } from "lucide-react";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,18 @@ function notificationLabel(n: NotificationItem) {
         icon: <Check className="size-4 text-success" />,
         verb: `采纳了你的续写为《${p.storyTitle}》的正章`,
         href: `/story/${p.storyId}`,
+      };
+    case "poll_vote":
+      return {
+        icon: <Vote className="size-4 text-primary" />,
+        verb: `参与了你在《${p.storyTitle}》发起的接龙投票`,
+        href: `/story/${p.storyId}#polls`,
+      };
+    case "poll_generated":
+      return {
+        icon: <Sparkles className="size-4 text-accent" />,
+        verb: `你支持的方向胜出，已生成新分支`,
+        href: `/story/${p.storyId}/branch/${p.branchId}`,
       };
     default:
       return {

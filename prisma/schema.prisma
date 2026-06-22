@@ -44,6 +44,9 @@ model User {
   proposedBranches StoryBranch[] @relation("branchProposer")
   branchLikes      BranchLike[]
   bookmarks        Bookmark[]
+  createdPolls     BranchPoll[]   @relation("pollCreator")
+  proposedOptions  BranchOption[] @relation("optionProposer")
+  pollVotes        PollVote[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -108,6 +111,7 @@ model Story {
   comments    Comment[]
   generations Generation[]
   branches    StoryBranch[]
+  polls       BranchPoll[]
 
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -147,6 +151,8 @@ model Chapter {
 
   // Community branch continuations that fork off the end of this chapter.
   branches StoryBranch[] @relation("branchForkPoint")
+  // 接龙投票 anchored at this chapter's fork point.
+  polls    BranchPoll[]  @relation("pollForkPoint")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -409,6 +415,79 @@ model BranchLike {
 
   @@unique([userId, branchId])
   @@index([branchId])
+  @@index([userId])
+}
+
+// 接龙投票: a fork point poses several proposed directions; the community votes;
+// the story author "settles" the poll, feeding the winning direction into the
+// SAME branch generation engine (continuation-core) to produce a StoryBranch.
+model BranchPoll {
+  id      String @id @default(cuid())
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  parentChapterId String?
+  parentChapter   Chapter? @relation("pollForkPoint", fields: [parentChapterId], references: [id], onDelete: SetNull)
+
+  creatorId String
+  creator   User   @relation("pollCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  question String     @db.Text
+  status   PollStatus @default(OPEN) // OPEN | CLOSED | GENERATED
+
+  // The StoryBranch produced from the winning option once settled. Plain id
+  // reference (no relation) to keep StoryBranch decoupled.
+  resultBranchId String? @unique
+
+  options BranchOption[]
+  votes   PollVote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storyId])
+  @@index([status])
+}
+
+enum PollStatus {
+  OPEN
+  CLOSED
+  GENERATED
+}
+
+model BranchOption {
+  id     String     @id @default(cuid())
+  pollId String
+  poll   BranchPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  // A proposed "direction" prompt; the winner feeds branch generation.
+  label String @db.Text
+
+  proposerId String?
+  proposer   User?   @relation("optionProposer", fields: [proposerId], references: [id], onDelete: SetNull)
+
+  // Denormalized for fast sort/display; kept in sync on vote/unvote.
+  voteCount Int @default(0)
+
+  votes     PollVote[]
+  createdAt DateTime   @default(now())
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id       String       @id @default(cuid())
+  pollId   String
+  poll     BranchPoll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId String
+  option   BranchOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  // One vote per user per poll (changing vote moves this row).
+  @@unique([pollId, userId])
+  @@index([optionId])
   @@index([userId])
 }
 

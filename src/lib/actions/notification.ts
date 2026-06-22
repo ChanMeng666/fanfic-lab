@@ -14,7 +14,10 @@ export type NotificationType =
   // Community AI co-creation (互动续写)
   | "branch_proposed"
   | "branch_like"
-  | "branch_canonized";
+  | "branch_canonized"
+  // 接龙投票
+  | "poll_vote"
+  | "poll_generated";
 
 export interface NotificationPayload {
   actorId: string;
@@ -29,6 +32,9 @@ export interface NotificationPayload {
   // reader's proposed direction.
   branchId?: string;
   branchSnippet?: string;
+  // Set for poll_* notifications.
+  pollId?: string;
+  optionLabel?: string;
 }
 
 async function currentDbUserId(): Promise<string | null> {
