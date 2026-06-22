@@ -47,6 +47,7 @@ model User {
   createdPolls     BranchPoll[]   @relation("pollCreator")
   proposedOptions  BranchOption[] @relation("optionProposer")
   pollVotes        PollVote[]
+  reactions        Reaction[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -114,6 +115,7 @@ model Story {
   characters  StoryCharacter[]
   likes       Like[]
   bookmarks   Bookmark[]
+  reactions   Reaction[]
   comments    Comment[]
   generations Generation[]
   branches    StoryBranch[]
@@ -283,6 +285,30 @@ model Like {
   @@unique([userId, storyId])
   @@index([storyId])
   @@index([userId])
+}
+
+// Expressive multi-reaction (催泪/带感/脑洞/甜). One per user per story; picking
+// a new type replaces the old one. Distinct from Like (popularity) and Bookmark
+// (save-for-later) — this captures HOW a story made the reader feel.
+model Reaction {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String
+  story     Story        @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, storyId])
+  @@index([storyId])
+  @@index([userId])
+}
+
+enum ReactionType {
+  TEARS       // 催泪
+  FIRE        // 带感
+  MIND_BLOWN  // 脑洞
+  SWEET       // 甜
 }
 
 // Save-for-later / reading list. Distinct from Like: Like is an appreciation

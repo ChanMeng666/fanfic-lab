@@ -12,7 +12,9 @@ import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import { CommentsSection } from "./CommentsSection";
 import { ShareButton } from "./ShareButton";
+import { ReactionBar } from "./ReactionBar";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
+import type { ReactionSummary } from "@/lib/actions/reaction";
 import { ViewTracker } from "./ViewTracker";
 import { ReadingPrefs } from "./ReadingPrefs";
 import { ReadingProgressBanner } from "./ReadingProgressBanner";
@@ -70,6 +72,7 @@ interface StoryReaderProps {
   isOwner?: boolean;
   // Set when this story is itself a remix of another work (attribution).
   remixedFrom?: { id: string; title: string; authorUsername: string } | null;
+  reactions?: ReactionSummary;
 }
 
 export function StoryReader({
@@ -83,6 +86,7 @@ export function StoryReader({
   currentUserId = null,
   isOwner = false,
   remixedFrom = null,
+  reactions,
 }: StoryReaderProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -317,6 +321,16 @@ export function StoryReader({
           <span>{story.fandom}</span>
         </p>
       </div>
+
+      {reactions && (
+        <div className="mt-5">
+          <ReactionBar
+            storyId={story.id}
+            initial={reactions}
+            isLoggedIn={currentUserId !== null}
+          />
+        </div>
+      )}
 
       <Separator className="my-10" />
 
