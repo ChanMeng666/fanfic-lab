@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck, Copy } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck, Copy, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,7 @@ import { CommentsSection } from "./CommentsSection";
 import { ShareButton } from "./ShareButton";
 import { ReactionBar } from "./ReactionBar";
 import { ReadingProgressTracker } from "./ReadingProgressTracker";
+import { AddToCollectionDialog } from "./AddToCollectionDialog";
 import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import type { ReactionSummary } from "@/lib/actions/reaction";
 import { ViewTracker } from "./ViewTracker";
@@ -95,6 +96,7 @@ export function StoryReader({
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [bookmarking, setBookmarking] = useState(false);
   const [continueOpen, setContinueOpen] = useState(false);
+  const [collectionOpen, setCollectionOpen] = useState(false);
 
   const { fontSize, lineHeight } = useReadingPrefs();
   const chapterCount = chapters.length;
@@ -303,6 +305,17 @@ export function StoryReader({
             {commentCount}
           </a>
           <ShareButton title={story.title} />
+          {currentUserId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setCollectionOpen(true)}
+            >
+              <FolderPlus className="size-3.5" />
+              合集
+            </Button>
+          )}
           <Link href={`/create?remixFrom=${story.id}`}>
             <Button variant="outline" size="sm" className="gap-1.5">
               <Copy className="size-3.5" />
@@ -342,6 +355,14 @@ export function StoryReader({
           storyId={story.id}
           open={continueOpen}
           onOpenChange={setContinueOpen}
+        />
+      )}
+
+      {currentUserId && (
+        <AddToCollectionDialog
+          storyId={story.id}
+          open={collectionOpen}
+          onOpenChange={setCollectionOpen}
         />
       )}
 

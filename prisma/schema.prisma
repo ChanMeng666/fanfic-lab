@@ -54,6 +54,7 @@ model User {
   reactions        Reaction[]
   readingProgress  ReadingProgress[]
   achievements     UserAchievement[]
+  collections      Collection[]
 
   @@index([stackAuthId])
   @@index([email])
@@ -127,6 +128,7 @@ model Story {
   branches    StoryBranch[]
   polls       BranchPoll[]
   readingProgress ReadingProgress[]
+  collections CollectionStory[]
 
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -560,6 +562,40 @@ model PollVote {
   @@unique([pollId, userId])
   @@index([optionId])
   @@index([userId])
+}
+
+// ============================================
+// COLLECTIONS (专题合集 / 书单 — UGC curation)
+// ============================================
+
+model Collection {
+  id            String   @id @default(cuid())
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?  @db.Text
+  isPublic      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stories CollectionStory[]
+
+  @@index([ownerId])
+  @@index([isPublic, updatedAt])
+}
+
+model CollectionStory {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  storyId      String
+  story        Story      @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  order        Int        @default(0)
+  addedAt      DateTime   @default(now())
+
+  @@unique([collectionId, storyId])
+  @@index([collectionId])
+  @@index([storyId])
 }
 
 // ============================================

@@ -81,6 +81,7 @@ export function Header({ className }: { className?: string }) {
           <NavLink href="/create">创作</NavLink>
           <NavLink href="/feed">发现</NavLink>
           <NavLink href="/trending">排行榜</NavLink>
+          <NavLink href="/collections">合集</NavLink>
           <NavLink href="/profile">我的</NavLink>
           <NavLink href="/about">关于</NavLink>
         </nav>
@@ -221,6 +222,13 @@ export function Header({ className }: { className?: string }) {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 排行榜
+              </Link>
+              <Link
+                href="/collections"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                合集
               </Link>
               <Link
                 href="/about"
