@@ -71,6 +71,7 @@ interface Story {
   tags: string[];
   rating: string;
   status: string;
+  isComplete: boolean;
   wordCount: number;
   viewCount?: number;
   coverImageUrl: string | null;
@@ -116,9 +117,12 @@ const KNOWN_FANDOMS = [
 
 function toCardData(story: Story, fallbackAuthor: { id: string; username: string; avatarUrl: string | null }): StoryCardData {
   const author = story.author ?? fallbackAuthor;
-  const status = (["DRAFT", "PUBLISHED", "COMPLETE"] as const).includes(story.status as never)
-    ? (story.status as "DRAFT" | "PUBLISHED" | "COMPLETE")
-    : "PUBLISHED";
+  // Completion drives the COMPLETE badge; otherwise fall back to visibility.
+  const status: "DRAFT" | "PUBLISHED" | "COMPLETE" = story.isComplete
+    ? "COMPLETE"
+    : story.status === "DRAFT"
+      ? "DRAFT"
+      : "PUBLISHED";
   const rating = (["GENERAL", "TEEN", "MATURE", "EXPLICIT"] as const).includes(story.rating as never)
     ? (story.rating as "GENERAL" | "TEEN" | "MATURE" | "EXPLICIT")
     : "GENERAL";
@@ -313,10 +317,16 @@ export function ProfileClient({
                   {story.status === "PUBLISHED"
                     ? "已发布"
                     : story.status === "ARCHIVED"
-                      ? "已完结"
+                      ? "已归档"
                       : story.status === "DRAFT"
                         ? "草稿"
                         : story.status}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className={`text-xs ${story.isComplete ? "bg-success/15 text-success" : "bg-primary/15 text-primary"}`}
+                >
+                  {story.isComplete ? "已完结" : "连载中"}
                 </Badge>
               </div>
             </div>

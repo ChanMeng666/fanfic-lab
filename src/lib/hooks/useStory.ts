@@ -22,6 +22,7 @@ interface Story {
   tags: string[];
   rating: Rating;
   status: StoryStatus;
+  isComplete: boolean;
   wordCount: number;
   viewCount: number;
   coverImageUrl: string | null;

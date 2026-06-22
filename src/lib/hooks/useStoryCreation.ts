@@ -10,6 +10,11 @@ import type {
 } from "@/lib/types/dreamwriter";
 import type { StoryLength } from "@/lib/billing/pricing";
 
+// Tracks the lifecycle of the post-generation persistence call to /api/stories.
+// "failed" is surfaced to the user with a retry affordance so a generated story
+// is never silently lost when the save request errors.
+export type SaveStatus = "idle" | "saving" | "saved" | "failed";
+
 interface UseStoryCreationReturn {
   stage: DreamWriterStage;
   message: string | null;
@@ -18,7 +23,9 @@ interface UseStoryCreationReturn {
   storyId: string | null;
   error: string | null;
   isCreating: boolean;
+  saveStatus: SaveStatus;
   create: (prompt: string, length?: StoryLength) => Promise<void>;
+  retrySave: () => void;
   reset: () => void;
 }
 
@@ -29,9 +36,60 @@ export function useStoryCreation(): UseStoryCreationReturn {
   const [result, setResult] = useState<StoryResult | null>(null);
   const [storyId, setStoryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
+  // The payload last handed to /api/stories, kept so retrySave() can re-POST
+  // the exact same story if the first attempt fails.
+  const savePayloadRef = useRef<{
+    result: StoryResult;
+    prompt: string;
+    length: StoryLength;
+  } | null>(null);
 
   const isCreating = stage !== "idle" && stage !== "complete" && stage !== "error";
+
+  // Persists the generated story. Idempotent on success: once a storyId is set
+  // (story saved) further calls are no-ops so a retry can't create duplicates.
+  const persistStory = useCallback(
+    async (payload: { result: StoryResult; prompt: string; length: StoryLength }) => {
+      savePayloadRef.current = payload;
+      setSaveStatus("saving");
+      try {
+        const r = await fetch("/api/stories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          // Survive a tab close / navigation right after generation completes.
+          keepalive: true,
+        });
+        if (!r.ok) {
+          throw new Error(`save failed: ${r.status}`);
+        }
+        const data = await r.json();
+        if (data.storyId) setStoryId(data.storyId);
+        setSaveStatus("saved");
+        if (typeof data.creditsCharged === "number") {
+          if (data.creditsCharged > 0) {
+            toast.success(
+              `本次消耗 ${data.creditsCharged} 积分，余额 ${data.newBalance} 积分`
+            );
+          } else {
+            toast.success("本次创作使用了每日免费额度");
+          }
+        }
+      } catch {
+        setSaveStatus("failed");
+        toast.error("故事保存失败，请点击「重试保存」");
+      }
+    },
+    []
+  );
+
+  const retrySave = useCallback(() => {
+    if (storyId || saveStatus === "saving") return; // already saved / in flight
+    const payload = savePayloadRef.current;
+    if (payload) void persistStory(payload);
+  }, [storyId, saveStatus, persistStory]);
 
   const create = useCallback(async (prompt: string, length: StoryLength = "short") => {
     // Reset state
@@ -41,6 +99,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     setResult(null);
     setStoryId(null);
     setError(null);
+    setSaveStatus("idle");
 
     // Abort any previous request
     abortRef.current?.abort();
@@ -88,27 +147,10 @@ export function useStoryCreation(): UseStoryCreationReturn {
             if (event.result) {
               setResult(event.result);
               // Auto-save story to database. The save endpoint also applies the
-              // credit charge for this generation and returns the result, which
-              // we surface as a toast.
-              fetch("/api/stories", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ result: event.result, prompt, length }),
-              })
-                .then((r) => r.json())
-                .then((data) => {
-                  if (data.storyId) setStoryId(data.storyId);
-                  if (typeof data.creditsCharged === "number") {
-                    if (data.creditsCharged > 0) {
-                      toast.success(
-                        `本次消耗 ${data.creditsCharged} 积分，余额 ${data.newBalance} 积分`
-                      );
-                    } else {
-                      toast.success("本次创作使用了每日免费额度");
-                    }
-                  }
-                })
-                .catch(() => {/* silent fail on save */});
+              // credit charge for this generation. On failure we flip saveStatus
+              // to "failed" so the UI can offer a manual retry — the story is
+              // never silently dropped.
+              void persistStory({ result: event.result, prompt, length });
             }
             if (event.error) setError(event.error);
           } catch {
@@ -121,7 +163,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
       setStage("error");
       setError(err instanceof Error ? err.message : "创建失败");
     }
-  }, []);
+  }, [persistStory]);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -131,7 +173,21 @@ export function useStoryCreation(): UseStoryCreationReturn {
     setResult(null);
     setStoryId(null);
     setError(null);
+    setSaveStatus("idle");
+    savePayloadRef.current = null;
   }, []);
 
-  return { stage, message, outline, result, storyId, error, isCreating, create, reset };
+  return {
+    stage,
+    message,
+    outline,
+    result,
+    storyId,
+    error,
+    isCreating,
+    saveStatus,
+    create,
+    retrySave,
+    reset,
+  };
 }

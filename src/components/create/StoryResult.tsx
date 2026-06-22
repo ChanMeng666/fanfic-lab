@@ -5,15 +5,18 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sparkles, BookOpen, RefreshCw, Heart, FileText, Pencil } from "lucide-react";
+import { Sparkles, BookOpen, RefreshCw, Heart, FileText, Pencil, AlertTriangle, Loader2 } from "lucide-react";
 import { toggleLike, updateStory } from "@/lib/actions/story";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
 import type { StoryResult as StoryResultType } from "@/lib/types/dreamwriter";
+import type { SaveStatus } from "@/lib/hooks/useStoryCreation";
 
 interface StoryResultProps {
   result: StoryResultType;
   storyId: string | null;
+  saveStatus: SaveStatus;
+  onRetrySave: () => void;
   onCreateAnother: () => void;
   onSuggestionClick: (suggestion: string) => void;
 }
@@ -21,6 +24,8 @@ interface StoryResultProps {
 export function StoryResult({
   result,
   storyId,
+  saveStatus,
+  onRetrySave,
   onCreateAnother,
   onSuggestionClick,
 }: StoryResultProps) {
@@ -95,6 +100,26 @@ export function StoryResult({
           </div>
         </CardContent>
       </Card>
+
+      {/* Save status — never let a generated story be silently lost */}
+      {saveStatus === "failed" && (
+        <div className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="size-4 shrink-0" />
+            保存失败，你的故事还在这里。请重试保存，否则离开后会丢失。
+          </p>
+          <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={onRetrySave}>
+            <RefreshCw className="size-3.5" />
+            重试保存
+          </Button>
+        </div>
+      )}
+      {saveStatus === "saving" && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          正在保存到你的作品…
+        </p>
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-3">

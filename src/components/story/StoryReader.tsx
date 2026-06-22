@@ -5,7 +5,7 @@ import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { memo, useState } from "react";
+import { useState } from "react";
 import { toggleLike } from "@/lib/actions/story";
 import { toast } from "sonner";
 import { formatError } from "@/lib/format-error";
@@ -14,6 +14,16 @@ import { ContinueChapterDialog } from "./ContinueChapterDialog";
 import { ViewTracker } from "./ViewTracker";
 import { ReadingPrefs } from "./ReadingPrefs";
 import { ReadingProgressBanner } from "./ReadingProgressBanner";
+import { CompletionToggleButton } from "./CompletionToggleButton";
+import { ChapterTOC } from "./ChapterTOC";
+import {
+  ChapterBody,
+  CompletionBadge,
+  ratingLabels,
+  ratingVariants,
+  readingMinutes,
+  formatCount,
+} from "./reader-shared";
 import {
   useReadingPrefs,
   useReadingProgress,
@@ -30,6 +40,7 @@ interface StoryReaderProps {
     ships: string[];
     tags: string[];
     rating: string;
+    isComplete: boolean;
     wordCount: number;
     viewCount: number;
     publishedAt: Date | null;
@@ -38,14 +49,17 @@ interface StoryReaderProps {
       displayName: string | null;
       username: string;
     };
-    chapters: Array<{
-      id: string;
-      title: string | null;
-      content: string;
-      chapterNumber: number;
-      wordCount: number;
-    }>;
   };
+  // Chapter metadata only (no content) — used for the TOC and counts.
+  chapters: Array<{
+    id: string;
+    title: string | null;
+    chapterNumber: number;
+    wordCount: number;
+  }>;
+  // Body of the single chapter, only provided when the story has exactly one
+  // chapter (rendered inline on the overview to keep one-shots a one-page read).
+  firstChapterContent?: string | null;
   initialLikeCount?: number;
   initialLiked?: boolean;
   commentCount?: number;
@@ -53,75 +67,10 @@ interface StoryReaderProps {
   isOwner?: boolean;
 }
 
-function formatCount(n: number): string {
-  if (n < 1000) return n.toString();
-  if (n < 10000) return (n / 1000).toFixed(1) + "k";
-  return Math.floor(n / 1000) + "k";
-}
-
-// Average reading speed: ~300 Chinese chars / minute
-function readingMinutes(wordCount: number): number {
-  return Math.max(1, Math.round(wordCount / 300));
-}
-
-const ratingLabels: Record<string, string> = {
-  GENERAL: "全年龄",
-  TEEN: "青少年",
-  MATURE: "成熟",
-  EXPLICIT: "限制级",
-};
-
-const ratingVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  GENERAL: "secondary",
-  TEEN: "default",
-  MATURE: "outline",
-  EXPLICIT: "destructive",
-};
-
-interface ChapterBodyProps {
-  chapterNumber: number;
-  chapterTitle: string | null;
-  storyTitle: string;
-  content: string;
-  showHeading: boolean;
-  showSeparator: boolean;
-}
-
-// Memoized so like-toggle / dialog state in the parent doesn't re-render
-// long chapter bodies. Re-renders only when the chapter content itself
-// or its display flags change.
-const ChapterBody = memo(function ChapterBody({
-  chapterNumber,
-  chapterTitle,
-  storyTitle,
-  content,
-  showHeading,
-  showSeparator,
-}: ChapterBodyProps) {
-  return (
-    <section className="space-y-4">
-      {showHeading && (
-        <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground">
-          第 {chapterNumber} 章
-          {chapterTitle && chapterTitle !== storyTitle ? `：${chapterTitle}` : ""}
-        </h2>
-      )}
-      <div
-        className="font-prose text-foreground/90 whitespace-pre-wrap"
-        style={{
-          fontSize: "var(--reader-font-size, 1.075rem)",
-          lineHeight: "var(--reader-line-height, 1.85)",
-        }}
-      >
-        {content}
-      </div>
-      {showSeparator && <Separator className="mt-12" />}
-    </section>
-  );
-});
-
 export function StoryReader({
   story,
+  chapters,
+  firstChapterContent = null,
   initialLikeCount = 0,
   initialLiked = false,
   commentCount = 0,
@@ -134,10 +83,13 @@ export function StoryReader({
   const [continueOpen, setContinueOpen] = useState(false);
 
   const { fontSize, lineHeight } = useReadingPrefs();
+  const chapterCount = chapters.length;
+  const isSingleChapter = chapterCount === 1;
+  // Per-story reading progress only matters for the inline single-chapter read;
+  // multi-chapter serials track progress per chapter on the chapter pages.
   const { savedPercent, restore, dismiss } = useReadingProgress({ storyId: story.id });
 
   const displayDate = story.publishedAt ?? story.createdAt;
-  const chapterCount = story.chapters.length;
 
   async function handleLike() {
     if (liking) return;
@@ -215,8 +167,9 @@ export function StoryReader({
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{story.fandom}</Badge>
+          <CompletionBadge isComplete={story.isComplete} />
           <Badge variant={ratingVariants[story.rating] ?? "secondary"}>
             {ratingLabels[story.rating] ?? story.rating}
           </Badge>
@@ -231,29 +184,21 @@ export function StoryReader({
               {tag}
             </Badge>
           ))}
+          {isOwner && (
+            <CompletionToggleButton storyId={story.id} isComplete={story.isComplete} />
+          )}
         </div>
+
+        {story.summary && (
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed border-l-2 border-border pl-3">
+            {story.summary}
+          </p>
+        )}
       </header>
 
       <Separator className="mb-8" />
 
-      {chapterCount > 0 ? (
-        <div className="space-y-12">
-          {story.chapters.map((chapter, idx) => (
-            <ChapterBody
-              key={chapter.id}
-              chapterNumber={chapter.chapterNumber}
-              chapterTitle={chapter.title}
-              storyTitle={story.title}
-              content={chapter.content}
-              // Skip chapter h2 entirely for single-chapter stories — the
-              // page h1 (story title) already serves as the heading and a
-              // second one looks duplicated.
-              showHeading={chapterCount > 1}
-              showSeparator={idx < story.chapters.length - 1}
-            />
-          ))}
-        </div>
-      ) : (
+      {chapterCount === 0 && (
         <div className="text-center py-16">
           <div className="flex items-center justify-center size-16 rounded-2xl bg-surface mx-auto mb-4">
             <BookOpen className="size-8 text-muted-foreground" />
@@ -261,6 +206,20 @@ export function StoryReader({
           <p className="text-muted-foreground">暂无章节内容</p>
         </div>
       )}
+
+      {isSingleChapter && firstChapterContent != null && (
+        <ChapterBody
+          chapterNumber={chapters[0].chapterNumber}
+          chapterTitle={chapters[0].title}
+          storyTitle={story.title}
+          content={firstChapterContent}
+          // Single-chapter story: the page h1 already serves as the heading.
+          showHeading={false}
+          showSeparator={false}
+        />
+      )}
+
+      {chapterCount > 1 && <ChapterTOC storyId={story.id} chapters={chapters} />}
 
       <Separator className="my-10" />
 
@@ -312,7 +271,7 @@ export function StoryReader({
       <ViewTracker storyId={story.id} />
 
       <ReadingPrefs />
-      {savedPercent !== null && (
+      {isSingleChapter && savedPercent !== null && (
         <ReadingProgressBanner
           percent={savedPercent}
           onRestore={restore}

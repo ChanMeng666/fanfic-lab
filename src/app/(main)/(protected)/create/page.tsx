@@ -10,7 +10,7 @@ import { checkCanGenerate } from "@/lib/actions/credits";
 import { LENGTH_OPTIONS, type StoryLength } from "@/lib/billing/pricing";
 
 export default function CreatePage() {
-  const { stage, message, result, storyId, isCreating, create, reset } =
+  const { stage, message, result, storyId, isCreating, saveStatus, create, retrySave, reset } =
     useStoryCreation();
   const [gateOpen, setGateOpen] = useState(false);
   const [gateReason, setGateReason] = useState<string | undefined>();
@@ -62,6 +62,8 @@ export default function CreatePage() {
           <StoryResult
             result={result}
             storyId={storyId}
+            saveStatus={saveStatus}
+            onRetrySave={retrySave}
             onCreateAnother={reset}
             onSuggestionClick={(s) => {
               reset();

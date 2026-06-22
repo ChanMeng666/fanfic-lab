@@ -58,6 +58,7 @@ export default async function EditStoryPage({ params }: EditStoryPageProps) {
         tags: story.tags,
         rating: story.rating,
         status: story.status,
+        isComplete: story.isComplete,
         chapters: story.chapters,
       }}
     />

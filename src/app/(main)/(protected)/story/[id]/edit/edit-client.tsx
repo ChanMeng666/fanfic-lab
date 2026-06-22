@@ -43,6 +43,7 @@ interface EditStoryClientProps {
     tags: string[];
     rating: string;
     status: string;
+    isComplete: boolean;
     chapters: ChapterDraft[];
   };
 }
@@ -54,10 +55,16 @@ const RATING_OPTIONS: { value: Rating; label: string }[] = [
   { value: "EXPLICIT", label: "限制级" },
 ];
 
+// Visibility only. Completion (连载中 / 已完结) is a separate control below.
 const STATUS_OPTIONS: { value: Status; label: string }[] = [
-  { value: "DRAFT", label: "草稿" },
-  { value: "PUBLISHED", label: "连载中" },
-  { value: "ARCHIVED", label: "已完结" },
+  { value: "DRAFT", label: "草稿（不公开）" },
+  { value: "PUBLISHED", label: "已发布" },
+  { value: "ARCHIVED", label: "已归档（下架）" },
+];
+
+const COMPLETION_OPTIONS: { value: "ongoing" | "complete"; label: string }[] = [
+  { value: "ongoing", label: "连载中" },
+  { value: "complete", label: "已完结" },
 ];
 
 interface ChipInputProps {
@@ -132,6 +139,7 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
   const [tags, setTags] = useState<string[]>(story.tags);
   const [rating, setRating] = useState<Rating>(story.rating as Rating);
   const [status, setStatus] = useState<Status>(story.status as Status);
+  const [isComplete, setIsComplete] = useState(story.isComplete);
 
   const [chapters, setChapters] = useState<ChapterDraft[]>(story.chapters);
   const [saving, startSaving] = useTransition();
@@ -166,6 +174,7 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
           tags,
           rating,
           status,
+          isComplete,
         });
 
         // Update each changed chapter sequentially. Pre-PR-D each story
@@ -265,7 +274,7 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">状态</label>
+                <label className="text-sm font-medium text-foreground">可见性</label>
                 <Select value={status} onValueChange={(v) => setStatus(v as Status)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -278,6 +287,27 @@ export function EditStoryClient({ story }: EditStoryClientProps) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">连载状态</label>
+                <Select
+                  value={isComplete ? "complete" : "ongoing"}
+                  onValueChange={(v) => setIsComplete(v === "complete")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMPLETION_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  标记完结不会下架作品，仍会显示在 Feed 中。
+                </p>
               </div>
             </div>
 

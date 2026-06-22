@@ -226,7 +226,9 @@ ${direction}
 
         await prisma.story.update({
           where: { id: storyId },
-          data: { wordCount: { increment: wordCount } },
+          // Adding a chapter means the serial is active again — clear any
+          // 已完结 flag so it shows as 连载中.
+          data: { wordCount: { increment: wordCount }, isComplete: false },
         });
 
         // Record the continuation on the generation ledger and charge it

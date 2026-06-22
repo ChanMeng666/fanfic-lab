@@ -82,6 +82,10 @@ model Story {
   tags          String[]    // e.g., ["Fluff", "Angst", "Crack fic"]
   rating        Rating      @default(GENERAL)
   status        StoryStatus @default(DRAFT)
+  // Serialization state, independent of `status` (visibility). A PUBLISHED
+  // story can be 连载中 (isComplete=false) or 已完结 (isComplete=true) and stays
+  // visible in the feed either way. Do NOT use ARCHIVED to mean "完结".
+  isComplete    Boolean     @default(false)
   wordCount     Int         @default(0)
   viewCount     Int         @default(0)
   coverImageUrl String?
@@ -104,6 +108,8 @@ model Story {
   @@index([authorId])
   @@index([status])
   @@index([createdAt])
+  // Supports the default feed query: where status=PUBLISHED order by publishedAt desc.
+  @@index([status, publishedAt])
 }
 
 enum Rating {

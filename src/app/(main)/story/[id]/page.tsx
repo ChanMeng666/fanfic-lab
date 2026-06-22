@@ -75,12 +75,14 @@ export default async function StoryPage({ params }: StoryPageProps) {
           username: true,
         },
       },
+      // Metadata only — chapter bodies are not shipped to the overview. The
+      // single-chapter body is fetched separately below; multi-chapter serials
+      // read each chapter on its own /chapter/[n] page.
       chapters: {
         orderBy: { chapterNumber: "asc" },
         select: {
           id: true,
           title: true,
-          content: true,
           chapterNumber: true,
           wordCount: true,
         },
@@ -93,6 +95,18 @@ export default async function StoryPage({ params }: StoryPageProps) {
 
   if (!story) {
     notFound();
+  }
+
+  // One-shots (single chapter) stay a one-page read: pull that chapter's body
+  // so the overview can render it inline.
+  let firstChapterContent: string | null = null;
+  if (story.chapters.length === 1) {
+    const first = await prisma.chapter.findFirst({
+      where: { storyId: id },
+      orderBy: { chapterNumber: "asc" },
+      select: { content: true },
+    });
+    firstChapterContent = first?.content ?? null;
   }
 
   let initialLiked = false;
@@ -122,6 +136,8 @@ export default async function StoryPage({ params }: StoryPageProps) {
     <div className="min-h-screen bg-background">
       <StoryReader
         story={story}
+        chapters={story.chapters}
+        firstChapterContent={firstChapterContent}
         initialLikeCount={story._count.likes}
         initialLiked={initialLiked}
         commentCount={story._count.comments}

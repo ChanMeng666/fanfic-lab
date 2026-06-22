@@ -98,12 +98,13 @@ function FeedPageContent() {
         ships: story.ships,
         tags: story.tags,
         rating: story.rating as "GENERAL" | "TEEN" | "MATURE" | "EXPLICIT",
-        status:
-          story.status === "PUBLISHED"
+        // Completion (已完结) is now driven by isComplete, independent of
+        // visibility. Completed stories stay PUBLISHED and visible in the feed.
+        status: story.isComplete
+          ? "COMPLETE"
+          : story.status === "PUBLISHED"
             ? "PUBLISHED"
-            : story.status === "ARCHIVED"
-              ? "COMPLETE"
-              : "DRAFT",
+            : "DRAFT",
         wordCount: story.wordCount,
         chapterCount: story._count?.chapters || 0,
         likes: story._count?.likes || 0,

@@ -27,6 +27,7 @@ interface UpdateStoryInput {
   tags?: string[];
   rating?: Rating;
   status?: StoryStatus;
+  isComplete?: boolean;
   coverImageUrl?: string;
 }
 
@@ -132,6 +133,7 @@ export async function updateStory(input: UpdateStoryInput) {
       tags: input.tags,
       rating: input.rating,
       status: input.status,
+      isComplete: input.isComplete,
       coverImageUrl: input.coverImageUrl,
     },
     include: {
@@ -144,6 +146,33 @@ export async function updateStory(input: UpdateStoryInput) {
   revalidatePath(`/story/${input.id}`);
 
   return story;
+}
+
+/**
+ * Toggles a story's serialization state (连载中 ↔ 已完结). Owner-checked.
+ * Independent of `status` (visibility): a completed story stays PUBLISHED and
+ * visible in the feed — it just gets a 已完结 badge.
+ */
+export async function setStoryCompletion(storyId: string, isComplete: boolean) {
+  const user = await getCurrentUser();
+
+  const story = await prisma.story.findUnique({
+    where: { id: storyId },
+    select: { authorId: true },
+  });
+  if (!story || story.authorId !== user.id) {
+    throw new Error("Story not found or unauthorized");
+  }
+
+  await prisma.story.update({
+    where: { id: storyId },
+    data: { isComplete },
+  });
+
+  revalidatePath("/feed");
+  revalidatePath(`/story/${storyId}`);
+
+  return { isComplete };
 }
 
 export async function deleteStory(storyId: string) {
