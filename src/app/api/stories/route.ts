@@ -24,6 +24,26 @@ function fallbackSummary(body: string): string {
   return "…" + body.slice(start, start + 180).trim() + "…";
 }
 
+// Map the agent's G/T/M(/E) rating onto the Prisma Rating enum. Defaults to
+// GENERAL when the rating is absent or unrecognized.
+type Rating = "GENERAL" | "TEEN" | "MATURE" | "EXPLICIT";
+function mapRating(raw?: string): Rating {
+  switch ((raw || "").trim().toUpperCase()) {
+    case "T":
+    case "TEEN":
+      return "TEEN";
+    case "M":
+    case "MATURE":
+      return "MATURE";
+    case "E":
+    case "X":
+    case "EXPLICIT":
+      return "EXPLICIT";
+    default:
+      return "GENERAL";
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const stackUser = await stackServerApp.getUser();
@@ -74,7 +94,7 @@ export async function POST(req: NextRequest) {
         fandom: "崩坏：星穹铁道",
         ships: result.cp,
         tags: result.tags,
-        rating: "GENERAL",
+        rating: mapRating(result.rating),
         status: "PUBLISHED",
         publishedAt: new Date(),
         wordCount: result.wordCount,
