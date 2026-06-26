@@ -1,6 +1,6 @@
 import { tavily } from "@tavily/core";
-import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+import { utilityModel } from "./models";
 import { getCachedResearch, saveResearch } from "../../lib/research-cache";
 import { logger, errorFields } from "../../lib/logger";
 
@@ -49,7 +49,7 @@ export async function getFandomResearch(cp: string[]): Promise<string> {
     if (!snippets.trim()) return "";
 
     // 3) Digest into a writing-focused brief
-    const model = new ChatOpenAI({ temperature: 0.3, model: "gpt-4o-mini", maxTokens: 500 });
+    const model = utilityModel({ temperature: 0.3, maxTokens: 500 });
     const resp = await model.invoke([
       new SystemMessage(
         "你是同人创作的资料整理员。根据网络检索片段，用中文整理一份简洁的角色/关系/设定参考（200字以内），" +

@@ -9,6 +9,7 @@ import type {
   CreationProgressEvent,
 } from "@/lib/types/dreamwriter";
 import type { StoryLength } from "@/lib/billing/pricing";
+import type { StructuredCreateInput } from "@/lib/create-options";
 
 // Tracks the lifecycle of the post-generation persistence call to /api/stories.
 // "failed" is surfaced to the user with a retry affordance so a generated story
@@ -24,7 +25,12 @@ interface UseStoryCreationReturn {
   error: string | null;
   isCreating: boolean;
   saveStatus: SaveStatus;
-  create: (prompt: string, length?: StoryLength, remixedFromId?: string) => Promise<void>;
+  create: (
+    prompt: string,
+    length?: StoryLength,
+    remixedFromId?: string,
+    structured?: StructuredCreateInput,
+  ) => Promise<void>;
   retrySave: () => void;
   reset: () => void;
 }
@@ -97,7 +103,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     if (payload) void persistStory(payload);
   }, [storyId, saveStatus, persistStory]);
 
-  const create = useCallback(async (prompt: string, length: StoryLength = "short", remixedFromId?: string) => {
+  const create = useCallback(async (prompt: string, length: StoryLength = "short", remixedFromId?: string, structured?: StructuredCreateInput) => {
     // Reset state
     setStage("parsing");
     setMessage("正在理解你的创作需求...");
@@ -116,7 +122,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
       const res = await fetch("/api/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, length }),
+        body: JSON.stringify({ prompt, length, ...(structured ?? {}) }),
         signal: controller.signal,
       });
 

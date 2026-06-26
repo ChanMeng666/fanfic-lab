@@ -1,8 +1,8 @@
-import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import type { DreamWriterState } from "../state";
 import { SUMMARIZE_PROMPT } from "../prompts/system";
+import { utilityModel } from "../models";
 import { logger, errorFields } from "../../../lib/logger";
 
 export async function summarizeNode(
@@ -19,11 +19,7 @@ export async function summarizeNode(
   }
 
   try {
-    const model = new ChatOpenAI({
-      temperature: 0.5,
-      model: "gpt-4o-mini",
-      maxTokens: 200,
-    });
+    const model = utilityModel({ temperature: 0.5, maxTokens: 200 });
     const response = await model.invoke([
       new SystemMessage(SUMMARIZE_PROMPT),
       new HumanMessage(`标题：${title}\n\n正文：\n${story.slice(0, 4000)}`),

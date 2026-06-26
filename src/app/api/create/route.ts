@@ -2,9 +2,28 @@ import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { HumanMessage } from "@langchain/core/messages";
 import { getGraph } from "@/agent/dreamwriter/graph";
-import type { CreationProgressEvent, DreamWriterStage } from "@/lib/types/dreamwriter";
+import type { CreationProgressEvent, DreamWriterStage, InputIntent } from "@/lib/types/dreamwriter";
 import { checkCanGenerate } from "@/lib/actions/credits";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
+
+// Build the structured InputIntent from the request body, or null for the pure
+// free-text flow. Only treated as structured when at least one CP slot is set.
+function buildInputIntent(body: Record<string, unknown>): InputIntent | null {
+  const cp = Array.isArray(body.cp) ? (body.cp as unknown[]).map(String).filter((s) => s.trim()) : [];
+  if (cp.length === 0) return null;
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  return {
+    cp,
+    setting: str(body.setting),
+    tone: str(body.tone),
+    pov: str(body.pov),
+    ending: str(body.ending),
+    rating: str(body.rating),
+    avoid: Array.isArray(body.avoid) ? (body.avoid as unknown[]).map(String).filter((s) => s.trim()) : undefined,
+    mustInclude: str(body.mustInclude),
+    freeText: str(body.prompt),
+  };
+}
 
 // The DreamWriter agent runs in-process (no separate LangGraph server). This route
 // must use the Node.js runtime because the graph pulls in OpenAI, Prisma + pgvector,
@@ -21,8 +40,10 @@ export async function POST(req: NextRequest) {
       typeof body?.length === "string" && body.length in CREDIT_COSTS
         ? (body.length as StoryLength)
         : "short";
-    if (!prompt?.trim()) {
-      return new Response(JSON.stringify({ error: "请描述你想看的故事" }), {
+    const inputIntent = buildInputIntent(body as Record<string, unknown>);
+    // Accept either free-text prompt OR structured input (a chosen CP is enough).
+    if (!prompt?.trim() && !inputIntent) {
+      return new Response(JSON.stringify({ error: "请描述你想看的故事，或选择角色与基调" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -53,8 +74,11 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         try {
           const graph = await getGraph();
+          // A non-empty message is always required; fall back to a composed line
+          // when the user gave only structured input and no free text.
+          const seedText = prompt?.trim() || (inputIntent ? `${inputIntent.cp?.join(" × ")} ${inputIntent.tone ?? ""}`.trim() : "");
           const updates = await graph.stream(
-            { messages: [new HumanMessage(prompt)] },
+            { messages: [new HumanMessage(seedText)], inputIntent, requestedLength: length },
             { configurable: { thread_id: threadId }, streamMode: "updates" },
           );
           for await (const chunk of updates) {

@@ -58,15 +58,30 @@ Type-check with `npx tsc --noEmit` (clean = exit 0).
 (`stories/[id]/polls/[pollId]/settle`). Don't add a second writer path — extend the shared engine.
 
 ### The DreamWriter pipeline (`src/agent/dreamwriter/`)
-Linear graph with a conditional revision loop (`graph.ts`):
-`intent_parser → research → story_architect → writer → quality_guard → [revision_counter → writer]* → summarize → delivery`
+Linear graph with a conditional targeted-revision loop (`graph.ts`):
+`intent_parser → research → story_architect → scene_writer → quality_guard → [targeted_revision → quality_guard]* → polish → summarize → delivery`
+- **Model routing:** all nodes get their LLM from the factory in `models.ts` (never `new ChatOpenAI`
+  inline). Routes by job across the OpenAI GPT-5 family — writer/architect/critic/polish on `gpt-5.4`,
+  cheap structured tasks (intent/summary/suggestions/research digest) on `gpt-5.4-mini`. Override any
+  id via `DW_*_MODEL` env vars.
+- `intent_parser` uses `state.inputIntent` (structured form input) directly when a CP is present —
+  no LLM parse — and only falls back to parsing free text otherwise. `state.requestedLength` (the
+  paid length) is authoritative over any inferred length.
 - `research` (`nodes/research.ts` + `research.ts`) does optional live fandom research via Tavily for
   the parsed CP, digests it with an LLM, caches the brief in Postgres (`SourceResearchCache`), and
-  puts it in `state.researchContext` for the architect/writer. It emits no `stage` (transparent to
-  the UI) and degrades to `""` when `TAVILY_API_KEY` is unset or any step fails.
+  puts it in `state.researchContext`. It emits no `stage` and degrades to `""` when `TAVILY_API_KEY`
+  is unset or any step fails.
+- `story_architect` plans against a **genre beat skeleton** (`beats.ts`, selected from tone/ending)
+  and emits a rich outline (pov / themeLine / beatTemplate + per-scene hook/turn/beatType/sensoryAnchor).
+- `scene_writer` (`nodes/scene-writer.ts`) drafts **scene-by-scene** with rolling continuity context
+  (a turn memo + the previous scene's tail), NOT one single-shot call. Replaces the old `writer` node.
+- `quality_guard` scores six dimensions (characterFidelity/pacing/proseTexture/emotionalPayoff/
+  dialogue/immersion), flags AI-isms + specific scenes; if it misses the bar (`score < 8`) and there
+  are flagged scenes and `revisionCount < 2`, it routes to `targeted_revision` (rewrites only the
+  flagged scenes, preserving the rest), then re-checks (`MAX_REVISIONS = 2`).
+- `polish` (`nodes/polish.ts`) does a final language-only de-AI/voice-unifying pass over the assembled
+  draft (skipped for `short`); its output overwrites `storyDraft` for summarize + delivery.
 - Nodes in `nodes/*.ts`; prompts in `prompts/system.ts`; HSR knowledge prompt in `prompts/hsr.ts`.
-- `quality_guard` scores OOC/consistency/prose; if `score < 7` and `revisionCount < 2` it loops back
-  to `writer` with feedback (`MAX_REVISIONS = 2`).
 - **Structured outputs:** the JSON nodes (intent/architect/quality/delivery) use
   `model.withStructuredOutput(zodSchema)` with schemas in `src/agent/dreamwriter/schemas.ts`. Do
   **not** reintroduce hand-rolled JSON parsing.

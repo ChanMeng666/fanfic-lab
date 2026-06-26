@@ -4,13 +4,13 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Copy, X } from "lucide-react";
 import { useStoryCreation } from "@/lib/hooks/useStoryCreation";
-import { DreamInput } from "@/components/create/DreamInput";
+import { DreamInput, type CreateSubmit } from "@/components/create/DreamInput";
 import { CreationProgress } from "@/components/create/CreationProgress";
 import { StoryResult } from "@/components/create/StoryResult";
 import { OutOfCreditsDialog } from "@/components/billing/OutOfCreditsDialog";
 import { checkCanGenerate } from "@/lib/actions/credits";
 import { createRemixSeed, type RemixSeed } from "@/lib/actions/remix";
-import { LENGTH_OPTIONS, type StoryLength } from "@/lib/billing/pricing";
+import { LENGTH_OPTIONS } from "@/lib/billing/pricing";
 
 export default function CreatePage() {
   // useSearchParams requires a Suspense boundary for static prerender.
@@ -51,7 +51,7 @@ function CreatePageContent() {
   // Pre-generation credit gate. Checks before kicking off the (slow, costly)
   // generation so the user sees a friendly top-up prompt instead of an error.
   // The /api/create route re-checks server-side as the authoritative guard.
-  async function handleCreate(prompt: string, length: StoryLength) {
+  async function handleCreate({ prompt, length, structured }: CreateSubmit) {
     try {
       const gate = await checkCanGenerate(length);
       if (!gate.canGenerate) {
@@ -66,7 +66,7 @@ function CreatePageContent() {
       // If the gate check itself fails, fall through and let the server route
       // be the authority (it will reject if truly unauthorized/out of credits).
     }
-    create(prompt, length, remixSeed?.sourceId);
+    create(prompt, length, remixSeed?.sourceId, structured);
   }
 
   return (

@@ -5,8 +5,10 @@ import { DreamWriterStateAnnotation } from "./state";
 import { intentParserNode } from "./nodes/intent-parser";
 import { researchNode } from "./nodes/research";
 import { storyArchitectNode } from "./nodes/story-architect";
-import { writerNode } from "./nodes/writer";
+import { sceneWriterNode } from "./nodes/scene-writer";
 import { qualityGuardNode } from "./nodes/quality-guard";
+import { targetedRevisionNode } from "./nodes/targeted-revision";
+import { polishNode } from "./nodes/polish";
 import { summarizeNode } from "./nodes/summarize";
 import { deliveryNode } from "./nodes/delivery";
 import { logger } from "../../lib/logger";
@@ -14,36 +16,40 @@ import type { DreamWriterState } from "./state";
 
 const MAX_REVISIONS = 2;
 
+/**
+ * After quality check: if the draft misses the bar AND the critic flagged
+ * specific scenes AND we have revisions left, do a surgical targeted revision.
+ * Otherwise advance to polish (no flagged scenes = nothing to target).
+ */
 function routeAfterQualityCheck(state: DreamWriterState): string {
   const report = state.qualityReport;
-  if (!report) return "summarize_node";
-  if (!report.passesThreshold && state.revisionCount < MAX_REVISIONS) {
-    logger.info("dreamwriter.revision", { score: report.overallScore, revision: state.revisionCount + 1, maxRevisions: MAX_REVISIONS });
-    return "writer_node";
+  if (!report) return "polish_node";
+  const canRevise = !report.passesThreshold && state.revisionCount < MAX_REVISIONS && report.flaggedScenes.length > 0;
+  if (canRevise) {
+    logger.info("dreamwriter.revision", { score: report.overallScore, revision: state.revisionCount + 1, maxRevisions: MAX_REVISIONS, flagged: report.flaggedScenes.length });
+    return "targeted_revision_node";
   }
-  return "summarize_node";
-}
-
-async function revisionCounterNode(state: DreamWriterState): Promise<Partial<DreamWriterState>> {
-  return { revisionCount: state.revisionCount + 1, stage: "revising", logs: [{ message: `正在根据反馈修改第 ${state.revisionCount + 1} 版...`, done: true }] };
+  return "polish_node";
 }
 
 const workflow = new StateGraph(DreamWriterStateAnnotation)
   .addNode("intent_parser_node", intentParserNode)
   .addNode("research_node", researchNode)
   .addNode("story_architect_node", storyArchitectNode)
-  .addNode("writer_node", writerNode)
+  .addNode("scene_writer_node", sceneWriterNode)
   .addNode("quality_guard_node", qualityGuardNode)
-  .addNode("revision_counter_node", revisionCounterNode)
+  .addNode("targeted_revision_node", targetedRevisionNode)
+  .addNode("polish_node", polishNode)
   .addNode("summarize_node", summarizeNode)
   .addNode("delivery_node", deliveryNode)
   .addEdge(START, "intent_parser_node")
   .addEdge("intent_parser_node", "research_node")
   .addEdge("research_node", "story_architect_node")
-  .addEdge("story_architect_node", "writer_node")
-  .addEdge("writer_node", "quality_guard_node")
-  .addConditionalEdges("quality_guard_node", routeAfterQualityCheck, { writer_node: "revision_counter_node", summarize_node: "summarize_node" })
-  .addEdge("revision_counter_node", "writer_node")
+  .addEdge("story_architect_node", "scene_writer_node")
+  .addEdge("scene_writer_node", "quality_guard_node")
+  .addConditionalEdges("quality_guard_node", routeAfterQualityCheck, { targeted_revision_node: "targeted_revision_node", polish_node: "polish_node" })
+  .addEdge("targeted_revision_node", "quality_guard_node")
+  .addEdge("polish_node", "summarize_node")
   .addEdge("summarize_node", "delivery_node")
   .addEdge("delivery_node", END);
 
