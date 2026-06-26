@@ -64,7 +64,7 @@ export function StoryResult({
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6">
       {/* Story Card */}
-      <Card className="border-accent/30 bg-surface shadow-md">
+      <Card className="border-border bg-surface shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2.5">
@@ -80,12 +80,20 @@ export function StoryResult({
           </CardTitle>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {result.cp.map((c) => (
-              <Badge key={c} variant="outline" className="text-xs">
+              <Badge
+                key={c}
+                variant="outline"
+                className="text-xs whitespace-normal break-words text-left justify-start max-w-full"
+              >
                 {c}
               </Badge>
             ))}
             {result.tags.map((t) => (
-              <Badge key={t} variant="secondary" className="text-xs">
+              <Badge
+                key={t}
+                variant="secondary"
+                className="text-xs whitespace-normal break-words text-left justify-start max-w-full"
+              >
                 {t}
               </Badge>
             ))}

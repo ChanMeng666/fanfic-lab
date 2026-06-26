@@ -106,7 +106,7 @@ function CreatePageContent() {
       )}
 
       {stage === "complete" && result && (
-        <div className="animate-ai-reveal">
+        <div className="animate-fade-slide-in">
           <StoryResult
             result={result}
             storyId={storyId}

@@ -211,13 +211,20 @@ export function StoryReader({
             {ratingLabels[story.rating] ?? story.rating}
           </Badge>
           {story.ships.map((ship) => (
-            <Badge key={ship} className="bg-accent/15 text-accent border-accent/30">
+            <Badge
+              key={ship}
+              className="bg-accent/15 text-accent border-accent/30 whitespace-normal break-words text-left justify-start max-w-full"
+            >
               {ship}
             </Badge>
           ))}
           {story.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="gap-1">
-              <Tag className="size-3" />
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="gap-1 whitespace-normal break-words text-left justify-start max-w-full"
+            >
+              <Tag className="size-3 shrink-0" />
               {tag}
             </Badge>
           ))}

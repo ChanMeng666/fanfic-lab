@@ -151,7 +151,7 @@ export function StoryCard({ story, onLike }: StoryCardProps) {
             <Badge
               key={ship}
               variant="outline"
-              className="text-accent-foreground border-accent/30"
+              className="text-accent-foreground border-accent/30 whitespace-normal break-words text-left justify-start max-w-full"
             >
               {ship}
             </Badge>
@@ -165,7 +165,11 @@ export function StoryCard({ story, onLike }: StoryCardProps) {
 
         <div className="flex flex-wrap gap-1">
           {story.tags.slice(0, 4).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs py-0">
+            <Badge
+              key={tag}
+              variant="outline"
+              className="text-xs py-0 whitespace-normal break-words text-left justify-start max-w-full"
+            >
               {tag}
             </Badge>
           ))}
