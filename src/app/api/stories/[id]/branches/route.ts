@@ -6,6 +6,7 @@ import { generateContinuation } from "@/lib/actions/continuation-core";
 import { createNotification } from "@/lib/actions/notification";
 import { logger, errorFields } from "@/lib/logger";
 import { ErrorCode, isAppError } from "@/lib/errors";
+import { parseBody, branchBodySchema } from "@/lib/validation/api";
 
 // Community AI 续写 (分支续写): any logged-in reader proposes a "what happens
 // next" direction off a published story's chapter; the AI writes a candidate
@@ -21,11 +22,6 @@ import { ErrorCode, isAppError } from "@/lib/errors";
 const MAX_BRANCHES_PER_USER_PER_HOUR = 10; // across all stories
 const MAX_BRANCHES_PER_FORK = 20; // total active branches off one chapter
 const MAX_BRANCHES_PER_USER_PER_FORK = 2; // one user can't dominate a fork point
-
-interface BranchBody {
-  parentChapterId: string;
-  direction: string;
-}
 
 function jsonError(error: string, status: number, code?: string) {
   return new Response(JSON.stringify(code ? { error, code } : { error }), {
@@ -69,18 +65,14 @@ export async function POST(
     return jsonError("额度不足，请充值后再续写", 402, "INSUFFICIENT_CREDITS");
   }
 
-  let body: BranchBody;
+  let parentChapterId: string;
+  let direction: string;
   try {
-    body = await request.json();
-  } catch {
-    return jsonError("请求格式错误", 400);
+    const raw = await request.json();
+    ({ parentChapterId, direction } = parseBody(branchBodySchema, raw));
+  } catch (e) {
+    return jsonError(isAppError(e) ? e.message : "请求格式错误", 400);
   }
-
-  const parentChapterId = (body.parentChapterId ?? "").trim();
-  const direction = (body.direction ?? "").trim();
-  if (!parentChapterId) return jsonError("缺少分叉点章节", 400);
-  if (direction.length < 5) return jsonError("请描述续写的方向（至少 5 字）", 400);
-  if (direction.length > 1000) return jsonError("方向描述过长（≤ 1000 字）", 400);
 
   // The fork point must be a chapter of this story.
   const parentChapter = story.chapters.find((c) => c.id === parentChapterId);

@@ -13,6 +13,7 @@ import { applyGenerationCharge } from "@/lib/actions/credits";
 import { createNotification } from "@/lib/actions/notification";
 import { onStorySaved } from "@/lib/actions/achievements";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
+import { parseBody, saveStoryBodySchema } from "@/lib/validation/api";
 
 // Defensive fallback when the agent payload is missing `summary` (older
 // in-flight requests that started before the summarize node was deployed,
@@ -59,19 +60,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     }
 
-    const body = await req.json();
-    const generationId =
-      typeof body?.generationId === "string" && body.generationId.trim()
-        ? body.generationId.trim()
-        : undefined;
-    const remixedFromIdInput =
-      typeof body?.remixedFromId === "string" && body.remixedFromId.trim()
-        ? body.remixedFromId.trim()
-        : undefined;
-
-    if (!generationId) {
-      return NextResponse.json({ error: "缺少生成记录标识" }, { status: 400 });
-    }
+    const { generationId, remixedFromId: remixedFromIdInput } = parseBody(
+      saveStoryBodySchema,
+      await req.json()
+    );
 
     // Load the AUTHORITATIVE generation persisted by /api/create. The story
     // content, word count, and paid length all come from THIS row — never from
@@ -216,6 +208,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ storyId: story.id, creditsCharged, newBalance });
   } catch (err) {
+    if (isAppError(err) && err.code === ErrorCode.VALIDATION) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     logger.error("stories.save.failed", errorFields(err));
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "保存失败" },

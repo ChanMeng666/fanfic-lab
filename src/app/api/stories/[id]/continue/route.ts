@@ -5,16 +5,13 @@ import { applyContinuationCharge } from "@/lib/actions/credits";
 import { generateContinuation } from "@/lib/actions/continuation-core";
 import { logger, errorFields } from "@/lib/logger";
 import { ErrorCode, isAppError } from "@/lib/errors";
+import { parseBody, continueBodySchema } from "@/lib/validation/api";
 
 // Direct LLM continuation, bypassing the agent graph. We only need a single
 // writer call here — there's no outline / quality / revision loop. The writer
 // call + prompt + title generation live in continuation-core.ts, shared with
 // the community branch route. If we later want OOC checks etc, we can re-route
 // this through the agent.
-
-interface ContinueBody {
-  direction: string;
-}
 
 export async function POST(
   request: NextRequest,
@@ -77,26 +74,13 @@ export async function POST(
     );
   }
 
-  let body: ContinueBody;
+  let direction: string;
   try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "请求格式错误" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const direction = (body.direction ?? "").trim();
-  if (direction.length < 5) {
+    const raw = await request.json();
+    ({ direction } = parseBody(continueBodySchema, raw));
+  } catch (e) {
     return new Response(
-      JSON.stringify({ error: "请描述下一章的方向（至少 5 字）" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-  if (direction.length > 1000) {
-    return new Response(
-      JSON.stringify({ error: "方向描述过长（≤ 1000 字）" }),
+      JSON.stringify({ error: isAppError(e) ? e.message : "请求格式错误" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }

@@ -8,6 +8,9 @@ import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { logger, errorFields } from "@/lib/logger";
+import { isAppError } from "@/lib/errors";
+import { parseBody, createBodySchema } from "@/lib/validation/api";
+import { z } from "zod";
 
 // Build the structured InputIntent from the request body, or null for the pure
 // free-text flow. Only treated as structured when at least one CP slot is set.
@@ -37,20 +40,19 @@ export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { prompt } = body as { prompt: string; language?: "zh" | "en"; showOutline?: boolean };
-    const length: StoryLength =
-      typeof body?.length === "string" && body.length in CREDIT_COSTS
-        ? (body.length as StoryLength)
-        : "short";
-    const inputIntent = buildInputIntent(body as Record<string, unknown>);
-    // Accept either free-text prompt OR structured input (a chosen CP is enough).
-    if (!prompt?.trim() && !inputIntent) {
-      return new Response(JSON.stringify({ error: "请描述你想看的故事，或选择角色与基调" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    let body: z.infer<typeof createBodySchema>;
+    try {
+      body = parseBody(createBodySchema, await req.json());
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ error: isAppError(e) ? e.message : "请求格式错误" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
+    const prompt = body.prompt;
+    const length: StoryLength =
+      body.length && body.length in CREDIT_COSTS ? (body.length as StoryLength) : "short";
+    const inputIntent = buildInputIntent(body as Record<string, unknown>);
 
     // Credit gate (server-side, defense-in-depth — the UI also pre-checks). The
     // gate resolves the session user; treat a missing user as unauthenticated.
