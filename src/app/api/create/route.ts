@@ -5,6 +5,9 @@ import { getGraph } from "@/agent/dreamwriter/graph";
 import type { CreationProgressEvent, DreamWriterStage, InputIntent } from "@/lib/types/dreamwriter";
 import { checkCanGenerate } from "@/lib/actions/credits";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
+import { prisma } from "@/lib/db";
+import { stackServerApp } from "@/lib/stack";
+import { logger, errorFields } from "@/lib/logger";
 
 // Build the structured InputIntent from the request body, or null for the pure
 // free-text flow. Only treated as structured when at least one CP slot is set.
@@ -67,6 +70,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Resolve the DB user so we can persist the authoritative Generation server-side
+    // (the gate already proved the session is valid).
+    const stackUser = await stackServerApp.getUser();
+    const dbUser = stackUser
+      ? await prisma.user.findUnique({ where: { stackAuthId: stackUser.id }, select: { id: true } })
+      : null;
+    if (!dbUser) {
+      return new Response(JSON.stringify({ error: "请先登录后再创作" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const userId = dbUser.id;
+
     const threadId = randomUUID();
     const encoder = new TextEncoder();
 
@@ -83,9 +100,37 @@ export async function POST(req: NextRequest) {
           );
           for await (const chunk of updates) {
             const event = parseNodeUpdate(chunk as Record<string, unknown>);
-            if (event) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+            if (!event) continue;
+            // When the agent delivers the finished story, persist it server-side as
+            // the AUTHORITATIVE record. The client receives only the generationId and
+            // hands THAT back to /api/stories — it can no longer forge the content,
+            // word count, or paid length that billing is computed from.
+            if (event.result) {
+              try {
+                const generation = await prisma.generation.create({
+                  data: {
+                    userId,
+                    type: "STORY",
+                    status: "COMPLETE",
+                    request: { prompt: seedText, language: event.result.language, length } as object,
+                    deliverable: event.result as object,
+                    wordCount: event.result.wordCount,
+                    completedAt: new Date(),
+                  },
+                  select: { id: true },
+                });
+                event.generationId = generation.id;
+              } catch (e) {
+                logger.error("create.generation.persist_failed", { userId, ...errorFields(e) });
+                // Surface as an error event rather than letting the client try to
+                // save unbacked content (which the save route would now reject).
+                const errorEvent: CreationProgressEvent = { stage: "error", error: "保存生成记录失败，请重试" };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+                controller.close();
+                return;
+              }
             }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
           }
           controller.close();
         } catch (err) {

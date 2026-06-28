@@ -1,13 +1,20 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
+import { AppError, ErrorCode } from "@/lib/errors";
 import {
   CREDIT_COSTS,
   FREE_DAILY_LIMIT,
   creditsForWords,
   type StoryLength,
 } from "@/lib/billing/pricing";
+
+// A Prisma client OR an interactive-transaction client, so the charge helpers can
+// run standalone or be composed into a caller's larger $transaction (e.g. the
+// atomic story-save in /api/stories).
+type Db = typeof prisma | Prisma.TransactionClient;
 
 // ---------------------------------------------------------------------------
 // Pricing model ("sell the result, not the tool")
@@ -38,23 +45,27 @@ async function getCurrentUserId(): Promise<string> {
 
 /**
  * Count free short stories the user has consumed today. A "free short" is a
- * STORY generation created today, of length "short", that has not been charged
- * (creditsCharged === 0). `excludeGenerationId` lets the charge step ignore the
- * row it is about to charge.
+ * SAVED (storyId set) STORY generation created today, of length "short", that
+ * was not charged (creditsCharged === 0). We count only saved generations so the
+ * daily allowance is spent when a story is kept — generating-and-discarding a
+ * short does not burn the allowance. `excludeGenerationId` lets the charge step
+ * ignore the row it is about to charge. Accepts a tx client so it stays
+ * consistent inside the atomic save transaction.
  */
 async function freeShortsUsedToday(
+  db: Db,
   userId: string,
   excludeGenerationId?: string
 ): Promise<number> {
-  return prisma.generation.count({
+  return db.generation.count({
     where: {
       userId,
       type: "STORY",
       creditsCharged: 0,
+      storyId: { not: null },
       createdAt: { gte: startOfToday() },
       request: { path: ["length"], equals: "short" },
       ...(excludeGenerationId ? { id: { not: excludeGenerationId } } : {}),
-      status: { in: ["COMPLETE", "GENERATING"] },
     },
   });
 }
@@ -83,7 +94,7 @@ export async function getDailyUsage(): Promise<{
   freeLimit: number;
 }> {
   const userId = await getCurrentUserId();
-  const freeUsed = await freeShortsUsedToday(userId);
+  const freeUsed = await freeShortsUsedToday(prisma, userId);
   return {
     freeUsed,
     freeRemaining: Math.max(0, FREE_DAILY_LIMIT - freeUsed),
@@ -114,7 +125,7 @@ export async function checkCanGenerate(length: StoryLength): Promise<GateResult>
 
   // Free short allowance.
   if (length === "short") {
-    const used = await freeShortsUsedToday(userId);
+    const used = await freeShortsUsedToday(prisma, userId);
     if (used < FREE_DAILY_LIMIT) {
       return { canGenerate: true, cost: 0, isFree: true, currentBalance: balance };
     }
@@ -138,63 +149,93 @@ export async function checkCanGenerate(length: StoryLength): Promise<GateResult>
 // ---------------------------------------------------------------------------
 
 /**
- * Charge for a completed STORY generation at the QUOTED FLAT cost for its
- * length. Short stories within the daily free allowance cost 0. Records the
- * charge on the Generation ledger. Call once per generation, right after the
- * row is created.
+ * Deduct `cost` credits from a user inside the given (transaction) client,
+ * enforcing a NON-NEGATIVE balance. Throws INSUFFICIENT_CREDITS rather than
+ * letting the balance go below zero. Returns the post-charge balance. A cost of
+ * 0 is a no-op read.
+ */
+async function deductOrThrow(db: Db, userId: string, cost: number): Promise<number> {
+  const credits = await db.userCredits.findUnique({ where: { userId } });
+  const balance = credits?.balance ?? 0;
+  if (cost <= 0) return balance;
+  if (balance < cost) {
+    throw new AppError(
+      ErrorCode.INSUFFICIENT_CREDITS,
+      `Not enough credits. Need ${cost}, have ${balance}.`
+    );
+  }
+  const updated = await db.userCredits.update({
+    where: { userId },
+    data: { balance: { decrement: cost }, totalUsed: { increment: cost } },
+  });
+  return updated.balance;
+}
+
+/**
+ * Charge a completed STORY generation at the QUOTED FLAT cost for its length,
+ * WITHIN the caller's transaction. Short stories inside the daily free allowance
+ * cost 0. Marks the Generation ledger row. Throws INSUFFICIENT_CREDITS (and rolls
+ * back the caller's transaction) if a non-free charge can't be covered — so a
+ * paid story is never published unpaid and balances never go negative.
+ */
+export async function applyGenerationCharge(
+  tx: Prisma.TransactionClient,
+  generationId: string,
+  userId: string,
+  length: StoryLength
+): Promise<{ creditsCharged: number; newBalance: number }> {
+  let cost: number = CREDIT_COSTS[length];
+  if (length === "short") {
+    const used = await freeShortsUsedToday(tx, userId, generationId);
+    if (used < FREE_DAILY_LIMIT) cost = 0;
+  }
+  const newBalance = await deductOrThrow(tx, userId, cost);
+  await tx.generation.update({
+    where: { id: generationId },
+    data: { creditsCharged: cost },
+  });
+  return { creditsCharged: cost, newBalance };
+}
+
+/**
+ * Standalone wrapper around applyGenerationCharge for callers that aren't already
+ * in a transaction. The deduction + ledger update commit atomically.
  */
 export async function chargeGeneration(
   generationId: string,
   userId: string,
   length: StoryLength
 ): Promise<{ creditsCharged: number; newBalance: number }> {
-  let cost: number = CREDIT_COSTS[length];
-
-  if (length === "short") {
-    const used = await freeShortsUsedToday(userId, generationId);
-    if (used < FREE_DAILY_LIMIT) cost = 0;
-  }
-
-  if (cost > 0) {
-    await prisma.userCredits.upsert({
-      where: { userId },
-      create: { userId, balance: -cost, totalUsed: cost },
-      update: { balance: { decrement: cost }, totalUsed: { increment: cost } },
-    });
-  }
-
-  await prisma.generation.update({
-    where: { id: generationId },
-    data: { creditsCharged: cost },
-  });
-
-  const credits = await prisma.userCredits.findUnique({ where: { userId } });
-  return { creditsCharged: cost, newBalance: credits?.balance ?? 0 };
+  return prisma.$transaction((tx) => applyGenerationCharge(tx, generationId, userId, length));
 }
 
 /**
- * Charge for a continuation, billed per 1,000 delivered words (min 1). Used by
- * the continue route where the length isn't pre-chosen.
+ * Charge a continuation, billed per 1,000 delivered words (min 1), WITHIN the
+ * caller's transaction. Used by the continue/branch/poll-settle paths where the
+ * length isn't pre-chosen. Non-negative + atomic, like applyGenerationCharge.
  */
-export async function chargeContinuation(
+export async function applyContinuationCharge(
+  tx: Prisma.TransactionClient,
   generationId: string,
   userId: string,
   deliveredWords: number
 ): Promise<{ creditsCharged: number; newBalance: number }> {
   const cost = creditsForWords(deliveredWords);
-
-  const credits = await prisma.userCredits.upsert({
-    where: { userId },
-    create: { userId, balance: -cost, totalUsed: cost },
-    update: { balance: { decrement: cost }, totalUsed: { increment: cost } },
-  });
-
-  await prisma.generation.update({
+  const newBalance = await deductOrThrow(tx, userId, cost);
+  await tx.generation.update({
     where: { id: generationId },
     data: { creditsCharged: cost },
   });
+  return { creditsCharged: cost, newBalance };
+}
 
-  return { creditsCharged: cost, newBalance: credits.balance };
+/** Standalone wrapper around applyContinuationCharge (atomic deduction + ledger). */
+export async function chargeContinuation(
+  generationId: string,
+  userId: string,
+  deliveredWords: number
+): Promise<{ creditsCharged: number; newBalance: number }> {
+  return prisma.$transaction((tx) => applyContinuationCharge(tx, generationId, userId, deliveredWords));
 }
 
 // ---------------------------------------------------------------------------

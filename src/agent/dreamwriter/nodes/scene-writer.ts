@@ -6,7 +6,20 @@ import { getHSRKnowledgePrompt, buildRAGContext } from "../prompts/hsr";
 import { retrieveRelevantChunks } from "../../../knowledge/base/rag";
 import { writerModel } from "../models";
 import { logger, errorFields } from "../../../lib/logger";
+import { AppError, ErrorCode } from "../../../lib/errors";
 import type { SceneOutline, StoryOutline } from "../../../lib/types/dreamwriter";
+
+/** Per-scene-attempt ceiling so one hung LLM call can't eat the whole request budget. */
+const SCENE_TIMEOUT_MS = 90_000;
+
+/** Reject if `p` doesn't settle within `ms`; always clears the timer. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
 
 /** Story-level metadata block, repeated as the anchor for every scene. */
 function storyMeta(o: StoryOutline): string {
@@ -107,21 +120,38 @@ export async function sceneWriterNode(state: DreamWriterState, _config: Runnable
       .filter(Boolean)
       .join("\n\n---\n\n");
 
+    // Draft this scene, retrying once on a transient failure/timeout.
     let text = "";
-    try {
-      const resp = await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(humanText)]);
-      text = typeof resp.content === "string" ? resp.content : JSON.stringify(resp.content);
-    } catch (e) {
-      logger.warn("dreamwriter.scene.failed", { node: "scene_writer", scene: i + 1, ...errorFields(e) });
+    for (let attempt = 1; attempt <= 2 && !text.trim(); attempt++) {
+      try {
+        const resp = await withTimeout(
+          model.invoke([new SystemMessage(systemPrompt), new HumanMessage(humanText)]),
+          SCENE_TIMEOUT_MS,
+          `scene ${i + 1}`,
+        );
+        text = typeof resp.content === "string" ? resp.content : JSON.stringify(resp.content);
+      } catch (e) {
+        logger.warn("dreamwriter.scene.retry", { node: "scene_writer", scene: i + 1, attempt, ...errorFields(e) });
+      }
     }
-    if (text.trim()) {
-      sceneDrafts.push(text.trim());
-      turnMemo.push(scene.turn || scene.summary);
+    if (!text.trim()) {
+      // Fail VISIBLY: a missing scene means a story with a silent gap. Throwing
+      // surfaces an error to the user (and prevents persisting/billing for a
+      // broken story) instead of quietly shipping N-1 scenes.
+      logger.error("dreamwriter.scene.unrecoverable", { node: "scene_writer", scene: i + 1, total: scenes.length });
+      throw new AppError(ErrorCode.AGENT_FAILED, `场景 ${i + 1}/${scenes.length} 生成失败`);
     }
+    sceneDrafts.push(text.trim());
+    turnMemo.push(scene.turn || scene.summary);
+  }
+
+  // Completeness invariant: every planned scene must have produced prose.
+  if (sceneDrafts.length !== scenes.length) {
+    throw new AppError(ErrorCode.AGENT_FAILED, `期望 ${scenes.length} 个场景，仅生成 ${sceneDrafts.length} 个`);
   }
 
   const storyDraft = sceneDrafts.join("\n\n");
-  if (!storyDraft.trim()) return { stage: "error", logs: [{ message: "故事生成失败", done: true }] };
+  if (!storyDraft.trim()) throw new AppError(ErrorCode.AGENT_FAILED, "故事生成失败");
 
   return {
     stage: "writing",

@@ -115,7 +115,7 @@ Full details in **[`docs/COMMUNITY_FEATURES.md`](./docs/COMMUNITY_FEATURES.md)**
   `story/[id]/branch/[branchId]/`; the story page renders `BranchPolls` + `BranchTree` + 衍生作品.
 - **Key invariants:** branches live in `StoryBranch` and never touch canon (only `canonizeBranch`
   creates a `Chapter`); the triggerer of paid AI pays via the `chargeContinuation` hook (live
-  deduction still off); achievement/like/progress hooks are best-effort; adding a `NotificationType`
+  deduction is ON; transactional + non-negative); achievement/like/progress hooks are best-effort; adding a `NotificationType`
   means updating BOTH notification renderers (bell + `/notifications` client).
 
 ### Cross-cutting conventions
@@ -126,9 +126,17 @@ Full details in **[`docs/COMMUNITY_FEATURES.md`](./docs/COMMUNITY_FEATURES.md)**
 - **Auth:** Stack Auth (`@stackframe/stack`) — this is the engine behind Neon Auth. Server app in
   `src/lib/stack.ts`; users are mirrored into the `User` table by `syncUser()` in
   `src/lib/actions/user.ts`.
-- **Billing:** per-1k-words charging logic lives in `src/lib/actions/credits.ts`
-  (`creditsForWords`, `deductCredits`). The `Generation` table is the result ledger. **Live deduction
-  is intentionally NOT wired on** — flipping it is a deliberate product decision, not a bugfix.
+- **Billing:** charging logic lives in `src/lib/actions/credits.ts`. STORY generations bill a quoted
+  flat cost per length (`CREDIT_COSTS`, short free up to `FREE_DAILY_LIMIT`/day); continuations bill
+  per-1k-words (`creditsForWords`). The `Generation` table is the result ledger. **Live deduction IS
+  wired on.** Charges are **transactional and non-negative**: `applyGenerationCharge` /
+  `applyContinuationCharge` run inside the caller's `$transaction` (e.g. `/api/stories` saves the story,
+  links the generation, and charges atomically — a paid story is never created unpaid, and a balance
+  never goes negative; `chargeGeneration`/`chargeContinuation` are standalone wrappers).
+- **Generation is server-authoritative.** `/api/create` persists the finished `Generation`
+  (`deliverable` + paid `length`) and returns only its `generationId`. `/api/stories` saves+bills from
+  THAT server record (ownership-checked, single-use via `storyId`), never from client-posted content —
+  do not reintroduce a client-trusting save path.
 - **UI/design system:** follow [`CLAUDE.md`](./CLAUDE.md) — semantic Tailwind color tokens
   (`bg-surface`, `text-foreground`, `text-accent` for AI), **Lucide icons only (no emoji in UI)**,
   `font-display` (Cormorant Garamond) for headings, amber/accent for AI, teal/primary for actions.

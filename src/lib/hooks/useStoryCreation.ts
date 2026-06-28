@@ -45,11 +45,11 @@ export function useStoryCreation(): UseStoryCreationReturn {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
   // The payload last handed to /api/stories, kept so retrySave() can re-POST
-  // the exact same story if the first attempt fails.
+  // the same save if the first attempt fails. Only the server-issued
+  // generationId is sent — the story content lives server-side and can't be
+  // forged by the client.
   const savePayloadRef = useRef<{
-    result: StoryResult;
-    prompt: string;
-    length: StoryLength;
+    generationId: string;
     remixedFromId?: string;
   } | null>(null);
 
@@ -59,9 +59,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
   // (story saved) further calls are no-ops so a retry can't create duplicates.
   const persistStory = useCallback(
     async (payload: {
-      result: StoryResult;
-      prompt: string;
-      length: StoryLength;
+      generationId: string;
       remixedFromId?: string;
     }) => {
       savePayloadRef.current = payload;
@@ -158,11 +156,16 @@ export function useStoryCreation(): UseStoryCreationReturn {
             if (event.outline) setOutline(event.outline);
             if (event.result) {
               setResult(event.result);
-              // Auto-save story to database. The save endpoint also applies the
-              // credit charge for this generation. On failure we flip saveStatus
-              // to "failed" so the UI can offer a manual retry — the story is
-              // never silently dropped.
-              void persistStory({ result: event.result, prompt, length, remixedFromId });
+              // Auto-save the story. We send only the server-issued generationId;
+              // the save endpoint reads the authoritative content + length from
+              // that record and applies the credit charge. On failure we flip
+              // saveStatus to "failed" so the UI can offer a manual retry — the
+              // story is never silently dropped.
+              if (event.generationId) {
+                void persistStory({ generationId: event.generationId, remixedFromId });
+              } else {
+                setSaveStatus("failed");
+              }
             }
             if (event.error) setError(event.error);
           } catch {

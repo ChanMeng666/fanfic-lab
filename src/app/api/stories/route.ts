@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { stackServerApp } from "@/lib/stack";
 import { logger, errorFields } from "@/lib/logger";
+import { AppError, ErrorCode, isAppError } from "@/lib/errors";
 import type { StoryResult } from "@/lib/types/dreamwriter";
 import {
   embeddingTextForStory,
   getStoryEmbedding,
   setStoryEmbedding,
 } from "@/lib/story-embedding";
-import { chargeGeneration } from "@/lib/actions/credits";
+import { applyGenerationCharge } from "@/lib/actions/credits";
 import { createNotification } from "@/lib/actions/notification";
 import { onStorySaved } from "@/lib/actions/achievements";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
@@ -59,19 +60,44 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { result, prompt } = body as { result: StoryResult; prompt: string };
-    const length: StoryLength =
-      typeof body?.length === "string" && body.length in CREDIT_COSTS
-        ? (body.length as StoryLength)
-        : "short";
+    const generationId =
+      typeof body?.generationId === "string" && body.generationId.trim()
+        ? body.generationId.trim()
+        : undefined;
     const remixedFromIdInput =
       typeof body?.remixedFromId === "string" && body.remixedFromId.trim()
         ? body.remixedFromId.trim()
         : undefined;
 
-    if (!result?.body || !result?.title) {
-      return NextResponse.json({ error: "缺少故事数据" }, { status: 400 });
+    if (!generationId) {
+      return NextResponse.json({ error: "缺少生成记录标识" }, { status: 400 });
     }
+
+    // Load the AUTHORITATIVE generation persisted by /api/create. The story
+    // content, word count, and paid length all come from THIS row — never from
+    // the client — so a forged request can't publish unbacked content or bill the
+    // wrong (e.g. free) price. Ownership + single-use are enforced here.
+    const generation = await prisma.generation.findUnique({
+      where: { id: generationId },
+      select: { id: true, userId: true, type: true, storyId: true, deliverable: true, request: true },
+    });
+    if (!generation || generation.userId !== dbUser.id || generation.type !== "STORY") {
+      return NextResponse.json({ error: "生成记录不存在" }, { status: 404 });
+    }
+    if (generation.storyId) {
+      // Already saved — return the existing story id so a retry is idempotent.
+      return NextResponse.json({ storyId: generation.storyId, creditsCharged: 0 });
+    }
+
+    const result = generation.deliverable as unknown as StoryResult | null;
+    if (!result?.body || !result?.title) {
+      return NextResponse.json({ error: "生成记录缺少故事数据" }, { status: 400 });
+    }
+    const length: StoryLength =
+      ((): StoryLength => {
+        const l = (generation.request as { length?: string } | null)?.length;
+        return typeof l === "string" && l in CREDIT_COSTS ? (l as StoryLength) : "short";
+      })();
 
     // Validate the remix source exists + is published before recording the edge.
     let remixSource: { id: string; authorId: string; title: string } | null = null;
@@ -87,63 +113,63 @@ export async function POST(req: NextRequest) {
         ? result.summary.trim()
         : fallbackSummary(result.body);
 
-    const story = await prisma.story.create({
-      data: {
-        title: result.title,
-        summary,
-        fandom: "崩坏：星穹铁道",
-        ships: result.cp,
-        tags: result.tags,
-        rating: mapRating(result.rating),
-        status: "PUBLISHED",
-        publishedAt: new Date(),
-        wordCount: result.wordCount,
-        authorId: dbUser.id,
-        remixedFromId: remixSource?.id,
-        chapters: {
-          create: {
-            // Don't duplicate the story title onto its only chapter — when
-            // a second chapter is added later via /api/stories/[id]/continue
-            // it gets an auto-generated chapter title, and the reader UI
-            // relies on chapter.title being null/distinct to avoid showing
-            // a redundant h2.
-            title: null,
-            content: result.body,
-            chapterNumber: 1,
-            wordCount: result.wordCount,
-          },
-        },
-      },
-    });
-
-    const generation = await prisma.generation.create({
-      data: {
-        userId: dbUser.id,
-        type: "STORY",
-        status: "COMPLETE",
-        // `length` is persisted so the free-tier counter and the charge step
-        // can bill the quoted flat cost the user saw before generating.
-        request: { prompt, language: result.language, length } as object,
-        deliverable: result as object,
-        wordCount: result.wordCount,
-        storyId: story.id,
-      },
-    });
-
-    // Apply the credit charge for this generation. Failures here must not lose
-    // the user's saved story, so we degrade gracefully.
+    // Create the story, consume the generation (link storyId), and charge — all
+    // atomically. If the charge can't be covered, the whole save rolls back and
+    // nothing is published, so a paid story is never created unpaid.
     let creditsCharged = 0;
     let newBalance: number | undefined;
+    let story: { id: string };
     try {
-      const charge = await chargeGeneration(generation.id, dbUser.id, length);
-      creditsCharged = charge.creditsCharged;
-      newBalance = charge.newBalance;
-    } catch (e) {
-      logger.warn("stories.charge.failed", {
-        generationId: generation.id,
-        userId: dbUser.id,
-        ...errorFields(e),
+      const saved = await prisma.$transaction(async (tx) => {
+        const created = await tx.story.create({
+          data: {
+            title: result.title,
+            summary,
+            fandom: "崩坏：星穹铁道",
+            ships: result.cp,
+            tags: result.tags,
+            rating: mapRating(result.rating),
+            status: "PUBLISHED",
+            publishedAt: new Date(),
+            wordCount: result.wordCount,
+            authorId: dbUser.id,
+            remixedFromId: remixSource?.id,
+            chapters: {
+              create: {
+                // Don't duplicate the story title onto its only chapter — when
+                // a second chapter is added later via /api/stories/[id]/continue
+                // it gets an auto-generated chapter title, and the reader UI
+                // relies on chapter.title being null/distinct to avoid showing
+                // a redundant h2.
+                title: null,
+                content: result.body,
+                chapterNumber: 1,
+                wordCount: result.wordCount,
+              },
+            },
+          },
+          select: { id: true },
+        });
+        // Consume the generation: link it to the story (single-use guard above).
+        await tx.generation.update({
+          where: { id: generation.id },
+          data: { storyId: created.id },
+        });
+        const charge = await applyGenerationCharge(tx, generation.id, dbUser.id, length);
+        return { created, charge };
       });
+      story = saved.created;
+      creditsCharged = saved.charge.creditsCharged;
+      newBalance = saved.charge.newBalance;
+    } catch (e) {
+      if (isAppError(e) && e.code === ErrorCode.INSUFFICIENT_CREDITS) {
+        logger.warn("stories.save.insufficient_credits", { generationId: generation.id, userId: dbUser.id });
+        return NextResponse.json(
+          { error: "额度不足，请充值后再试", code: "INSUFFICIENT_CREDITS" },
+          { status: 402 }
+        );
+      }
+      throw e instanceof AppError ? e : new AppError(ErrorCode.INTERNAL, "保存失败", e);
     }
 
     // Achievements + creation streak (best-effort; never blocks the save).
