@@ -64,8 +64,12 @@ function sceneSpec(scene: SceneOutline, index: number, total: number): string {
  * This node produces the FIRST full draft only. Quality-driven rewrites are
  * handled surgically by targeted-revision, so this node never reads qualityReport.
  */
-export async function sceneWriterNode(state: DreamWriterState, _config: RunnableConfig): Promise<Partial<DreamWriterState>> {
+export async function sceneWriterNode(state: DreamWriterState, config: RunnableConfig): Promise<Partial<DreamWriterState>> {
   logger.info("dreamwriter.node.start", { node: "scene_writer" });
+  // Custom-stream writer (only populated when the caller uses streamMode "custom").
+  // Lets us surface per-scene progress during the long write, instead of one blind
+  // "writing" stage. Typed loosely because RunnableConfig.writer is optional.
+  const emit = (config as { writer?: (chunk: unknown) => void }).writer;
   const outline = state.outline;
   if (!outline) return { stage: "error", logs: [{ message: "没有故事大纲", done: true }] };
 
@@ -77,7 +81,6 @@ export async function sceneWriterNode(state: DreamWriterState, _config: Runnable
 
   const sceneDrafts: string[] = [];
   const turnMemo: string[] = [];
-  const allRag: string[] = [];
   const meta = storyMeta(outline);
   const researchBlock = state.researchContext ? `## 原著资料参考（联网检索）\n${state.researchContext}` : "";
 
@@ -100,9 +103,9 @@ export async function sceneWriterNode(state: DreamWriterState, _config: Runnable
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
     logger.info("dreamwriter.scene.start", { node: "scene_writer", scene: i + 1, total: scenes.length });
+    emit?.({ kind: "scene", current: i + 1, total: scenes.length });
 
     const ragChunks = ragByScene[i];
-    ragChunks.forEach((c) => allRag.push(c.content));
 
     // Rolling continuity: a memo of prior turns + the tail of the previous scene.
     const prevTail = sceneDrafts.length ? sceneDrafts[sceneDrafts.length - 1].slice(-700) : "";
@@ -168,8 +171,6 @@ export async function sceneWriterNode(state: DreamWriterState, _config: Runnable
     stage: "writing",
     storyDraft,
     sceneDrafts,
-    runningContext: turnMemo.map((t, k) => `${k + 1}. ${t}`).join("\n"),
-    ragContext: allRag,
     logs: [{ message: `故事初稿完成（${sceneDrafts.length} 幕），正在进行质量检查...`, done: true }],
   };
 }

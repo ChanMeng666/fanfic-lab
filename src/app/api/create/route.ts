@@ -98,10 +98,27 @@ export async function POST(req: NextRequest) {
           const seedText = prompt?.trim() || (inputIntent ? `${inputIntent.cp?.join(" × ")} ${inputIntent.tone ?? ""}`.trim() : "");
           const updates = await graph.stream(
             { messages: [new HumanMessage(seedText)], inputIntent, requestedLength: length },
-            { configurable: { thread_id: threadId }, streamMode: "updates" },
+            // Two modes: "updates" for node-level state, "custom" for the per-scene
+            // progress the scene_writer emits during the long write. With multiple
+            // modes each chunk is a [mode, data] tuple.
+            { configurable: { thread_id: threadId }, streamMode: ["updates", "custom"] },
           );
-          for await (const chunk of updates) {
-            const event = parseNodeUpdate(chunk as Record<string, unknown>);
+          for await (const item of updates) {
+            const [mode, data] = item as [string, unknown];
+            // Per-scene progress: surface "第 N/总 幕" so the user isn't staring at
+            // a single "writing" stage for 30-60s.
+            if (mode === "custom") {
+              const c = data as { kind?: string; current?: number; total?: number };
+              if (c?.kind === "scene" && c.current && c.total) {
+                const sceneEvent: CreationProgressEvent = {
+                  stage: "writing",
+                  message: `正在执笔：第 ${c.current}/${c.total} 幕…`,
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(sceneEvent)}\n\n`));
+              }
+              continue;
+            }
+            const event = parseNodeUpdate(data as Record<string, unknown>);
             if (!event) continue;
             // When the agent delivers the finished story, persist it server-side as
             // the AUTHORITATIVE record. The client receives only the generationId and

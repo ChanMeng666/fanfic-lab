@@ -192,9 +192,12 @@ export default async function StoryPage({ params }: StoryPageProps) {
         remixedFrom={remixedFrom}
         reactions={reactions}
         resumeChapter={resumeChapter}
+        coCreation={
+          showCoCreation ? { branchCount: branches.length, pollCount: polls.length } : null
+        }
       />
       {showCoCreation && (
-        <div className="max-w-3xl mx-auto px-3 sm:px-4 pb-10 space-y-6">
+        <div id="co-creation" className="max-w-3xl mx-auto px-3 sm:px-4 pb-10 space-y-6 scroll-mt-20">
           <BranchPolls
             storyId={id}
             chapters={story.chapters}
