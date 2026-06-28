@@ -80,17 +80,27 @@ export async function sceneWriterNode(state: DreamWriterState, _config: Runnable
   const meta = storyMeta(outline);
   const researchBlock = state.researchContext ? `## 原著资料参考（联网检索）\n${state.researchContext}` : "";
 
+  // Per-scene RAG queries are known up-front from the outline and are independent
+  // of one another, so fetch them ALL in parallel before the (necessarily
+  // sequential, continuity-dependent) write loop — turns N embedding+search round
+  // trips into one. The prose itself can't be parallelized: each scene is written
+  // against the previous scene's tail + a running turn memo.
+  const ragByScene = await Promise.all(
+    scenes.map((scene, i) =>
+      retrieveRelevantChunks(`${outline.cp.join(" ")} ${scene.summary} ${scene.characters.join(" ")}`, "hsr", 2).catch(
+        (e) => {
+          logger.warn("dreamwriter.rag.failed", { node: "scene_writer", scene: i + 1, ...errorFields(e) });
+          return [] as { content: string }[];
+        },
+      ),
+    ),
+  );
+
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
     logger.info("dreamwriter.scene.start", { node: "scene_writer", scene: i + 1, total: scenes.length });
 
-    // Per-scene RAG: ground each scene in the passages most relevant to IT.
-    let ragChunks: { content: string }[] = [];
-    try {
-      ragChunks = await retrieveRelevantChunks(`${outline.cp.join(" ")} ${scene.summary} ${scene.characters.join(" ")}`, "hsr", 2);
-    } catch (e) {
-      logger.warn("dreamwriter.rag.failed", { node: "scene_writer", scene: i + 1, ...errorFields(e) });
-    }
+    const ragChunks = ragByScene[i];
     ragChunks.forEach((c) => allRag.push(c.content));
 
     // Rolling continuity: a memo of prior turns + the tail of the previous scene.

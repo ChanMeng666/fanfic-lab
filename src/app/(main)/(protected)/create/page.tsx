@@ -6,6 +6,7 @@ import { Copy, X } from "lucide-react";
 import { useStoryCreation } from "@/lib/hooks/useStoryCreation";
 import { DreamInput, type CreateSubmit } from "@/components/create/DreamInput";
 import { CreationProgress } from "@/components/create/CreationProgress";
+import { Button } from "@/components/ui/button";
 import { StoryResult } from "@/components/create/StoryResult";
 import { OutOfCreditsDialog } from "@/components/billing/OutOfCreditsDialog";
 import { checkCanGenerate } from "@/lib/actions/credits";
@@ -102,6 +103,15 @@ function CreatePageContent() {
         <div className="text-center space-y-8 animate-fade-slide-in">
           <h2 className="font-display text-2xl text-foreground">正在为你创作...</h2>
           <CreationProgress stage={stage} message={message} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={reset}
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5" />
+            取消生成
+          </Button>
         </div>
       )}
 

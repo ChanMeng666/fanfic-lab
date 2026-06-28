@@ -146,6 +146,9 @@ export function ProposeBranchDialog({
           <p className="text-xs text-muted-foreground">
             提示：写明你想看到的关键情节、情绪与角色，越具体越好。
           </p>
+          <p className="text-xs text-muted-foreground">
+            计费：触发生成者付费，按成品字数约 1 积分 / 千字（一般 2~4 积分），从你的积分余额扣除。
+          </p>
 
           {working && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground border border-accent/30 bg-accent/5 rounded-md px-3 py-2">

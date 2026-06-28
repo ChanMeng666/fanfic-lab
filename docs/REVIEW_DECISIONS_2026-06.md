@@ -53,9 +53,24 @@ pipelines (continuation = continuity-first write → light critic/polish → tra
 transactional + idempotent community writes; app-level LLM timeout/retry; Zod route validation;
 a minimal Vitest suite (billing, validation, graph fallbacks, poll-settle idempotency).
 
-**Phase 2 — UX, extensibility, performance:** richer/cancelable generation progress + pre-charge
-cost disclosure; raise the co-creation affordance + regenerate; a `FandomConfig`/`ModelProvider`
-config boundary; parallel scene writes + batched embeddings + missing DB indexes.
+**Phase 2 — UX, extensibility, performance (partial — DONE):** a **cancel** button on the create
+page (wired to the existing AbortController); **pre-charge cost disclosure** in the continue + branch
+dialogs; **batched per-scene RAG embeddings** (fetched in parallel before the sequential write loop).
+
+**Phase 2 — deliberately deferred (justified):**
+- **Scene-prose parallelization: NOT done — it would be wrong.** Scenes are written with rolling
+  continuity (each against the previous scene's tail + a running turn memo), so prose generation is
+  inherently sequential. Only the independent RAG embeddings were parallelized.
+- **DB composite indexes: deferred to a coordinated migration.** Per the db-push gotcha
+  (`project_payment_system` memory), a naive `prisma migrate` would drop the pgvector / pg_trgm /
+  LangGraph-checkpoint objects Prisma can't model. Indexes should ship as a surgical idempotent SQL
+  migration applied with `prisma db execute` + `migrate resolve`, coordinated with prod — not a
+  drive-by schema edit.
+- **Full `FandomConfig` / `ModelProvider` abstraction: deferred.** There is exactly one fandom (HSR)
+  and one provider (OpenAI) today; building the abstraction now is premature per the project's
+  ROI-justified-decisions stance. The seam (centralize the fandom label + RAG namespace) is the first
+  step when a second fandom actually arrives.
+- **Regenerate-with-same-prompt + series-wide reading progress: deferred** as lower-priority UX polish.
 
 ## Guardrails (unchanged)
 
