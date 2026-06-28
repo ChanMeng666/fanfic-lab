@@ -53,24 +53,30 @@ pipelines (continuation = continuity-first write → light critic/polish → tra
 transactional + idempotent community writes; app-level LLM timeout/retry; Zod route validation;
 a minimal Vitest suite (billing, validation, graph fallbacks, poll-settle idempotency).
 
-**Phase 2 — UX, extensibility, performance (partial — DONE):** a **cancel** button on the create
-page (wired to the existing AbortController); **pre-charge cost disclosure** in the continue + branch
-dialogs; **batched per-scene RAG embeddings** (fetched in parallel before the sequential write loop).
+**Phase 2 — UX, extensibility, performance (DONE):**
+- **Generation UX:** a **cancel** button (wired to the existing AbortController); **pre-charge cost
+  disclosure** in the continue + branch dialogs; **per-scene progress streaming** (scene_writer emits
+  `config.writer` custom events, `/api/create` streams `["updates","custom"]` → `第 N/总 幕`) so the
+  user isn't watching one blind "writing" stage; **honest low/degraded quality** surfacing in
+  StoryResult (≤6 score styled + a 换一版 hint).
+- **Reader/co-creation:** **regenerate-with-same-prompt** (换一版); **series-wide resume** (继续阅读第 N
+  章) on the multi-chapter TOC using the already-series-level ReadingProgress; an **above-the-fold
+  共创 entry** anchoring to the (previously buried) branch/poll section.
+- **Performance:** **batched per-scene RAG embeddings** (parallel before the sequential write loop);
+  trimmed write-only `runningContext`/`ragContext` from agent state; **composite DB indexes**
+  (`Generation[userId,type,createdAt]`, `StoryBranch[parentChapterId,status]`) shipped as a surgical
+  idempotent SQL migration (`20260628000000_add_perf_indexes`) — apply with `prisma db execute` +
+  `migrate resolve` per the db-push gotcha, NOT a drive-by `migrate dev`.
+- **Extensibility:** a light **fandom config seam** (`src/lib/fandom.ts`) centralizing the HSR label +
+  RAG namespace.
 
-**Phase 2 — deliberately deferred (justified):**
-- **Scene-prose parallelization: NOT done — it would be wrong.** Scenes are written with rolling
-  continuity (each against the previous scene's tail + a running turn memo), so prose generation is
-  inherently sequential. Only the independent RAG embeddings were parallelized.
-- **DB composite indexes: deferred to a coordinated migration.** Per the db-push gotcha
-  (`project_payment_system` memory), a naive `prisma migrate` would drop the pgvector / pg_trgm /
-  LangGraph-checkpoint objects Prisma can't model. Indexes should ship as a surgical idempotent SQL
-  migration applied with `prisma db execute` + `migrate resolve`, coordinated with prod — not a
-  drive-by schema edit.
-- **Full `FandomConfig` / `ModelProvider` abstraction: deferred.** There is exactly one fandom (HSR)
-  and one provider (OpenAI) today; building the abstraction now is premature per the project's
-  ROI-justified-decisions stance. The seam (centralize the fandom label + RAG namespace) is the first
-  step when a second fandom actually arrives.
-- **Regenerate-with-same-prompt + series-wide reading progress: deferred** as lower-priority UX polish.
+**Phase 2 — deliberately NOT done (justified):**
+- **Scene-prose parallelization — wrong here.** Scenes are written with rolling continuity (each
+  against the previous scene's tail + a running turn memo), so prose is inherently sequential. Only the
+  independent RAG embeddings were parallelized.
+- **Full `FandomConfig` / `ModelProvider` abstraction — premature.** One fandom (HSR), one provider
+  (OpenAI) today; the config seam above is the first step when a second actually arrives. Building the
+  abstraction now would violate the project's ROI-justified-decisions stance.
 
 ## Guardrails (unchanged)
 
