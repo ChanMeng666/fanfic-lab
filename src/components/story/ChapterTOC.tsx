@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight, PlayCircle } from "lucide-react";
+import { BookOpen, ChevronRight, PlayCircle, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCount } from "./reader-shared";
 
@@ -13,16 +13,21 @@ export interface ChapterTOCItem {
 interface ChapterTOCProps {
   storyId: string;
   chapters: ChapterTOCItem[];
+  /** The reader's last-read chapter number for this story (series-wide resume). */
+  resumeChapter?: number | null;
 }
 
 /**
  * Table of contents for a multi-chapter (连载) story. Each row links to the
- * focused per-chapter reader at /story/[id]/chapter/[n].
+ * focused per-chapter reader at /story/[id]/chapter/[n]. When the reader has a
+ * saved position past chapter 1, a "继续阅读" entry jumps them back to it.
  */
-export function ChapterTOC({ storyId, chapters }: ChapterTOCProps) {
+export function ChapterTOC({ storyId, chapters, resumeChapter }: ChapterTOCProps) {
+  const canResume =
+    resumeChapter != null && resumeChapter > 1 && resumeChapter <= chapters.length;
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-xl font-semibold text-foreground flex items-center gap-2">
           <BookOpen className="size-5 text-primary" />
           目录
@@ -31,12 +36,22 @@ export function ChapterTOC({ storyId, chapters }: ChapterTOCProps) {
           </span>
         </h2>
         {chapters.length > 0 && (
-          <Button asChild size="sm" className="gap-1.5">
-            <Link href={`/story/${storyId}/chapter/${chapters[0].chapterNumber}`}>
-              <PlayCircle className="size-4" />
-              开始阅读
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {canResume && (
+              <Button asChild size="sm" className="gap-1.5">
+                <Link href={`/story/${storyId}/chapter/${resumeChapter}`}>
+                  <History className="size-4" />
+                  继续阅读第 {resumeChapter} 章
+                </Link>
+              </Button>
+            )}
+            <Button asChild size="sm" variant={canResume ? "outline" : "default"} className="gap-1.5">
+              <Link href={`/story/${storyId}/chapter/${chapters[0].chapterNumber}`}>
+                <PlayCircle className="size-4" />
+                {canResume ? "从头开始" : "开始阅读"}
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 

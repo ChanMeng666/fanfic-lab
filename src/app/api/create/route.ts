@@ -5,6 +5,12 @@ import { getGraph } from "@/agent/dreamwriter/graph";
 import type { CreationProgressEvent, DreamWriterStage, InputIntent } from "@/lib/types/dreamwriter";
 import { checkCanGenerate } from "@/lib/actions/credits";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
+import { prisma } from "@/lib/db";
+import { stackServerApp } from "@/lib/stack";
+import { logger, errorFields } from "@/lib/logger";
+import { isAppError } from "@/lib/errors";
+import { parseBody, createBodySchema } from "@/lib/validation/api";
+import { z } from "zod";
 
 // Build the structured InputIntent from the request body, or null for the pure
 // free-text flow. Only treated as structured when at least one CP slot is set.
@@ -34,20 +40,19 @@ export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { prompt } = body as { prompt: string; language?: "zh" | "en"; showOutline?: boolean };
-    const length: StoryLength =
-      typeof body?.length === "string" && body.length in CREDIT_COSTS
-        ? (body.length as StoryLength)
-        : "short";
-    const inputIntent = buildInputIntent(body as Record<string, unknown>);
-    // Accept either free-text prompt OR structured input (a chosen CP is enough).
-    if (!prompt?.trim() && !inputIntent) {
-      return new Response(JSON.stringify({ error: "请描述你想看的故事，或选择角色与基调" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    let body: z.infer<typeof createBodySchema>;
+    try {
+      body = parseBody(createBodySchema, await req.json());
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ error: isAppError(e) ? e.message : "请求格式错误" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
+    const prompt = body.prompt;
+    const length: StoryLength =
+      body.length && body.length in CREDIT_COSTS ? (body.length as StoryLength) : "short";
+    const inputIntent = buildInputIntent(body as Record<string, unknown>);
 
     // Credit gate (server-side, defense-in-depth — the UI also pre-checks). The
     // gate resolves the session user; treat a missing user as unauthenticated.
@@ -67,6 +72,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Resolve the DB user so we can persist the authoritative Generation server-side
+    // (the gate already proved the session is valid).
+    const stackUser = await stackServerApp.getUser();
+    const dbUser = stackUser
+      ? await prisma.user.findUnique({ where: { stackAuthId: stackUser.id }, select: { id: true } })
+      : null;
+    if (!dbUser) {
+      return new Response(JSON.stringify({ error: "请先登录后再创作" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const userId = dbUser.id;
+
     const threadId = randomUUID();
     const encoder = new TextEncoder();
 
@@ -79,13 +98,58 @@ export async function POST(req: NextRequest) {
           const seedText = prompt?.trim() || (inputIntent ? `${inputIntent.cp?.join(" × ")} ${inputIntent.tone ?? ""}`.trim() : "");
           const updates = await graph.stream(
             { messages: [new HumanMessage(seedText)], inputIntent, requestedLength: length },
-            { configurable: { thread_id: threadId }, streamMode: "updates" },
+            // Two modes: "updates" for node-level state, "custom" for the per-scene
+            // progress the scene_writer emits during the long write. With multiple
+            // modes each chunk is a [mode, data] tuple.
+            { configurable: { thread_id: threadId }, streamMode: ["updates", "custom"] },
           );
-          for await (const chunk of updates) {
-            const event = parseNodeUpdate(chunk as Record<string, unknown>);
-            if (event) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          for await (const item of updates) {
+            const [mode, data] = item as [string, unknown];
+            // Per-scene progress: surface "第 N/总 幕" so the user isn't staring at
+            // a single "writing" stage for 30-60s.
+            if (mode === "custom") {
+              const c = data as { kind?: string; current?: number; total?: number };
+              if (c?.kind === "scene" && c.current && c.total) {
+                const sceneEvent: CreationProgressEvent = {
+                  stage: "writing",
+                  message: `正在执笔：第 ${c.current}/${c.total} 幕…`,
+                };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(sceneEvent)}\n\n`));
+              }
+              continue;
             }
+            const event = parseNodeUpdate(data as Record<string, unknown>);
+            if (!event) continue;
+            // When the agent delivers the finished story, persist it server-side as
+            // the AUTHORITATIVE record. The client receives only the generationId and
+            // hands THAT back to /api/stories — it can no longer forge the content,
+            // word count, or paid length that billing is computed from.
+            if (event.result) {
+              try {
+                const generation = await prisma.generation.create({
+                  data: {
+                    userId,
+                    type: "STORY",
+                    status: "COMPLETE",
+                    request: { prompt: seedText, language: event.result.language, length } as object,
+                    deliverable: event.result as object,
+                    wordCount: event.result.wordCount,
+                    completedAt: new Date(),
+                  },
+                  select: { id: true },
+                });
+                event.generationId = generation.id;
+              } catch (e) {
+                logger.error("create.generation.persist_failed", { userId, ...errorFields(e) });
+                // Surface as an error event rather than letting the client try to
+                // save unbacked content (which the save route would now reject).
+                const errorEvent: CreationProgressEvent = { stage: "error", error: "保存生成记录失败，请重试" };
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
+                controller.close();
+                return;
+              }
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
           }
           controller.close();
         } catch (err) {

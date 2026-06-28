@@ -64,20 +64,10 @@ export const DreamWriterStateAnnotation = Annotation.Root({
     reducer: (_, update) => update,
     default: () => [],
   }),
-  // Rolling memo of what has happened + current emotional state, fed into each
-  // subsequent scene so continuity holds without re-sending the whole draft.
-  runningContext: Annotation<string>({
-    reducer: (_, update) => update,
-    default: () => "",
-  }),
   // Final text after the polish / de-AI pass; falls back to storyDraft if skipped.
   polishedBody: Annotation<string>({
     reducer: (_, update) => update,
     default: () => "",
-  }),
-  ragContext: Annotation<string[]>({
-    reducer: (_, update) => update,
-    default: () => [],
   }),
   // Live fandom research brief (Tavily) for the requested CP; "" when unavailable.
   researchContext: Annotation<string>({

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck, Copy, FolderPlus } from "lucide-react";
+import { Heart, BookOpen, Calendar, User, Tag, MessageSquare, Pencil, Sparkles, Eye, Bookmark, BookmarkCheck, Copy, FolderPlus, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -75,6 +75,11 @@ interface StoryReaderProps {
   // Set when this story is itself a remix of another work (attribution).
   remixedFrom?: { id: string; title: string; authorUsername: string } | null;
   reactions?: ReactionSummary;
+  // The reader's last-read chapter number for this story (series-wide resume).
+  resumeChapter?: number | null;
+  // Co-creation (分支续写 / 接龙投票) counts; when set, an above-the-fold entry
+  // links down to the co-creation section instead of burying it below comments.
+  coCreation?: { branchCount: number; pollCount: number } | null;
 }
 
 export function StoryReader({
@@ -89,6 +94,8 @@ export function StoryReader({
   isOwner = false,
   remixedFrom = null,
   reactions,
+  resumeChapter = null,
+  coCreation = null,
 }: StoryReaderProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -273,7 +280,9 @@ export function StoryReader({
         />
       )}
 
-      {chapterCount > 1 && <ChapterTOC storyId={story.id} chapters={chapters} />}
+      {chapterCount > 1 && (
+        <ChapterTOC storyId={story.id} chapters={chapters} resumeChapter={resumeChapter} />
+      )}
 
       <Separator className="my-10" />
 
@@ -311,6 +320,18 @@ export function StoryReader({
             <MessageSquare className="size-3.5" />
             {commentCount}
           </a>
+          {coCreation && (
+            <a
+              href="#co-creation"
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-sm border border-accent/40 bg-ai-surface rounded-md text-accent hover:bg-accent/10 transition-colors"
+            >
+              <GitBranch className="size-3.5" />
+              共创
+              {coCreation.branchCount + coCreation.pollCount > 0
+                ? ` ${coCreation.branchCount + coCreation.pollCount}`
+                : ""}
+            </a>
+          )}
           <ShareButton title={story.title} />
           {currentUserId && (
             <Button

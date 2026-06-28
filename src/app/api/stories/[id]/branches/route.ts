@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
 import { stackServerApp } from "@/lib/stack";
 import { prisma } from "@/lib/db";
-import { chargeContinuation } from "@/lib/actions/credits";
+import { applyContinuationCharge } from "@/lib/actions/credits";
 import { generateContinuation } from "@/lib/actions/continuation-core";
 import { createNotification } from "@/lib/actions/notification";
+import { logger, errorFields } from "@/lib/logger";
+import { ErrorCode, isAppError } from "@/lib/errors";
+import { parseBody, branchBodySchema } from "@/lib/validation/api";
 
 // Community AI 续写 (分支续写): any logged-in reader proposes a "what happens
 // next" direction off a published story's chapter; the AI writes a candidate
@@ -19,11 +22,6 @@ import { createNotification } from "@/lib/actions/notification";
 const MAX_BRANCHES_PER_USER_PER_HOUR = 10; // across all stories
 const MAX_BRANCHES_PER_FORK = 20; // total active branches off one chapter
 const MAX_BRANCHES_PER_USER_PER_FORK = 2; // one user can't dominate a fork point
-
-interface BranchBody {
-  parentChapterId: string;
-  direction: string;
-}
 
 function jsonError(error: string, status: number, code?: string) {
   return new Response(JSON.stringify(code ? { error, code } : { error }), {
@@ -57,9 +55,8 @@ export async function POST(
   if (story.status !== "PUBLISHED") return jsonError("该作品尚未发布，暂不可续写", 403);
   if (!story.allowBranching) return jsonError("作者已关闭本作品的读者续写", 403);
 
-  // Credit gate: branches are paid (word-based). Even though live deduction is
-  // currently off, we enforce the future contract so flipping it needs no UI
-  // change. The proposer (whoever triggers generation) pays.
+  // Credit gate: branches are paid (word-based; live deduction is ON). The
+  // proposer (whoever triggers generation) pays. Charged transactionally on save.
   const credits = await prisma.userCredits.findUnique({
     where: { userId: dbUser.id },
     select: { balance: true },
@@ -68,18 +65,14 @@ export async function POST(
     return jsonError("额度不足，请充值后再续写", 402, "INSUFFICIENT_CREDITS");
   }
 
-  let body: BranchBody;
+  let parentChapterId: string;
+  let direction: string;
   try {
-    body = await request.json();
-  } catch {
-    return jsonError("请求格式错误", 400);
+    const raw = await request.json();
+    ({ parentChapterId, direction } = parseBody(branchBodySchema, raw));
+  } catch (e) {
+    return jsonError(isAppError(e) ? e.message : "请求格式错误", 400);
   }
-
-  const parentChapterId = (body.parentChapterId ?? "").trim();
-  const direction = (body.direction ?? "").trim();
-  if (!parentChapterId) return jsonError("缺少分叉点章节", 400);
-  if (direction.length < 5) return jsonError("请描述续写的方向（至少 5 字）", 400);
-  if (direction.length > 1000) return jsonError("方向描述过长（≤ 1000 字）", 400);
 
   // The fork point must be a chapter of this story.
   const parentChapter = story.chapters.find((c) => c.id === parentChapterId);
@@ -130,40 +123,37 @@ export async function POST(
 
         send({ stage: "saving", message: "正在保存续写分支…" });
 
-        const branch = await prisma.storyBranch.create({
-          data: {
-            storyId,
-            parentChapterId,
-            proposerId: dbUser.id,
-            direction,
-            title,
-            content,
-            wordCount,
-            status: "ACTIVE",
-          },
-        });
-
-        // Ledger + charge (proposer pays). Charge failures must not lose the
-        // saved branch.
+        // Branch + ledger + charge, all atomically. A charge that can't be covered
+        // rolls the branch back rather than creating an unpaid branch / going
+        // negative.
+        let branchId: string;
         let creditsCharged = 0;
         let newBalance: number | undefined;
         try {
-          const generation = await prisma.generation.create({
-            data: {
-              userId: dbUser.id,
-              type: "CONTINUATION",
-              status: "COMPLETE",
-              request: { direction, storyId, parentChapterId, kind: "branch" } as object,
-              wordCount,
-              storyId,
-              branchId: branch.id,
-            },
+          const saved = await prisma.$transaction(async (tx) => {
+            const branch = await tx.storyBranch.create({
+              data: { storyId, parentChapterId, proposerId: dbUser.id, direction, title, content, wordCount, status: "ACTIVE" },
+              select: { id: true },
+            });
+            const generation = await tx.generation.create({
+              data: { userId: dbUser.id, type: "CONTINUATION", status: "COMPLETE", request: { direction, storyId, parentChapterId, kind: "branch" } as object, wordCount, storyId, branchId: branch.id },
+              select: { id: true },
+            });
+            const charge = await applyContinuationCharge(tx, generation.id, dbUser.id, wordCount);
+            return { branchId: branch.id, charge };
           });
-          const charge = await chargeContinuation(generation.id, dbUser.id, wordCount);
-          creditsCharged = charge.creditsCharged;
-          newBalance = charge.newBalance;
+          branchId = saved.branchId;
+          creditsCharged = saved.charge.creditsCharged;
+          newBalance = saved.charge.newBalance;
         } catch (e) {
-          console.warn("[stories/branches] charge failed:", e);
+          logger.error("stories.branches.persist_failed", { storyId, userId: dbUser.id, ...errorFields(e) });
+          send({
+            stage: "error",
+            error: isAppError(e) && e.code === ErrorCode.INSUFFICIENT_CREDITS
+              ? "额度不足，请充值后再续写"
+              : "保存续写分支失败，请重试",
+          });
+          return;
         }
 
         // Notify the story author that a reader proposed a continuation.
@@ -182,7 +172,7 @@ export async function POST(
             actorAvatarUrl: proposer?.avatarUrl,
             storyId,
             storyTitle: story.title,
-            branchId: branch.id,
+            branchId,
             branchSnippet: snippet,
           },
         });
@@ -192,14 +182,14 @@ export async function POST(
           message: title
             ? `续写分支「${title}」已生成（${wordCount.toLocaleString()} 字）`
             : `续写分支已生成（${wordCount.toLocaleString()} 字）`,
-          branchId: branch.id,
+          branchId,
           title,
           wordCount,
           creditsCharged,
           newBalance,
         });
       } catch (err) {
-        console.error("[stories/branches] failed:", err);
+        logger.error("stories.branches.failed", { storyId, ...errorFields(err) });
         send({
           stage: "error",
           error: err instanceof Error ? err.message : "续写失败",

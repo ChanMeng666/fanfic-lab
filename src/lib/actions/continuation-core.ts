@@ -8,9 +8,10 @@
 // NOTE: plain module, NOT "use server" — it's imported by route handlers, not
 // invoked as a server action.
 
-import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { countWords } from "@/lib/wordcount";
+import { writerModel, polishModel, utilityModel } from "@/agent/dreamwriter/models";
+import { logger, errorFields } from "@/lib/logger";
 
 const CONTINUE_PROMPT = `你是一位顶尖的同人文作者，正在为一篇连载中的同人文写新的一章。读者已经读完前面所有章节，你需要根据指示，自然衔接地写出下一章。
 
@@ -33,6 +34,15 @@ const CHAPTER_TITLE_PROMPT = `请为以下同人文章节拟一个简洁的中�
 5. 直接输出标题，不要任何前缀或额外文字
 
 只输出标题本身。`;
+
+// Light language-only polish for a freshly written continuation chapter. Mirrors
+// the graph's polish node but as a single pass — de-AI-flavor + voice consistency,
+// no plot/setting changes. Continuation is no longer a single raw call.
+const CONTINUATION_POLISH_PROMPT = `你是一位资深文学编辑，正在为一篇连载同人文的新章节做最后润色。只做语言层面的优化，不改情节、不改设定、不增删人物或对白内容：
+1. 去除 AI 腔：套路化比喻、空泛抒情、"仿佛/一丝/不禁/微微"等高频虚词堆砌
+2. 统一叙事人称与语气，保持与连载前文一致的文笔与节奏
+3. 让对白更贴合角色、画面更具体可感
+直接输出润色后的完整正文，不要加任何说明、标题或元信息。`;
 
 export interface ContinuationStory {
   title: string;
@@ -74,11 +84,7 @@ export type SendFn = (event: object) => void;
  */
 export async function generateChapterTitle(content: string): Promise<string | null> {
   try {
-    const model = new ChatOpenAI({
-      temperature: 0.6,
-      model: "gpt-4o-mini",
-      maxTokens: 30,
-    });
+    const model = utilityModel({ temperature: 0.6, maxTokens: 30 });
     const res = await model.invoke([
       new SystemMessage(CHAPTER_TITLE_PROMPT),
       new HumanMessage(content.slice(0, 3000)),
@@ -91,7 +97,7 @@ export async function generateChapterTitle(content: string): Promise<string | nu
     if (cleaned.length < 2 || cleaned.length > 20) return null;
     return cleaned;
   } catch (e) {
-    console.warn("[continuation] chapter title generation failed:", e);
+    logger.warn("continuation.title.failed", errorFields(e));
     return null;
   }
 }
@@ -142,11 +148,10 @@ ${direction}
 
   send({ stage: "writing", message: `正在续写第 ${nextChapterNumber} 章…` });
 
-  const model = new ChatOpenAI({
-    temperature: 0.9,
-    model: "gpt-4o",
-  });
-  const response = await model.invoke([
+  // Continuity-first write on the same writer tier as initial creation (gpt-5.4
+  // via the factory, with the repo's timeout/retry policy) — no longer a legacy
+  // gpt-4o one-off.
+  const response = await writerModel().invoke([
     new SystemMessage(CONTINUE_PROMPT),
     new HumanMessage(userMsg),
   ]);
@@ -160,8 +165,24 @@ ${direction}
     throw new Error("生成的章节过短，请重试或调整描述");
   }
 
-  send({ stage: "titling", message: "正在为本章拟标题…" });
-  const title = await generateChapterTitle(content);
+  // Light language-only polish pass (mode-specific continuation pipeline). Falls
+  // back to the raw draft on failure or if the pass over-trims (< 60% length),
+  // so polish can never lose or truncate the chapter.
+  send({ stage: "polishing", message: "正在润色本章…" });
+  let polished = content;
+  try {
+    const presp = await polishModel().invoke([
+      new SystemMessage(CONTINUATION_POLISH_PROMPT),
+      new HumanMessage(content),
+    ]);
+    const out = (typeof presp.content === "string" ? presp.content : "").trim();
+    if (out.length >= content.length * 0.6) polished = out;
+  } catch (e) {
+    logger.warn("continuation.polish.failed", errorFields(e));
+  }
 
-  return { content, title, wordCount: countWords(content) };
+  send({ stage: "titling", message: "正在为本章拟标题…" });
+  const title = await generateChapterTitle(polished);
+
+  return { content: polished, title, wordCount: countWords(polished) };
 }

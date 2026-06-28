@@ -470,6 +470,8 @@ model StoryBranch {
   @@index([parentChapterId])
   @@index([proposerId])
   @@index([storyId, status])
+  // Hot path: fork-point ACTIVE-branch counts (settle / branch routes, getBranchTree).
+  @@index([parentChapterId, status])
 }
 
 enum BranchStatus {
@@ -659,6 +661,9 @@ model Generation {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  // Hot path: the per-user/per-type/today windows in credits.freeShortsUsedToday
+  // and the branch-route hourly rate-limit count.
+  @@index([userId, type, createdAt])
 }
 
 model UserCredits {

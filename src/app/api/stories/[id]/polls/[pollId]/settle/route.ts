@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { stackServerApp } from "@/lib/stack";
 import { prisma } from "@/lib/db";
-import { chargeContinuation } from "@/lib/actions/credits";
+import { applyContinuationCharge } from "@/lib/actions/credits";
 import { generateContinuation } from "@/lib/actions/continuation-core";
 import { createNotification } from "@/lib/actions/notification";
+import { logger, errorFields } from "@/lib/logger";
 
 // Settle a 接龙投票: AUTHOR-ONLY. Picks the winning option and feeds its
 // direction into the SAME branch generation engine (continuation-core) to
@@ -51,7 +52,7 @@ export async function POST(
   if (poll.status === "GENERATED") return jsonError("该投票已结算", 409, "VALIDATION");
   if (poll.options.length === 0) return jsonError("投票没有选项", 400);
 
-  // Credit gate (author pays; live deduction stays off but the hook is wired).
+  // Credit gate (author pays; live deduction is ON, charged transactionally).
   const credits = await prisma.userCredits.findUnique({
     where: { userId: dbUser.id },
     select: { balance: true },
@@ -75,6 +76,17 @@ export async function POST(
   );
   const nextChapterNumber = parentChapter.chapterNumber + 1;
 
+  // Atomically CLAIM the poll before spending an LLM call. A concurrent second
+  // settle will match zero rows here and bail — this is what prevents two
+  // branches (and two charges) from one poll. We revert the claim if generation
+  // or persistence fails so the author can retry.
+  const priorStatus = poll.status;
+  const claim = await prisma.branchPoll.updateMany({
+    where: { id: poll.id, status: { not: "GENERATED" } },
+    data: { status: "GENERATED" },
+  });
+  if (claim.count === 0) return jsonError("该投票已结算", 409, "VALIDATION");
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -82,6 +94,7 @@ export async function POST(
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       }
 
+      let branchId: string | null = null;
       try {
         const { content, title, wordCount } = await generateContinuation(
           { story, priorChapters, direction: winner.label, nextChapterNumber },
@@ -90,30 +103,29 @@ export async function POST(
 
         send({ stage: "saving", message: "正在保存胜出的续写分支…" });
 
-        const branch = await prisma.storyBranch.create({
-          data: {
-            storyId,
-            parentChapterId: parentChapter.id,
-            // Attribute the branch to whoever proposed the winning direction.
-            proposerId: winner.proposerId ?? poll.creatorId,
-            direction: winner.label,
-            title,
-            content,
-            wordCount,
-            status: "ACTIVE",
-          },
-        });
-
-        await prisma.branchPoll.update({
-          where: { id: poll.id },
-          data: { status: "GENERATED", resultBranchId: branch.id },
-        });
-
-        // Ledger + charge (author pays).
-        let creditsCharged = 0;
-        let newBalance: number | undefined;
-        try {
-          const generation = await prisma.generation.create({
+        // Branch + poll result link + ledger + charge, all atomically. The poll is
+        // already claimed (status=GENERATED); here we attach resultBranchId. A
+        // rollback leaves the poll claimed-but-unlinked, which the catch reverts.
+        const saved = await prisma.$transaction(async (tx) => {
+          const branch = await tx.storyBranch.create({
+            data: {
+              storyId,
+              parentChapterId: parentChapter.id,
+              // Attribute the branch to whoever proposed the winning direction.
+              proposerId: winner.proposerId ?? poll.creatorId,
+              direction: winner.label,
+              title,
+              content,
+              wordCount,
+              status: "ACTIVE",
+            },
+            select: { id: true },
+          });
+          await tx.branchPoll.update({
+            where: { id: poll.id },
+            data: { resultBranchId: branch.id },
+          });
+          const generation = await tx.generation.create({
             data: {
               userId: dbUser.id,
               type: "CONTINUATION",
@@ -123,13 +135,13 @@ export async function POST(
               storyId,
               branchId: branch.id,
             },
+            select: { id: true },
           });
-          const charge = await chargeContinuation(generation.id, dbUser.id, wordCount);
-          creditsCharged = charge.creditsCharged;
-          newBalance = charge.newBalance;
-        } catch (e) {
-          console.warn("[polls/settle] charge failed:", e);
-        }
+          const charge = await applyContinuationCharge(tx, generation.id, dbUser.id, wordCount);
+          return { branchId: branch.id, charge };
+        });
+        branchId = saved.branchId;
+        const { creditsCharged, newBalance } = saved.charge;
 
         // Notify the voters who backed the winning option.
         try {
@@ -153,14 +165,14 @@ export async function POST(
                 actorAvatarUrl: settler?.avatarUrl,
                 storyId,
                 storyTitle: story.title,
-                branchId: branch.id,
+                branchId,
                 pollId: poll.id,
                 optionLabel: winner.label.slice(0, 60),
               },
             });
           }
         } catch (e) {
-          console.warn("[polls/settle] voter notify failed:", e);
+          logger.warn("polls.settle.notify_failed", { pollId, ...errorFields(e) });
         }
 
         send({
@@ -168,14 +180,27 @@ export async function POST(
           message: title
             ? `胜出方向已生成分支「${title}」（${wordCount.toLocaleString()} 字）`
             : `胜出方向已生成分支（${wordCount.toLocaleString()} 字）`,
-          branchId: branch.id,
+          branchId,
           title,
           wordCount,
           creditsCharged,
           newBalance,
         });
       } catch (err) {
-        console.error("[polls/settle] failed:", err);
+        // Generation/persistence failed AFTER we claimed the poll — revert the
+        // claim so the author can retry (don't leave it stuck as 已结算 with no
+        // branch).
+        if (!branchId) {
+          try {
+            await prisma.branchPoll.update({
+              where: { id: poll.id },
+              data: { status: priorStatus, resultBranchId: null },
+            });
+          } catch (revertErr) {
+            logger.error("polls.settle.revert_failed", { pollId, ...errorFields(revertErr) });
+          }
+        }
+        logger.error("polls.settle.failed", { pollId, storyId, ...errorFields(err) });
         send({
           stage: "error",
           error: err instanceof Error ? err.message : "结算失败",

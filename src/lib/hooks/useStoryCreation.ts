@@ -31,6 +31,8 @@ interface UseStoryCreationReturn {
     remixedFromId?: string,
     structured?: StructuredCreateInput,
   ) => Promise<void>;
+  /** Re-run the last generation with the exact same inputs. No-op if none yet. */
+  regenerate: () => void;
   retrySave: () => void;
   reset: () => void;
 }
@@ -44,12 +46,19 @@ export function useStoryCreation(): UseStoryCreationReturn {
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
-  // The payload last handed to /api/stories, kept so retrySave() can re-POST
-  // the exact same story if the first attempt fails.
-  const savePayloadRef = useRef<{
-    result: StoryResult;
+  // The exact inputs of the last create() call, so regenerate() can re-run them.
+  const lastArgsRef = useRef<{
     prompt: string;
     length: StoryLength;
+    remixedFromId?: string;
+    structured?: StructuredCreateInput;
+  } | null>(null);
+  // The payload last handed to /api/stories, kept so retrySave() can re-POST
+  // the same save if the first attempt fails. Only the server-issued
+  // generationId is sent — the story content lives server-side and can't be
+  // forged by the client.
+  const savePayloadRef = useRef<{
+    generationId: string;
     remixedFromId?: string;
   } | null>(null);
 
@@ -59,9 +68,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
   // (story saved) further calls are no-ops so a retry can't create duplicates.
   const persistStory = useCallback(
     async (payload: {
-      result: StoryResult;
-      prompt: string;
-      length: StoryLength;
+      generationId: string;
       remixedFromId?: string;
     }) => {
       savePayloadRef.current = payload;
@@ -104,6 +111,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
   }, [storyId, saveStatus, persistStory]);
 
   const create = useCallback(async (prompt: string, length: StoryLength = "short", remixedFromId?: string, structured?: StructuredCreateInput) => {
+    lastArgsRef.current = { prompt, length, remixedFromId, structured };
     // Reset state
     setStage("parsing");
     setMessage("正在理解你的创作需求...");
@@ -158,11 +166,16 @@ export function useStoryCreation(): UseStoryCreationReturn {
             if (event.outline) setOutline(event.outline);
             if (event.result) {
               setResult(event.result);
-              // Auto-save story to database. The save endpoint also applies the
-              // credit charge for this generation. On failure we flip saveStatus
-              // to "failed" so the UI can offer a manual retry — the story is
-              // never silently dropped.
-              void persistStory({ result: event.result, prompt, length, remixedFromId });
+              // Auto-save the story. We send only the server-issued generationId;
+              // the save endpoint reads the authoritative content + length from
+              // that record and applies the credit charge. On failure we flip
+              // saveStatus to "failed" so the UI can offer a manual retry — the
+              // story is never silently dropped.
+              if (event.generationId) {
+                void persistStory({ generationId: event.generationId, remixedFromId });
+              } else {
+                setSaveStatus("failed");
+              }
             }
             if (event.error) setError(event.error);
           } catch {
@@ -176,6 +189,11 @@ export function useStoryCreation(): UseStoryCreationReturn {
       setError(err instanceof Error ? err.message : "创建失败");
     }
   }, [persistStory]);
+
+  const regenerate = useCallback(() => {
+    const a = lastArgsRef.current;
+    if (a) void create(a.prompt, a.length, a.remixedFromId, a.structured);
+  }, [create]);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -199,6 +217,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     isCreating,
     saveStatus,
     create,
+    regenerate,
     retrySave,
     reset,
   };

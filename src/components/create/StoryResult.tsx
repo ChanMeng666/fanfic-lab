@@ -18,6 +18,7 @@ interface StoryResultProps {
   saveStatus: SaveStatus;
   onRetrySave: () => void;
   onCreateAnother: () => void;
+  onRegenerate: () => void;
   onSuggestionClick: (suggestion: string) => void;
 }
 
@@ -27,6 +28,7 @@ export function StoryResult({
   saveStatus,
   onRetrySave,
   onCreateAnother,
+  onRegenerate,
   onSuggestionClick,
 }: StoryResultProps) {
   const [liked, setLiked] = useState(false);
@@ -73,7 +75,10 @@ export function StoryResult({
               </div>
               <span className="font-display text-xl">{result.title}</span>
             </span>
-            <Badge variant="secondary" className="text-xs gap-1">
+            <Badge
+              variant={result.qualityScore <= 6 ? "outline" : "secondary"}
+              className={`text-xs gap-1 ${result.qualityScore <= 6 ? "border-accent/50 text-accent" : ""}`}
+            >
               <Sparkles className="size-3" />
               {result.qualityScore}/10
             </Badge>
@@ -106,6 +111,12 @@ export function StoryResult({
           <div className="font-prose text-foreground leading-relaxed whitespace-pre-wrap">
             {result.body}
           </div>
+          {result.qualityScore <= 6 && (
+            <p className="mt-4 flex items-center gap-1.5 text-xs text-accent">
+              <Sparkles className="size-3.5 shrink-0" />
+              本篇质量评分偏低（或质检未完整跑完），可点「换一版（相同设定）」再试一次。
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -134,6 +145,10 @@ export function StoryResult({
         <Button variant="outline" className="gap-1.5" onClick={onCreateAnother}>
           <RefreshCw className="size-3.5" />
           再来一篇
+        </Button>
+        <Button variant="ghost" className="gap-1.5" onClick={onRegenerate}>
+          <Sparkles className="size-3.5" />
+          换一版（相同设定）
         </Button>
         <Button
           variant={liked ? "default" : "ghost"}

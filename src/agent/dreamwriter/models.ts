@@ -30,24 +30,36 @@ const MODEL_IDS = {
   utility: process.env.DW_UTILITY_MODEL || "gpt-5.4-mini",
 } as const;
 
+/**
+ * Repo-controlled reliability policy for every LLM call. A per-call `timeout`
+ * stops one hung request from eating the whole 300s route budget; `maxRetries`
+ * lets the OpenAI SDK retry transient 429/5xx with exponential backoff. Tune via
+ * env without code changes.
+ */
+const LLM_TIMEOUT_MS = Number(process.env.DW_LLM_TIMEOUT_MS) || 90_000;
+const LLM_MAX_RETRIES = Number.isFinite(Number(process.env.DW_LLM_MAX_RETRIES))
+  ? Number(process.env.DW_LLM_MAX_RETRIES)
+  : 2;
+const RELIABILITY = { timeout: LLM_TIMEOUT_MS, maxRetries: LLM_MAX_RETRIES } as const;
+
 /** Scene prose: highest creativity. Raw text out (callers do NOT bind a schema). */
 export function writerModel(): ChatOpenAI {
-  return new ChatOpenAI({ model: MODEL_IDS.writer, temperature: 0.9 });
+  return new ChatOpenAI({ model: MODEL_IDS.writer, temperature: 0.9, ...RELIABILITY });
 }
 
 /** Outline + beat planning: structure-as-reasoning, lower temperature. */
 export function architectModel(): ChatOpenAI {
-  return new ChatOpenAI({ model: MODEL_IDS.architect, temperature: 0.7 });
+  return new ChatOpenAI({ model: MODEL_IDS.architect, temperature: 0.7, ...RELIABILITY });
 }
 
 /** Quality critique: strong model (>= writer), deterministic. */
 export function criticModel(): ChatOpenAI {
-  return new ChatOpenAI({ model: MODEL_IDS.critic, temperature: 0.3 });
+  return new ChatOpenAI({ model: MODEL_IDS.critic, temperature: 0.3, ...RELIABILITY });
 }
 
 /** Final full-text polish / de-AI-flavor pass. */
 export function polishModel(): ChatOpenAI {
-  return new ChatOpenAI({ model: MODEL_IDS.polish, temperature: 0.6 });
+  return new ChatOpenAI({ model: MODEL_IDS.polish, temperature: 0.6, ...RELIABILITY });
 }
 
 /**
@@ -58,6 +70,7 @@ export function utilityModel(opts?: { temperature?: number; maxTokens?: number }
   return new ChatOpenAI({
     model: MODEL_IDS.utility,
     temperature: opts?.temperature ?? 0.3,
+    ...RELIABILITY,
     ...(opts?.maxTokens ? { maxTokens: opts.maxTokens } : {}),
   });
 }

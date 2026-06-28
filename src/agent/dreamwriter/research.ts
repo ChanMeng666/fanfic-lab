@@ -3,6 +3,7 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { utilityModel } from "./models";
 import { getCachedResearch, saveResearch } from "../../lib/research-cache";
 import { logger, errorFields } from "../../lib/logger";
+import { FANDOM_RAG_NAMESPACE } from "../../lib/fandom";
 
 const FANDOM = "崩坏：星穹铁道 (Honkai: Star Rail)";
 
@@ -66,7 +67,7 @@ export async function getFandomResearch(cp: string[]): Promise<string> {
   // 4) Cache the brief (best-effort)
   if (brief) {
     try {
-      await saveResearch(sourceName, "hsr", { brief } satisfies ResearchPayload);
+      await saveResearch(sourceName, FANDOM_RAG_NAMESPACE, { brief } satisfies ResearchPayload);
     } catch (e) {
       logger.warn("dreamwriter.research.cache_write_failed", errorFields(e));
     }

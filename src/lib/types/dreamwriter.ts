@@ -108,5 +108,9 @@ export interface CreationProgressEvent {
   message?: string;
   outline?: StoryOutline;
   result?: StoryResult;
+  // Server-issued id of the persisted Generation row. Sent alongside the final
+  // `result` event; the client passes it (NOT the story content) to /api/stories
+  // so the save is billed from the server's authoritative record, not client input.
+  generationId?: string;
   error?: string;
 }
