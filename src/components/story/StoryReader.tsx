@@ -75,6 +75,8 @@ interface StoryReaderProps {
   // Set when this story is itself a remix of another work (attribution).
   remixedFrom?: { id: string; title: string; authorUsername: string } | null;
   reactions?: ReactionSummary;
+  // The reader's last-read chapter number for this story (series-wide resume).
+  resumeChapter?: number | null;
 }
 
 export function StoryReader({
@@ -89,6 +91,7 @@ export function StoryReader({
   isOwner = false,
   remixedFrom = null,
   reactions,
+  resumeChapter = null,
 }: StoryReaderProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -273,7 +276,9 @@ export function StoryReader({
         />
       )}
 
-      {chapterCount > 1 && <ChapterTOC storyId={story.id} chapters={chapters} />}
+      {chapterCount > 1 && (
+        <ChapterTOC storyId={story.id} chapters={chapters} resumeChapter={resumeChapter} />
+      )}
 
       <Separator className="my-10" />
 

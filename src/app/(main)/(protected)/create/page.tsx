@@ -26,7 +26,7 @@ function CreatePageContent() {
   const searchParams = useSearchParams();
   const remixFrom = searchParams.get("remixFrom");
 
-  const { stage, message, result, storyId, isCreating, saveStatus, create, retrySave, reset } =
+  const { stage, message, result, storyId, isCreating, saveStatus, create, regenerate, retrySave, reset } =
     useStoryCreation();
   const [gateOpen, setGateOpen] = useState(false);
   const [gateReason, setGateReason] = useState<string | undefined>();
@@ -123,6 +123,7 @@ function CreatePageContent() {
             saveStatus={saveStatus}
             onRetrySave={retrySave}
             onCreateAnother={reset}
+            onRegenerate={regenerate}
             onSuggestionClick={(s) => {
               reset();
               // Small delay to let reset take effect

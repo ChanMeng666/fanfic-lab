@@ -13,6 +13,7 @@ import { getBranchTree } from "@/lib/actions/branch";
 import { getPollsForStory } from "@/lib/actions/poll";
 import { getRemixes } from "@/lib/actions/remix";
 import { getReactionSummary } from "@/lib/actions/reaction";
+import { getStoryProgress } from "@/lib/actions/reading-progress";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
 interface StoryPageProps {
@@ -163,6 +164,9 @@ export default async function StoryPage({ params }: StoryPageProps) {
   // Expressive reactions summary (催泪/带感/脑洞/甜).
   const reactions = await getReactionSummary(id, currentUserId);
 
+  // Series-wide resume: the reader's last position, for the multi-chapter TOC.
+  const resumeChapter = story.chapters.length > 1 ? await getStoryProgress(id) : null;
+
   // Published derivative works of this story (二创/衍生).
   const remixes = story.status === "PUBLISHED" ? await getRemixes(id) : [];
   const remixedFrom = story.remixedFrom
@@ -187,6 +191,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
         isOwner={isOwner}
         remixedFrom={remixedFrom}
         reactions={reactions}
+        resumeChapter={resumeChapter}
       />
       {showCoCreation && (
         <div className="max-w-3xl mx-auto px-3 sm:px-4 pb-10 space-y-6">

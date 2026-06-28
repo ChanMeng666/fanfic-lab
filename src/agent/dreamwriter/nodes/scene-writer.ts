@@ -7,6 +7,7 @@ import { retrieveRelevantChunks } from "../../../knowledge/base/rag";
 import { writerModel } from "../models";
 import { logger, errorFields } from "../../../lib/logger";
 import { AppError, ErrorCode } from "../../../lib/errors";
+import { FANDOM_RAG_NAMESPACE } from "../../../lib/fandom";
 import type { SceneOutline, StoryOutline } from "../../../lib/types/dreamwriter";
 
 /** Per-scene-attempt ceiling so one hung LLM call can't eat the whole request budget. */
@@ -87,7 +88,7 @@ export async function sceneWriterNode(state: DreamWriterState, _config: Runnable
   // against the previous scene's tail + a running turn memo.
   const ragByScene = await Promise.all(
     scenes.map((scene, i) =>
-      retrieveRelevantChunks(`${outline.cp.join(" ")} ${scene.summary} ${scene.characters.join(" ")}`, "hsr", 2).catch(
+      retrieveRelevantChunks(`${outline.cp.join(" ")} ${scene.summary} ${scene.characters.join(" ")}`, FANDOM_RAG_NAMESPACE, 2).catch(
         (e) => {
           logger.warn("dreamwriter.rag.failed", { node: "scene_writer", scene: i + 1, ...errorFields(e) });
           return [] as { content: string }[];

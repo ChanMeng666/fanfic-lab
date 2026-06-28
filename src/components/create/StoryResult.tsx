@@ -18,6 +18,7 @@ interface StoryResultProps {
   saveStatus: SaveStatus;
   onRetrySave: () => void;
   onCreateAnother: () => void;
+  onRegenerate: () => void;
   onSuggestionClick: (suggestion: string) => void;
 }
 
@@ -27,6 +28,7 @@ export function StoryResult({
   saveStatus,
   onRetrySave,
   onCreateAnother,
+  onRegenerate,
   onSuggestionClick,
 }: StoryResultProps) {
   const [liked, setLiked] = useState(false);
@@ -134,6 +136,10 @@ export function StoryResult({
         <Button variant="outline" className="gap-1.5" onClick={onCreateAnother}>
           <RefreshCw className="size-3.5" />
           再来一篇
+        </Button>
+        <Button variant="ghost" className="gap-1.5" onClick={onRegenerate}>
+          <Sparkles className="size-3.5" />
+          换一版（相同设定）
         </Button>
         <Button
           variant={liked ? "default" : "ghost"}

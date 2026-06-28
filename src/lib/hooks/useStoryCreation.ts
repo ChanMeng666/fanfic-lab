@@ -31,6 +31,8 @@ interface UseStoryCreationReturn {
     remixedFromId?: string,
     structured?: StructuredCreateInput,
   ) => Promise<void>;
+  /** Re-run the last generation with the exact same inputs. No-op if none yet. */
+  regenerate: () => void;
   retrySave: () => void;
   reset: () => void;
 }
@@ -44,6 +46,13 @@ export function useStoryCreation(): UseStoryCreationReturn {
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
+  // The exact inputs of the last create() call, so regenerate() can re-run them.
+  const lastArgsRef = useRef<{
+    prompt: string;
+    length: StoryLength;
+    remixedFromId?: string;
+    structured?: StructuredCreateInput;
+  } | null>(null);
   // The payload last handed to /api/stories, kept so retrySave() can re-POST
   // the same save if the first attempt fails. Only the server-issued
   // generationId is sent — the story content lives server-side and can't be
@@ -102,6 +111,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
   }, [storyId, saveStatus, persistStory]);
 
   const create = useCallback(async (prompt: string, length: StoryLength = "short", remixedFromId?: string, structured?: StructuredCreateInput) => {
+    lastArgsRef.current = { prompt, length, remixedFromId, structured };
     // Reset state
     setStage("parsing");
     setMessage("正在理解你的创作需求...");
@@ -180,6 +190,11 @@ export function useStoryCreation(): UseStoryCreationReturn {
     }
   }, [persistStory]);
 
+  const regenerate = useCallback(() => {
+    const a = lastArgsRef.current;
+    if (a) void create(a.prompt, a.length, a.remixedFromId, a.structured);
+  }, [create]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setStage("idle");
@@ -202,6 +217,7 @@ export function useStoryCreation(): UseStoryCreationReturn {
     isCreating,
     saveStatus,
     create,
+    regenerate,
     retrySave,
     reset,
   };

@@ -14,6 +14,7 @@ import { createNotification } from "@/lib/actions/notification";
 import { onStorySaved } from "@/lib/actions/achievements";
 import { CREDIT_COSTS, type StoryLength } from "@/lib/billing/pricing";
 import { parseBody, saveStoryBodySchema } from "@/lib/validation/api";
+import { FANDOM_LABEL } from "@/lib/fandom";
 
 // Defensive fallback when the agent payload is missing `summary` (older
 // in-flight requests that started before the summarize node was deployed,
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
           data: {
             title: result.title,
             summary,
-            fandom: "崩坏：星穹铁道",
+            fandom: FANDOM_LABEL,
             ships: result.cp,
             tags: result.tags,
             rating: mapRating(result.rating),

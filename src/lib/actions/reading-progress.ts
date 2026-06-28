@@ -37,6 +37,21 @@ export async function recordReadingProgress(storyId: string, chapterNumber: numb
   return { ok: true };
 }
 
+/** The current user's saved position (last chapter number) in one story, or null. */
+export async function getStoryProgress(storyId: string): Promise<number | null> {
+  const userId = await currentDbUserId();
+  if (!userId) return null;
+  try {
+    const row = await prisma.readingProgress.findUnique({
+      where: { userId_storyId: { userId, storyId } },
+      select: { lastChapterNumber: true },
+    });
+    return row?.lastChapterNumber ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export interface ContinueReadingItem {
   storyId: string;
   title: string;
