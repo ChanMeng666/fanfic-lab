@@ -38,7 +38,7 @@ export const StoryOutlineSchema = z.object({
   pov: z.string().describe("叙事人称与视角，如『第三人称限知·砂金视角』或『第一人称·星期日』"),
   themeLine: z.string().describe("一句话情感内核/主题，整篇围绕它收束"),
   beatTemplate: z.string().describe("采用的情感节拍模板名，如 虐转甜/破镜重圆/双向暗恋/HC/甜饼/悬疑/日常"),
-  wordTarget: z.number().describe("目标字数：short=1500-2500, medium=3000-5000, long=5000-8000"),
+  wordTarget: z.number().describe("目标字数（会按付费档位最终校准）：short≈1000, medium≈3000, long≈6000"),
   emotionalArc: z.string().describe("情感曲线描述（贴合所选节拍模板的起承转合）"),
   scenes: z.array(SceneSchema),
 });

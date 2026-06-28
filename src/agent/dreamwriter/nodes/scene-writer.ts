@@ -76,7 +76,13 @@ export async function sceneWriterNode(state: DreamWriterState, config: RunnableC
   const scenes = outline.scenes.length > 0 ? outline.scenes : [{ summary: "完整短篇", characters: outline.cp, emotion: outline.tone } as SceneOutline];
   // Static knowledge pack only -> stable system prefix for prompt caching.
   const systemPrompt = SCENE_WRITER_PROMPT(getHSRKnowledgePrompt());
-  const perSceneTarget = Math.max(400, Math.round(outline.wordTarget / scenes.length));
+  // Split the outline's (length-spec-enforced) word target across scenes. gpt-class
+  // models reliably OVERSHOOT Chinese character targets (~1.7x in testing), so we
+  // request a compensated per-scene budget to land the finished piece near the
+  // labeled length. Empirical; tune via DW_LENGTH_FACTOR. Low floor so short pieces
+  // stay short instead of being padded up to a fixed minimum.
+  const lengthFactor = Number(process.env.DW_LENGTH_FACTOR) || 0.6;
+  const perSceneTarget = Math.max(300, Math.round((outline.wordTarget * lengthFactor) / scenes.length));
   const model = writerModel();
 
   const sceneDrafts: string[] = [];
@@ -127,7 +133,7 @@ export async function sceneWriterNode(state: DreamWriterState, config: RunnableC
       continuity,
       sceneSpec(scene, i, scenes.length),
       positionNote,
-      `本幕目标字数：约 ${perSceneTarget} 字（可上下浮动，以写透为准）。`,
+      `本幕目标字数：约 ${perSceneTarget} 字（请尽量贴近，宁可写得精炼也不要明显超出——篇幅是读者付费选定的）。`,
       researchBlock,
       buildRAGContext(ragChunks),
     ]

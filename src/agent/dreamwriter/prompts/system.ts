@@ -59,8 +59,7 @@ ${knowledgePrompt}
 3. 每一幕都要有 turn（一个改变）；没有任何改变的场景不该单独成幕
 4. 每一幕给一个具体的 hook 和 sensoryAnchor，这是后续文笔质量的地基
 5. 选定一个统一的 pov 并贯穿全篇
-6. wordTarget 根据 length 约束决定：short=1500-2500, medium=3000-5000, long=5000-8000
-7. 场景数量与篇幅匹配：short 2-3 幕，medium 3-5 幕，long 5-7 幕
+6. wordTarget 与场景数严格匹配付费档位（以本次请求给出的【篇幅档位】为准）：short≈1000字·最多2幕，medium≈3000字·最多3-4幕，long≈6000字·最多5-6幕。短篇就要短，不要为铺节拍而拉长。
 
 返回纯JSON，不要添加任何额外文字。`;
 
