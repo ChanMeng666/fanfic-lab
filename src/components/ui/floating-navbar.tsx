@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const transition = {
@@ -51,14 +52,20 @@ interface NavLinkProps {
 }
 
 export function NavLink({ href, children, className, onClick }: NavLinkProps) {
+  const pathname = usePathname();
+  const isActive =
+    pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+
   return (
     <a
       href={href}
       onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
-        "px-3 py-1.5 rounded-full text-sm font-medium",
-        "text-muted-foreground hover:text-foreground",
-        "hover:bg-secondary/50 transition-all duration-200",
+        "px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+        isActive
+          ? "text-foreground bg-secondary/70"
+          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
         className
       )}
     >

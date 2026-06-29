@@ -220,7 +220,7 @@ export function StoryReader({
           {story.ships.map((ship) => (
             <Badge
               key={ship}
-              className="bg-accent/15 text-accent border-accent/30 whitespace-normal break-words text-left justify-start max-w-full"
+              className="bg-accent/15 text-accent border-accent/30 whitespace-normal break-words text-left justify-start max-w-full rounded-md"
             >
               {ship}
             </Badge>
@@ -229,7 +229,7 @@ export function StoryReader({
             <Badge
               key={tag}
               variant="secondary"
-              className="gap-1 whitespace-normal break-words text-left justify-start max-w-full"
+              className="gap-1 whitespace-normal break-words text-left justify-start max-w-full rounded-md"
             >
               <Tag className="size-3 shrink-0" />
               {tag}

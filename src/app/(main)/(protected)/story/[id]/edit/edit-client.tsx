@@ -96,13 +96,17 @@ function ChipInput({ values, onChange, placeholder, ariaLabel }: ChipInputProps)
           <span className="text-xs text-muted-foreground">尚未添加</span>
         )}
         {values.map((v) => (
-          <Badge key={v} variant="secondary" className="gap-1 pr-1">
+          <Badge
+            key={v}
+            variant="secondary"
+            className="gap-1 pr-1 max-w-full whitespace-normal break-words text-left items-start rounded-md"
+          >
             {v}
             <button
               type="button"
               onClick={() => remove(v)}
               aria-label={`移除 ${v}`}
-              className="rounded-full hover:bg-background/40 p-0.5"
+              className="rounded-full hover:bg-background/40 p-0.5 shrink-0 mt-0.5"
             >
               <X className="size-3" />
             </button>

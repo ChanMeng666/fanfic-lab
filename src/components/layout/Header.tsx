@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useUser } from "@stackframe/stack";
 import {
   Settings,
@@ -29,14 +30,26 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { CreditBadge } from "@/components/credits/CreditBadge";
 import { syncUser } from "@/lib/actions/user";
+import { cn } from "@/lib/utils";
 
 export function Header({ className }: { className?: string }) {
   const user = useUser();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
 
   const isLoading = user === undefined;
   const isLoggedIn = user !== null && user !== undefined;
+
+  const isActivePath = (href: string) =>
+    pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+  const mobileLinkClass = (href: string) =>
+    cn(
+      "px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
+      isActivePath(href)
+        ? "text-foreground bg-secondary/60"
+        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+    );
 
   // Sync user to database when authenticated
   useEffect(() => {
@@ -204,35 +217,40 @@ export function Header({ className }: { className?: string }) {
             <nav className="flex flex-col gap-1" aria-label="主导航">
               <Link
                 href="/create"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                aria-current={isActivePath("/create") ? "page" : undefined}
+                className={mobileLinkClass("/create")}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 创作
               </Link>
               <Link
                 href="/feed"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                aria-current={isActivePath("/feed") ? "page" : undefined}
+                className={mobileLinkClass("/feed")}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 发现
               </Link>
               <Link
                 href="/trending"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                aria-current={isActivePath("/trending") ? "page" : undefined}
+                className={mobileLinkClass("/trending")}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 排行榜
               </Link>
               <Link
                 href="/collections"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                aria-current={isActivePath("/collections") ? "page" : undefined}
+                className={mobileLinkClass("/collections")}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 合集
               </Link>
               <Link
                 href="/about"
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                aria-current={isActivePath("/about") ? "page" : undefined}
+                className={mobileLinkClass("/about")}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 关于
@@ -242,14 +260,16 @@ export function Header({ className }: { className?: string }) {
                   <div className="h-px bg-border/50 my-1" />
                   <Link
                     href="/profile"
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    aria-current={isActivePath("/profile") ? "page" : undefined}
+                    className={mobileLinkClass("/profile")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     我的作品
                   </Link>
                   <Link
                     href="/billing"
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    aria-current={isActivePath("/billing") ? "page" : undefined}
+                    className={mobileLinkClass("/billing")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     积分 & 充值

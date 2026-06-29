@@ -151,7 +151,7 @@ export function StoryCard({ story, onLike }: StoryCardProps) {
             <Badge
               key={ship}
               variant="outline"
-              className="text-accent-foreground border-accent/30 whitespace-normal break-words text-left justify-start max-w-full"
+              className="text-accent-foreground border-accent/30 whitespace-normal break-words text-left justify-start max-w-full rounded-md"
             >
               {ship}
             </Badge>
@@ -168,7 +168,7 @@ export function StoryCard({ story, onLike }: StoryCardProps) {
             <Badge
               key={tag}
               variant="outline"
-              className="text-xs py-0 whitespace-normal break-words text-left justify-start max-w-full"
+              className="text-xs py-0 whitespace-normal break-words text-left justify-start max-w-full rounded-md"
             >
               {tag}
             </Badge>

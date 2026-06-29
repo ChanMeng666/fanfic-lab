@@ -88,7 +88,7 @@ export function StoryResult({
               <Badge
                 key={c}
                 variant="outline"
-                className="text-xs whitespace-normal break-words text-left justify-start max-w-full"
+                className="text-xs whitespace-normal break-words text-left justify-start max-w-full rounded-md"
               >
                 {c}
               </Badge>
@@ -97,7 +97,7 @@ export function StoryResult({
               <Badge
                 key={t}
                 variant="secondary"
-                className="text-xs whitespace-normal break-words text-left justify-start max-w-full"
+                className="text-xs whitespace-normal break-words text-left justify-start max-w-full rounded-md"
               >
                 {t}
               </Badge>
